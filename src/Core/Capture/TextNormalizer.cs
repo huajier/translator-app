@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using TranslatorApp.Core.Logging;
 
 namespace TranslatorApp.Core.Capture;
 
@@ -29,7 +30,7 @@ internal static class TextNormalizer
 
         for (int i = 0; i < lines.Length; i++)
         {
-            string line = TrimLeadingStrayQuotes(FixSpuriousSpaces(lines[i].Trim()));
+            string line = TrimLeadingStrayQuotes(FixUnmatchedQuotes(FixSpuriousSpaces(lines[i].Trim())));
 
             if (line.Length == 0)
             {
@@ -405,6 +406,68 @@ internal static class TextNormalizer
         }
         return false;
     }
+
+    /// <summary>
+    /// 修掉**不成对的引号**：只出现一半的排版引号，统一成直引号。
+    ///
+    /// 【2026-10-10 用户提问引出来的（材料 1 的 A3 / B3）】
+    ///   材料原文：`the file "config.txt" wasn't found`   ← 两个都是直引号
+    ///   识别出来：`the file “config.txt" wasn't found`  ← **左边弯、右边直**
+    ///
+    ///   **用户问：「既然识别出来了，那应该都是对的或者都是错的，
+    ///   这一半错一半对是什么情况？」**
+    ///
+    ///   **问得非常准——这本身就是自相矛盾**：
+    ///   排版引号**必然成对**（`“…”` 或者 `"…"`），
+    ///   **不成对只有一个解释：其中一个被认错了**。
+    ///
+    ///   【为什么确定是 Tesseract 吐出来的，不是我们改的】
+    ///     ① 同一个识别流程里，仲裁用的 chi_sim 结果是 `“config.txt"”`——**成对的、直的**；
+    ///        最终采用的是 rus+eng 那一份，**只有它坏了**。
+    ///     ② 全工程搜 `“`、`”` **只有一处**，还在「要删掉的符号」名单里——
+    ///        **我们从来不往文本里加排版引号**。
+    ///
+    ///   【为什么只修「不成对」的，不统一成某一种风格】
+    ///     我们**不知道原文用的是哪种引号**，猜了就是在篡改。
+    ///     所以只做一件没有猜测余地的事：
+    ///       · 出现 `“` 却没有 `”`（或反过来）→ 说明有一边认错了，统一成直引号；
+    ///       · **本来就成对的，一个字都不动**（中文 `“引号”` 照样保留）。
+    ///
+    ///   这条规则**不依赖语种**，所以不会重蹈 R2「删中文标点前的空格误伤俄文」的覆辙。
+    /// </summary>
+    private static string FixUnmatchedQuotes(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        if (text.IndexOfAny(StraightOrCurlyQuotes) < 0) return text;
+
+        bool hasOpenDouble = text.Contains('“');
+        bool hasCloseDouble = text.Contains('”');
+        bool hasOpenSingle = text.Contains('‘');
+        bool hasCloseSingle = text.Contains('’');
+
+        var sb = new StringBuilder(text.Length);
+        foreach (char c in text)
+        {
+            // 只在「另一半根本没出现」的时候才替换
+            if (c == '“' && !hasCloseDouble) { sb.Append('"'); continue; }
+            if (c == '”' && !hasOpenDouble) { sb.Append('"'); continue; }
+            if (c == '‘' && !hasCloseSingle) { sb.Append('\''); continue; }
+            if (c == '’' && !hasOpenSingle) { sb.Append('\''); continue; }
+            sb.Append(c);
+        }
+
+        string result = sb.ToString();
+        if (!string.Equals(result, text, StringComparison.Ordinal))
+        {
+            AppLogger.Info(
+                $"修正了不成对的引号：【{text}】→ 【{result}】（排版引号必然成对，" +
+                $"只出现一半说明有一个被认错了；本来就成对的一个字都没动）");
+        }
+        return result;
+    }
+
+    /// <summary>上面要判断的四种排版引号。</summary>
+    private static readonly char[] StraightOrCurlyQuotes = { '"', '\'', '“', '”', '‘', '’' };
 
     /// <summary>
     /// 删掉「中文标点前面的空格」。
