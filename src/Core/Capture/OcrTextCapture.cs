@@ -818,13 +818,49 @@ internal sealed class OcrTextCapture : ITextCapture
                                     bool muchMore = oldChars > 0 && newChars >= (int)(oldChars * 1.15);
                                     bool notMuchWorse = grayResult.Confidence >= oldConfidence - 0.10;
 
-                                    if (notWorseAtAll)
+                                    // ==========================================================
+                                    // 【2026-10-10 材料 2 的 R3：第四次栽在「字数多」这个坑上】
+                                    //
+                                    //   **现场**（橙底绿字的俄文，两遍都返回「（空）」）：
+                                    //     base           0.58，39 个有效字符  ← 胡话，凭什么字多
+                                    //     红通道二值化     0.95，38 个，内容**完全正确** → 不采用
+                                    //     红通道不二值化   0.96，38 个，内容**完全正确** → 不采用
+                                    //     最终原文：（空）
+                                    //
+                                    //   三条规矩为什么都不成立：
+                                    //     38 ≥ 39         → 不成立
+                                    //     38 ≥ 39 × 1.15  → 不成立
+                                    //   **一份 0.96 的正确答案，就这么被一份 0.58 的胡话挤掉了。**
+                                    //
+                                    //   🔴 **这里暴露的是一条规则的���本错误**：
+                                    //
+                                    //     那份 0.58 的结果**本来就要被「低于 0.78 = 乱码」扔掉**，
+                                    //     它**根本没资格当基准**去和别人比字数。
+                                    //     **拿一个注定要扔的东西当尺子，量出来的结果当然是错的。**
+                                    //
+                                    //   【所以新规矩：旧的不达标时，字数根本不参与比较】
+                                    //     不是「少几个字也换」这种拍脑袋的宽松，
+                                    //     而是**取消这个比较项**——
+                                    //     既然旧的会被扔，它多一个字少一个字毫无意义；
+                                    //     真正的取舍是**过线**还是**不过线**。
+                                    //
+                                    //   **同一个坑的第四次**：
+                                    //     F5（62 个空格）→ 五十八轮（110 个噪点）→ 六十二轮（28 个乱码）→ 这次
+                                    // ==========================================================
+                                    bool oldIsDoomed = oldConfidence < MinimumAcceptableConfidence;
+                                    bool rescued = oldIsDoomed
+                                                && grayResult.Confidence >= MinimumAcceptableConfidence;
+
+                                    if (notWorseAtAll || rescued)
                                     {
                                         best = grayResult;
                                         usedPrepared = true;
-                                        AppLogger.Info(
-                                            $"这一版分数没降（{grayResult.Confidence:F2} ≥ {oldConfidence:F2}）" +
-                                            $"且字数没少（{newChars} ≥ {oldChars}），两项都不差，改用它");
+                                        AppLogger.Info(rescued
+                                            ? $"原来那份置信度只有 {oldConfidence:F2}（低于 {MinimumAcceptableConfidence:F2}，"
+                                              + $"本来就要当乱码扔掉），这一版有 {grayResult.Confidence:F2} 已经过线——"
+                                              + $"**过线的比不过线的强，不管谁字多**，改用它"
+                                            : $"这一版分数没降（{grayResult.Confidence:F2} ≥ {oldConfidence:F2}）"
+                                              + $"且字数没少（{newChars} ≥ {oldChars}），两项都不差，改用它");
                                     }
                                     else if (muchMore && notMuchWorse)
                                     {
