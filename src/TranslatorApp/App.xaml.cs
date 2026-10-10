@@ -380,7 +380,18 @@ public partial class App : System.Windows.Application
     /// </summary>
     private static void TryDebugShortcut()
     {
-        if (!DebugScreenshotSaver.Enabled) return;
+        // 🔴【2026-10-10】**每一按都留痕**——
+        //   用户反馈「按了没有任何反馈，也不知道截图成没成功」。
+        //   以前成功与否全靠后面的日志去推断，
+        //   **一旦中间哪个环节没走到（像漏监听 D 键那次），就一个字都看不到**，
+        //   双方只能干瞪眼。所以这里先把「按到了」这件事本身记下来。
+        AppLogger.Info("收到 Ctrl+Alt+D：准备保存刚才那块区域的截图");
+
+        if (!DebugScreenshotSaver.Enabled)
+        {
+            AppLogger.Warn("调试截图未开启，已跳过");
+            return;
+        }
 
         // 用户主动按了，说明「他想看」——
         // 之后框选当场生成的中间图（比如反色后那张）也一并存下来。

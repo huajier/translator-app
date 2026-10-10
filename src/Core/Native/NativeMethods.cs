@@ -443,6 +443,9 @@ internal static class NativeMethods
     public const int VK_RSHIFT = 0xA1;
     public const int VK_ESCAPE = 0x1B;
 
+    /// <summary>字母 D 的虚拟键码。调试截图热键 `Ctrl+Alt+D` 的最后一个键。</summary>
+    public const int VK_D = 0x44;
+
     // ---- 多显示器 ----
     /// <summary>MonitorFromPoint 的常量：取「离这个点最近」的那块显示器。</summary>
     public const uint MONITOR_DEFAULTTONEAREST = 2;

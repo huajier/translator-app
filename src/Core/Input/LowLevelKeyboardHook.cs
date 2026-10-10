@@ -142,6 +142,22 @@ internal static class LowLevelKeyboardHook
     }
 
     /// <summary>只监听这几个键，其它键连队列都不进（越少越快）。</summary>
+    ///
+    /// 🔴【2026-10-10 修：`Ctrl+Alt+D` 按了没反应】
+    ///
+    ///   **原来这里漏了 `VK_D`（0x44）**：
+    ///   `App.xaml.cs` 里判断的是 `evt.VirtualKey == 0x44`，
+    ///   但 **D 键的按下事件在这个名单里，连队列都进不去**，
+    ///   所以那个判断**永远不可能为真**——按多少次都没用，**日志里连一行都没有**。
+    ///
+    ///   **典型的「代码写了、看起来没问题、就是永远执行不到」**：
+    ///   判断语句本身是对的，加载名单的时候忘了它。
+    ///
+    /// 【为什么要单独盯 D】
+    ///   `D` 是调试截图热键 `Ctrl+Alt+D` 的最后一个键，
+    ///   只有「前面判断 `Hotkeys.IsComboDown`」成立时才会被当回事。
+    ///   **光按 D（不按 Ctrl+Alt）不会触发任何操作**，
+    ///   所以这里多盯一个键，**不会影响用户正常打字**。
     private static bool IsWatchedKey(int vkCode) => vkCode
         is NativeMethods.VK_CONTROL
         or NativeMethods.VK_LCONTROL
@@ -149,7 +165,8 @@ internal static class LowLevelKeyboardHook
         or NativeMethods.VK_MENU
         or NativeMethods.VK_LMENU
         or NativeMethods.VK_RMENU
-        or NativeMethods.VK_ESCAPE;
+        or NativeMethods.VK_ESCAPE
+        or NativeMethods.VK_D;
 
     /// <summary>
     /// 钩子回调里用的键盘事件结构体副本。
