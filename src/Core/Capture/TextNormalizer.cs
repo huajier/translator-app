@@ -381,6 +381,32 @@ internal static class TextNormalizer
     }
 
     /// <summary>
+    /// 这段文字里有没有汉字。
+    ///
+    /// 【为什么需要它】
+    ///   `RemoveSpaceBeforeChinesePunctuation`（删中文标点前的空格）曾经**误伤俄文**：
+    ///   `Машинный перевод — это` 里的空格是**对的**，却因为破折号 `—` 被写进了
+    ///   「中文标点」名单而���删掉——**把对的改成了错的**。
+    ///
+    ///   规则本身没错，错在**没看语种就动手**。
+    ///   「中文标点前面的空格」这条规矩**只对中文成立**，
+    ///   西文/俄文里 `—` 两侧本来就该有空格。
+    ///
+    /// 【为什么不在名单里一个一个排除 `—`】
+    ///   因为名单以后还会加标点，**逐个排除迟早又会漏一个**。
+    ///   **整段判语种是一道闸**，比在名单里挑拣可靠。
+    /// </summary>
+    private static bool ContainsChinese(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        foreach (char c in text)
+        {
+            if (c >= '一' && c <= '鿿') return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// 删掉「中文标点前面的空格」。
     ///
     /// 【2026-10-10 材料 3 的 P2】
@@ -405,6 +431,26 @@ internal static class TextNormalizer
     public static string RemoveSpaceBeforeChinesePunctuation(string? text)
     {
         if (string.IsNullOrEmpty(text)) return text ?? "";
+
+        // 🔴【2026-10-10 材料 2 的 R2：这条规则误伤了俄文】
+        //
+        //   **识别本身是对的，是这条规则把它改错的**：
+        //     Tesseract 认出来：`Машинный перевод — это раздел…`   ← 两边空格都在，完全正确
+        //     本规则处理之后：`Машинный перевод— это раздел…`       ← 空格被删了
+        //     日志原话：「删掉了中文标点前面的空格：… → …」
+        //
+        //   **根因**：`—`（em-dash 破折号）**根本不是中文标点**，
+        //   但它被写进了下面的标点名单里。
+        //
+        //     · 中文里破折号写成 `——` **紧贴**，前面不该有空格 → 删掉是对的；
+        //     · 西文/俄文里 `—` **两侧本来就该有空格**
+        //       （`перевод — это`），删掉就是**把对的改成错的**。
+        //
+        //   【修法：整条规则只在「这段确实是中文」时才动手】
+        //     这条规则从头到尾就是为中文加的，
+        //     纯俄文/纯英文的段落**一条都不用碰**——
+        //     **不是靠逐个标点排除，是整段判语种**，这样以后再往名单里加标点也不会再误伤。
+        if (!ContainsChinese(text)) return text;
 
         const string marks = "。，、；：？！）】》」』〉…—～";
         var sb = new System.Text.StringBuilder(text.Length);
