@@ -199,6 +199,47 @@ internal static class ImagePreprocessor
     }
 
     /// <summary>
+    /// **中文专用的「红通道、不二值化」版本**（2026-10-10 为 Z1 加）。
+    ///
+    /// 【Z1 的现场】
+    ///   `今天天气不错适合出门`，**橙底绿字**：
+    ///     Windows 自带  → 0 字，一个字都读不出来
+    ///     chi_sim 在**灰度图**上 → 0.76，卡在 0.78 门槛下面被拒
+    ///     结果保留 Windows 的错字，整段判为乱码，**界面什么都不显示**
+    ///
+    /// 【为什么红通道能救】
+    ///   底色橙 = RGB(255,165,0)，字绿 = RGB(0,128,0)：
+    /// ```
+    ///   橙底的红分量 = 255
+    ///   绿字的红分量 = 0
+    ///   → 红通道上对比度拉满，颜色天然分得开
+    /// ```
+    ///   转成灰度之后三种通道**加权平均**，绿字那点红被稀释掉了，
+    ///   所以**必须挑红通道单独看，不能只看灰度**。
+    ///
+    ///   **而且不能二值化**——一刀切下去，
+    ///   笔画边缘那些半灰像素会被切掉（`PrepareRedChannelGray` 的注释里记着同一个坑）。
+    ///
+    /// 【为什么以前没生效】
+    ///   「中文跑红通道」这条路**当年确实加了**，但它挂在外文处理流程里，
+    ///   而 Z1 走的是**中文流程**（Windows 先认出一点中文就归它管），
+    ///   **压根不会进那条路**。这一版是把它补进中文流程。
+    /// </summary>
+    public static Bitmap PreprocessRedChannel(Bitmap source, double scale)
+    {
+        int nw = Math.Max(1, (int)(source.Width * scale));
+        int nh = Math.Max(1, (int)(source.Height * scale));
+
+        var big = new Bitmap(nw, nh, PixelFormat.Format32bppArgb);
+        using (Graphics g = Graphics.FromImage(big))
+        {
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(source, new Rectangle(0, 0, nw, nh));
+        }
+        using (big) { return PrepareRedChannelGray(big); }
+    }
+
+    /// <summary>
     /// 只取**红通道转成灰度**，**不做二值化**，另外放大并补边。
     ///
     /// 【为什么要有这么一路（2026-10-09 用户实测）】

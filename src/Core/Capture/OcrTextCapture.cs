@@ -1388,6 +1388,50 @@ internal sealed class OcrTextCapture : ITextCapture
                         int chiChars = TextNormalizer.CountMeaningfulChars(chiText);
                         bool chiLooksChinese = LanguageDetector.IsMostlyChinese(chiText) && chiChars >= 2;
 
+                        // ==========================================================
+                        // 【2026-10-10 材料 2 的 Z1：补上中文流程里的「红通道」那一路】
+                        //
+                        //   **Z1 的现场**（`今天天气不错适合出门`，橙底绿字）：
+                        //     Windows 自带 → 0 字，一个字都读不出
+                        //     chi_sim 在**灰度图**上 → 0.76，卡在 0.78 门槛下面被拒
+                        //     → 保留 Windows 的错字 → 整段判为乱码 → **界面什么都不显示**
+                        //
+                        //   **「中文跑红通道」这条路当年确实加了**，
+                        //   但它挂在外文处理流程里；
+                        //   而 Z1 走的是**中文流程**（Windows 先认出一点中文就归它管），
+                        //   **压根不会进那条路**。这一版是补进中文流程。
+                        //
+                        //   **为什么红通道能救**（这是数据本身的性质，不是猜的）：
+                        //     橙底 RGB(255,165,0)，绿字 RGB(0,128,0)
+                        //       红分量：底 255 / 字 0 → **对比度拉满，天然分得开**
+                        //     转灰度是三通道加权平均，**绿字那点红被稀释掉了**。
+                        //
+                        //   【只在原有那一遍不够好时才多跑一次】
+                        //     平时中文段置信度都在 0.93 以上，**完全不会触发**，
+                        //     不影响速度和已验收的那些段。
+                        // ==========================================================
+                        if (chiCheck.Confidence < MinimumAcceptableConfidence)
+                        {
+                            using Bitmap redChineseImage = ImagePreprocessor.PreprocessRedChannel(raw, 2.0);
+                            var chiRed = TesseractOcr.TryRecognize(redChineseImage, TesseractOcr.Languages.Chinese);
+                            string chiRedText = TextNormalizer.Normalize(chiRed.Text ?? "");
+                            int redChars = TextNormalizer.CountMeaningfulChars(chiRedText);
+                            bool redLooksChinese = LanguageDetector.IsMostlyChinese(chiRedText) && redChars >= 2;
+
+                            AppLogger.Info(
+                                $"中文红通道补试：置信度 {chiRed.Confidence:F2}（灰度版是 {chiCheck.Confidence:F2}），" +
+                                $"有效字符 {redChars} 个，判定为中文={redLooksChinese}，内容【{Preview(chiRedText)}】");
+
+                            if (redLooksChinese && chiRed.Confidence > chiCheck.Confidence)
+                            {
+                                chiCheck = chiRed;
+                                chiText = chiRedText;
+                                chiChars = redChars;
+                                chiLooksChinese = true;
+                                AppLogger.Info($"红通道这一版更好（{chiRed.Confidence:F2} > {chiCheck.Confidence:F2}），采用它");
+                            }
+                        }
+
                         AppLogger.Info(
                             $"中文交叉验证：chi_sim 置信度 {chiCheck.Confidence:F2}，有效字符 {chiChars} 个，" +
                             $"判定为中文={chiLooksChinese}，内容【{Preview(chiText)}】");
