@@ -1132,18 +1132,6 @@ internal sealed class OcrTextCapture : ITextCapture
                         string? tessText = best.Text;
 
                         // ==========================================================
-                        // 【2026-10-10 临时探针：Z1 连续两版都没走到红通道，
-                        //   与其继续猜，不如直接把当时的真实状态打出来】
-                        //
-                        //   这个探针**无条件打印**外文流程里 `best` 的置信度和前 20 个字，
-                        //   跑一轮就知道：到底是 `best.Confidence` 不满足 0.78，
-                        //   还是根本没进这个流程。**查完就删。**
-                        // ==========================================================
-                        AppLogger.Info(
-                            $"【探针】外文流程此处 best 置信度={best.Confidence:F2}，" +
-                            $"模型={modelUsed}，内容前 20 字【{(best.Text ?? "").Replace("\n", " ").Substring(0, Math.Min(20, (best.Text ?? "").Length))}】");
-
-                        // ==========================================================
                         // 【2026-10-10 材料 2 的 Z1：中文也要能走「红通道」那一路】
                         //
                         //   **Z1 的现场**（`今天天气不错适合出门`，橙底绿字）：
@@ -1205,14 +1193,22 @@ internal sealed class OcrTextCapture : ITextCapture
                                 $"中文红通道补试：置信度 {chiRed.Confidence:F2}（原来 {best.Confidence:F2}），" +
                                 $"有效字符 {redChars} 个，内容【{Preview(chiRedText)}】");
 
-                            if (LanguageDetector.IsMostlyChinese(chiRedText)
+                            // 🔴【2026-10-10 踩过的坑】`best` 换了，**`tessText` 也必须一起换**
+                                //   `string? tessText = best.Text;` 这一行**跑在下面这段补救之前**，
+                                //   所以局部变量 `tessText` 里装的**还是旧的 `KESL`**——
+                                //   结果 `best` 明明已经换成 0.92 的正确结果了，
+                                //   **最后返回给用户的仍然是那句垃圾**。
+                                //   探针实测：`红通道这一版更好（0.92…），采用它` → 实际输出 `KESL`。
+                                double oldConfidence = best.Confidence;
+                                if (LanguageDetector.IsMostlyChinese(chiRedText)
                                 && redChars >= 2
-                                && chiRed.Confidence > best.Confidence)
+                                && chiRed.Confidence > oldConfidence)
                             {
                                 best = chiRed;
+                                tessText = chiRed.Text;      // ← 关键：局部变量要一起换
                                 modelUsed = TesseractOcr.Languages.Chinese;
                                 usedPrepared = true;
-                                AppLogger.Info($"红通道这一版更好（{chiRed.Confidence:F2}，之前是 {best.Confidence:F2} 的垃圾），采用它");
+                                AppLogger.Info($"红通道这一版更好（{chiRed.Confidence:F2} > {oldConfidence:F2}），采用它");
                             }
                         }
 
@@ -1468,9 +1464,6 @@ internal sealed class OcrTextCapture : ITextCapture
                         // 中文这边按 2 倍放大就行，不需要外文那套 4 倍（chi_sim 认汉字够用）
                         using Bitmap chineseImage = ImagePreprocessor.Preprocess(raw);
                         var chiCheck = TesseractOcr.TryRecognize(chineseImage, TesseractOcr.Languages.Chinese);
-                        AppLogger.Info(
-                            $"【探针】中文交叉验证处 chiCheck 置信度={chiCheck.Confidence:F2}，" +
-                            $"字符数={chiCheck.Text?.Length ?? 0}");
 
                         string chiText = TextNormalizer.Normalize(chiCheck.Text ?? "");
                         int chiChars = TextNormalizer.CountMeaningfulChars(chiText);
