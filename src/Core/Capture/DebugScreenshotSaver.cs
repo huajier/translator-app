@@ -39,20 +39,26 @@ internal static class DebugScreenshotSaver
     public static void RememberRegion(RECT rect) => _lastRect = rect;
 
     /// <summary>
-    /// 保存最近一次框选区域的截图。没有框选记录时什么都不做。
+    /// 保存最近一次框选区域的截图。
+    /// **返回存下来的文件路径**；没开启 / 没框选过 / 截不到时返回 null。
+    ///
+    /// 【为什么要返回路径：2026-10-10 用户反馈】
+    ///   「按了没有任何反馈，也不知道截图成没成功」——
+    ///   所以调用方要拿这个路径**在屏幕上告诉用户**，
+    ///   写日志是给开发看的，**用户不会去翻日志**。
     /// </summary>
-    public static void SaveLastRegion()
+    public static string? SaveLastRegion()
     {
         if (!Enabled)
         {
             AppLogger.Info("调试截图未开启，已跳过（要开启请设置 DebugScreenshotSaver.Enabled = true）");
-            return;
+            return null;
         }
 
         if (_lastRect is null)
         {
             AppLogger.Warn("调试截图：还没有框选过，没有可保存的区域");
-            return;
+            return null;
         }
 
         string dir = Path.Combine(AppContext.BaseDirectory, "debug-screenshots");
@@ -63,11 +69,12 @@ internal static class DebugScreenshotSaver
         if (bitmap is null)
         {
             AppLogger.Warn("调试截图失败：截不到那块区域");
-            return;
+            return null;
         }
 
         bitmap.Save(file, System.Drawing.Imaging.ImageFormat.Png);
         AppLogger.Info($"调试截图已保存：{file}");
+        return file;
     }
 
     /// <summary>

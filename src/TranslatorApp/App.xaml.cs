@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
@@ -399,11 +400,52 @@ public partial class App : System.Windows.Application
 
         try
         {
-            DebugScreenshotSaver.SaveLastRegion();
+            string? saved = DebugScreenshotSaver.SaveLastRegion();
+            ShowDebugNotice(saved);
         }
         catch (Exception ex)
         {
             AppLogger.Warn($"调试截图失败：{ex.Message}");
+            ShowDebugNotice(null);
+        }
+    }
+
+    /// <summary>
+    /// 把「调试截图成没成功」**在屏幕上告诉用户**。
+    ///
+    /// 【为什么必须有这一步：2026-10-10 用户反馈】
+    ///   「按了没有任何反馈，也不知道截图成没成功」。
+    ///   查下来图**其实存下来了**——**做了事但不吭声，等于没做**。
+    ///   日志是给开发看的，用户不会去翻；**屏幕上看得见才算数**。
+    ///
+    /// 【复用现成的提示框】
+    ///   不另外做一个窗口：多一个窗口就多一份焦点/层级的老问题。
+    ///   刚才框选时那个卡片多半还开着，直接用它；**已经关了就新开一个**。
+    /// </summary>
+    private static void ShowDebugNotice(string? savedPath)
+    {
+        string title = savedPath is null ? "调试截图没成功" : "调试截图已保存";
+        string detail = savedPath is null
+            ? "请看日志里的原因（可能是还没框选过、或那块区域截不到）"
+            : Path.GetFileName(savedPath);
+
+        try
+        {
+            if (_activeToast is not null && _activeToast.IsVisible)
+            {
+                _activeToast.ShowNotice(title, detail);
+            }
+            else
+            {
+                var notice = new DebugToastWindow();
+                notice.ShowNotice(title, detail);
+                _activeToast = notice;
+            }
+        }
+        catch (Exception ex)
+        {
+            // 提示框只是「锦上添花」，它自己出问题绝不能影响用户取词
+            AppLogger.Warn($"调试截图的屏幕提示没显示出来：{ex.Message}");
         }
     }
 

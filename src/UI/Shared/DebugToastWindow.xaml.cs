@@ -31,6 +31,9 @@ public partial class DebugToastWindow : Window
     /// <summary>自动关闭的定时器（做成字段，更新文字时要能重新计时）。</summary>
     private readonly DispatcherTimer _closeTimer = new() { Interval = TimeSpan.FromSeconds(3) };
 
+    /// <summary>这一轮有没有框选过（决定短提示摆哪儿，见 <see cref="ShowNotice"/>）。</summary>
+    private bool _hasSelection;
+
     /// <summary>
     /// 「还没出结果」阶段的兜底时限：**8 秒**。
     ///
@@ -173,6 +176,7 @@ public partial class DebugToastWindow : Window
         _anchorTopDip = session.DipRect.Top;
         _selectionWidthPx = session.PhysicalWidth;
         _selectionHeightPx = session.PhysicalHeight;
+        _hasSelection = true;
 
         // 先放一个肯定合法的位置（多显示器时负坐标也算合法），Show() 之后才知道真实大小。
         //
@@ -203,6 +207,47 @@ public partial class DebugToastWindow : Window
         _closeTimer.Stop();
         _closeTimer.Interval = PendingCloseDelay;
         _closeTimer.Start();
+    }
+
+    /// <summary>
+    /// 显示一条**与框选无关**的短提示（例如「调试截图已保存」），3 秒后自动消失。
+    ///
+    /// 【为什么需要它：2026-10-10 用户反馈】
+    ///   按下 `Ctrl+Alt+D` 之后「**一点反馈也没有**，也不知道截图成没成功」。
+    ///   查下来图其实**存下来了**，只是**存完就静悄悄结束**——
+    ///   **做了事，但不告诉人做了，等于没做。**
+    ///   光有日志不够（日志是给开发看的，用户不会去翻），
+    ///   所以这里复用同一个提示框，**屏幕上能看见**才算数。
+    ///
+    /// 【摆在哪】
+    ///   · 刚框选过 → 摆在选区旁边（和识别结果卡片一个位置，不挡用户看内容）
+    ///   · 从没框选过 → 摆在屏幕右下角
+    /// </summary>
+    internal void ShowNotice(string title, string detail)
+    {
+        TitleText.Text = title;
+        MainText.Text = "";
+        DetailText.Text = detail;
+        TextScroll.MaxHeight = 80;   // 短提示不需要很高
+
+        Left = 0;
+        Top = 0;
+        Show();
+        Topmost = true;
+
+        if (_hasSelection) PlaceBesideSelection();
+        else
+        {
+            Left = Math.Max(0, SystemParameters.VirtualScreenWidth - Width - 40);
+            Top = Math.Max(0, SystemParameters.VirtualScreenHeight - Height - 60);
+        }
+
+        _closeTimer.Stop();
+        _closeTimer.Interval = TimeSpan.FromSeconds(CloseDelaySeconds);
+        _closeTimer.Start();
+
+        Core.Logging.AppLogger.Info(
+            $"短提示已显示：{title} —— {detail}");
     }
 
     /// <summary>
