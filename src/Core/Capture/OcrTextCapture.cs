@@ -1629,6 +1629,82 @@ internal sealed class OcrTextCapture : ITextCapture
                                     $"Windows【{Preview(windowsText)}】 vs chi_sim【{Preview(chiText)}】，" +
                                     $"置信度 {chiCheck.Confidence:F2}，已采用 chi_sim");
 
+                                // ==========================================================
+                                // 【2026-10-10 材料 1 的 D1：第三证人——分数更高的那个说了算】
+                                //
+                                //   **先看探针测出来的数据（3 次 D1 + 3 次 X2）**：
+                                //     D1（`API 版本 v2.0`）
+                                //       Windows【…系统， API  版本 v2 ℃ 已于…】  ← API 对，v2.0 错
+                                //       chi_sim【…系统，ApPl 版本 v2.0 已于…】    ← API 错，v2.0 对
+                                //       第三票　【…系统，API  版本 v2.0 已于…】 0.90 ← **两个都对**
+                                //       → 第三票 0.90 > chi_sim 0.89 → **换，API 认对了**
+                                //
+                                //     X2（`版本 2.0`，材料 3 里已通过的那段）
+                                //       chi_sim 0.93，第三票 0.93 —— **平手**
+                                //       → 不换 → **这一段一个字都不会变**
+                                //
+                                //   【为什么规矩是「分数更高」，不是「不一样就换」】
+                                //     「三票里有两票一样就少数服从多数」听起来更美，
+                                //     但 D1 里**第三票和两个都不一样**——
+                                //     **不一样不代表更好**。
+                                //     而「第三票分数比两个都高」是**两个引擎自己给的数字**，
+                                //     不靠我们猜。
+                                //
+                                //   【平手为什么不换】
+                                //     X2 实测就是平手，**平手就保持原来的做法**——
+                                //     **宁可什么也不动，也不要把已经对的弄坏**。
+                                //
+                                //   【什么时候才会跑这条路】
+                                //     只在「两个引擎不一致」这个**本来就在犹豫**的时刻，
+                                //     两个引擎一致时**一秒都不多花**。
+                                // ==========================================================
+                                try
+                                {
+                                    using Bitmap thirdImage = ImagePreprocessor.PreprocessRedChannel(raw, 2.0);
+                                    var third = TesseractOcr.TryRecognize(thirdImage, TesseractOcr.Languages.Chinese);
+                                    string thirdText = TextNormalizer.Normalize(third.Text ?? "");
+                                    int thirdChars = TextNormalizer.CountMeaningfulChars(thirdText);
+                                    bool thirdLooksChinese =
+                                        LanguageDetector.IsMostlyChinese(thirdText) && thirdChars >= 2;
+
+                                    bool sameAsWindows = string.Equals(
+                                        thirdText, TextNormalizer.Normalize(windowsText), StringComparison.Ordinal);
+                                    bool sameAsChi = string.Equals(
+                                        thirdText, TextNormalizer.Normalize(chiText), StringComparison.Ordinal);
+
+                                    AppLogger.Info(
+                                        $"【第三证人】红通道 chi_sim：置信度 {third.Confidence:F2}，" +
+                                        $"内容【{Preview(thirdText)}】；" +
+                                        $"与 Windows 一致={sameAsWindows}，与 chi_sim 一致={sameAsChi}");
+
+                                    if (thirdLooksChinese && third.Confidence > chiCheck.Confidence)
+                                    {
+                                        AppLogger.Info(
+                                            $"第三票的分数更高（{third.Confidence:F2} > {chiCheck.Confidence:F2}）——" +
+                                            "**多一个证人，高的那个说了算**，采用第三票");
+                                        chiText = thirdText;
+                                        chiChars = thirdChars;
+                                        chiCheck = third;
+                                        text = thirdText;
+                                        lineCount = TextNormalizer.CountLines(thirdText);
+
+                                        scoreNote = $"中文：两个引擎不一致，又多问了一个证人，" +
+                                                    $"分数更高的那份（{third.Confidence:F2}）被采用；" +
+                                                    $"Windows 读出来的是【{Preview(windowsText)}】，请核对";
+                                    }
+                                    else
+                                    {
+                                        AppLogger.Info(
+                                            $"第三票没有更高（{third.Confidence:F2} ≤ {chiCheck.Confidence:F2}）——" +
+                                            "**平手或更差就保持原样**，不动已经对的那些段");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    // 第三证人失败绝不能影响用户取词
+                                    AppLogger.Warn($"第三证人失败（已忽略）：{ex.Message}");
+                                }
+
                                 scoreNote = "⚠️ 两个引擎读出来不一样，已采用 Tesseract" +
                                             $"（置信度 {chiCheck.Confidence:F2}，{chiChars} 个有效字符）；" +
                                             $"Windows 读出来的是【{Preview(windowsText)}】，请核对";
