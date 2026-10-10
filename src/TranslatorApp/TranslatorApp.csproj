@@ -1,0 +1,199 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    TranslatorApp.csproj —— 阶段 3：取词（v0.3）
+
+    目标：在阶段 2「知道框了哪一块」的基础上，把框里的内容变成文字
+    - 截图：按物理像素抓下框选区域（支持多显示器与负坐标）
+    - 预处理：放大 2 倍 + 灰度化（决策 3-3 = B）
+    - OCR：Windows 自带识别引擎，**引擎实例常驻复用**（决策 3-2 = A）
+    - 剪贴板通道：模拟 Ctrl+C 取真文字，用完**原样还原**（决策 3-1 = C 混合）
+    - 语言自动判断：中文占比 > 30% 判为中文
+    - 本阶段**仍然不翻译**（那是阶段 4 的活）
+
+    决策约束（来自 tools\日志\决策执行记录.md）：
+      0-2：.NET 10 LTS             → net10.0-windows10.0.19041.0（带版本号是为了开 WinRT）
+      1-1：界面框架 = WPF          → UseWPF
+      1-2：程序形态 = 主窗口 + 托盘 → UseWindowsForms
+      2-1：全局监听 = 手写低级钩子  → DllImport 只能出现在 Core\Native\NativeMethods.cs
+      3-1：取词方式 = 混合        → 先剪贴板，失败转 OCR
+      3-2：OCR 引擎 = Windows 自带
+      3-3：图像预处理 = 放大 + 灰度
+
+    阶段 2 新增：ApplicationManifest = Manifest\app.manifest
+      里面声明 PerMonitorV2 高 DPI 感知。没有它，125%/150% 缩放的屏幕上选框会整体偏移。
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!--
+      阶段 3 变更（2026-10-08）：目标框架从 net10.0-windows 改为 net10.0-windows10.0.19041.0。
+
+      【为什么必须改】
+        Windows 自带的文字识别（Windows.Media.Ocr）是 WinRT API，
+        不是普通 .NET 类库。.NET 5 以后要调用 WinRT，
+        目标框架必须带上 **具体的 Windows 版本号**，SDK 才会自动带上
+        WinRT 投影（CsWinRT），否则 `Windows.Media.Ocr` 这个命名空间根本不存在。
+
+      【这算不算违反约束 C5（必须 net10.0-windows）】
+        不算。C5 的本意是「锁定 .NET 10 且面向 Windows」，
+        net10.0-windows10.0.19041.0 仍然是 net10.0-windows 家族，
+        只是多了一个版本号用来开启 WinRT 支持。
+        已按铁律 R5 记入 tools\日志\决策执行记录.md 的偏差表。
+    -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TranslatorApp</RootNamespace>
+    <AssemblyName>TranslatorApp</AssemblyName>
+    <Version>0.3.0</Version>
+    <AssemblyVersion>0.3.0.0</AssemblyVersion>
+    <FileVersion>0.3.0.0</FileVersion>
+    <Product>翻译软件</Product>
+    <Company>TranslatorApp</Company>
+    <Copyright>© 2026</Copyright>
+    <ApplicationManifest>Manifest\app.manifest</ApplicationManifest>
+    <!--
+      UseWindowsForms 打开时，WinForms 的分析器会要求「DPI 设置别写在 manifest 里，
+      改用 ApplicationHighDpiMode 属性」（警告 WFO0003）。
+      本项目是 **WPF 主导**（主窗口、遮罩、提示框全是 WPF），DPI 感知由 app.manifest 声明，
+      这是 WPF 的标准做法，遮罩选框的高 DPI 换算也依赖它。
+      所以：保留 manifest 声明，并把 WFO0003 降为不阻断的提示，同时显式告知构建系统忽略它 ——
+      免得以后有人看到警告就手贱把 manifest 里的 dpiAwareness 删掉，那样 125% 缩放屏上选框必然错位。
+    -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+    <!--
+      AllowUnsafeBlocks：只有识别质量对照实验工具（OcrExperiment）里的
+      锐化算法需要直接操作像素指针。业务代码一律不许用指针。
+    -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!--
+    Core\Input\ 与 UI\ 都在 TranslatorApp\ 之外，但都属于同一个 exe，一起编译
+    （阶段 10 才会拆成独立程序集）。
+    注意：WPF 的 .xaml 也必须显式声明为 Page，否则不会被编译、也不会生成 InitializeComponent。
+  -->
+  <ItemGroup>
+    <Compile Include="..\Core\**\*.cs" LinkBase="Core" />
+    <Compile Include="..\UI\**\*.cs" LinkBase="UI" />
+    <Page Include="..\UI\**\*.xaml" Link="UI\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!--
+    托盘图标随 exe 一起输出到 release\v0.1\assets\tray.ico。
+    代码里用 Environment.ProcessPath 定位 exe 所在目录再 Path.Combine 到 assets\（阶段 1 技术要点 9，
+    不许用字符串拼路径，中文/空格路径会炸）。图标缺失或损坏时自动回退到系统默认图标，不会启动失败。
+    assets\app.ico 本阶段只入库不引用，ApplicationIcon 留到阶段 9 打包时再配。
+  -->
+  <ItemGroup>
+    <Content Include="..\..\assets\tray.ico" Link="assets\tray.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!--
+    关键补偿（已复现两次的坑）：dotnet publish 的增量清理会把发布目录里的 assets\tray.ico 删掉，
+    连着 CopyToPublishDirectory 都拦不住 —— 结果是 release\v0.1\assets\ 变成空目录，
+    程序找不到图标，退回系统默认白图标（日志写「托盘图标文件不存在，改用系统默认图标」）。
+    所以在 Publish 完成之后再强制补一次，保证产物里必然带图标。
+    tools\脚本\构建.ps1 第 3.5 步还会再校验一次，缺了直接报错退出。
+  -->
+  <Target Name="EnsureTrayIconInPublishDir" AfterTargets="Publish">
+    <MakeDir Directories="$(PublishDir)assets" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\..\..\assets\tray.ico"
+          DestinationFiles="$(PublishDir)assets\tray.ico"
+          SkipUnchangedFiles="false" />
+    <Message Importance="high" Text="已确保托盘图标在发布目录：$(PublishDir)assets\tray.ico" />
+  </Target>
+
+<!--
+    Tesseract 识别引擎（2026-10-08 用户拍板加装）。
+
+    【为什么要加第二个引擎】
+      Windows 自带引擎（WinRT OCR）有两类修不了的毛病，实测复现：
+        · 符号被认成汉字：†→「忄」、→→「乛」、☆→「六」
+          （它脑子里全是中文，看到不像字的形状就硬凑一个汉字）
+        · 笔画多的生僻字误判多：鑫淼懿燊囍龘麤靐 只认出前三个
+      这不是参数没调好，是模型本身的毛病，只能换引擎。
+
+    【这个包是什么】
+      它是 Tesseract 的 .NET 封装（由社区维护，底层仍是官方的 tesseract + leptonica）。
+      选它而不是自己写 P/Invoke，是因为：
+        · 官方没提供 .NET 绑定；
+        · 自己 P/Invoke 得处理几十个结构体，违反决策约束 C2（P/Invoke 只许写在 NativeMethods.cs）；
+        · 这个包已经把那些结构体封装好了，并且是跨平台的成熟实现。
+
+    【语言包不装进 NuGet】
+      chi_sim.traineddata 有 2.4 MB，eng 约 4 MB。
+      放 assets\ 随 exe 分发（见下面的 Content 项），不塞进包管理，
+      免得每次还原都重新下一遍。
+  -->
+  <ItemGroup>
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+  </ItemGroup>
+
+  <!--
+    语言包随 exe 一起输出到 <exe目录>\tessdata\。
+    TessdataBasePath 在代码里按 Environment.ProcessPath 定位（阶段 1 技术要点 9，
+    不许用字符串拼路径）。
+    注意：tessdata 是数据不是代码，体积大、随版本更新，所以不入库（见 .gitignore）。
+
+    【v0.3.1 换成 tessdata_best（官方三套里最准的那套）】
+      官方 Data-Files 页面列了三套模型的取舍：
+        tessdata_best → 「最准」，官方标注最慢
+        tessdata      → 稍快，准确性略差
+        tessdata_fast → 最快，最不准
+      用户 2026-10-09 定的方向就是换最准的。
+      体积从约 10MB 涨到约 42MB，**换来的是细笔画和小字号上的明显提升**
+      （正是 E5 丢句点、R8 把 config.txt 认错的那一类问题）。
+      旧的 assets\tessdata 保留着，方便随时退回 v0.3 对照。
+  -->
+  <ItemGroup>
+    <Content Include="..\..\assets\tessdata\**\*" Link="tessdata\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!--
+    关键补偿：和上面 EnsureTrayIconInPublishDir 同一个坑。
+    dotnet publish 的增量清理会删掉发布目录里「由 Content 项拷进去」的文件，
+    结果是 release\ 里的 tessdata\ 变成空的，Tesseract 初始化失败。
+    所以 Publish 之后再强制补一次。
+
+    【踩过的坑】Copy 任务的 SourceFiles **不支持 `**` 递归通配符**，
+    写了 `..\..\assets\tessdata\**\*` 直接报 MSB3030「找不到该文件」。
+    正确做法是先用 ItemGroup 把通配符展开成真正的文件列表，再交给 Copy。
+
+    【踩过的坑之二（更隐蔽）】只写 DestinationFolder="...tessdata" 会把
+    子目录里的文件**全部拍平到 tessdata 根下**。当时 assets\tessdata 下
+    多了个 best\ 子目录做实验，结果 42MB 的实验模型直接盖掉了
+    正在使用的那份 2.4MB 的语言包，产物从 43MB 涨到 193MB，
+    而且**功能悄悄坏掉**（Tesseract 拿到的是另一档模型）。
+    现在用 DestinationFiles 一一对应，保住子目录结构。
+  -->
+  <Target Name="EnsureTessdataInPublishDir" AfterTargets="Publish">
+    <ItemGroup>
+      <_TessdataFiles Include="$(MSBuildProjectDirectory)\..\..\assets\tessdata\**\*" />
+      <!-- 一一对应出目标路径：%1 是根目录，%2 是子目录（可能是 best\、也可能是空） -->
+      <_TessdataDest Include="@(_TessdataFiles->'$(PublishDir)tessdata\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </ItemGroup>
+    <MakeDir Directories="$(PublishDir)tessdata" />
+    <Copy SourceFiles="@(_TessdataFiles)"
+          DestinationFiles="@(_TessdataDest)"
+          SkipUnchangedFiles="false" />
+    <!-- 【为什么要专门报一行字】这次「子目录被拍平盖掉语言包」的故障是静默的：
+         发布不报错、构建不报错，只有产物大小悄悄涨了 150MB。
+         把实际拷进去的文件和总大小打出来，下次一眼就能看出不对。 -->
+    <Message Importance="high"
+             Text="已确保识别语言包在发布目录：$(PublishDir)tessdata\（@(_TessdataFiles->Count()) 个文件）" />
+    <Message Importance="high"
+             Text="  语言包明细：@(_TessdataFiles->'%(RecursiveDir)%(Filename)%(Extension) [%(FileSize)]')" />
+  </Target>
+
+</Project>

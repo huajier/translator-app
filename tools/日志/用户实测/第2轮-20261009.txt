@@ -1,0 +1,88 @@
+时间: 10:54:32
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 10:54:41
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 10:54:46
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 3 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（76 个有效字符）
+字数: 109
+原文: Error 404 (Not Found): the Ме “config.txt" wasn’t found - try /help?id=123 or e-mail me@example.com (50% off)
+##### 记录结束 #####
+时间: 10:55:01
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（60 个有效字符）
+字数: 93
+原文: HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB, ID #A17f-9x, e-mail: dev@corp.io; see p.42.
+##### 记录结束 #####
+时间: 10:55:26
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（124 个有效字符）
+字数: 148
+原文: ‘This paragraph is deliberately rendered in a small font size, because small text is where optical character recognition usually struggles the most.
+##### 记录结束 #####
+时间: 10:55:33
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 87 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（47 个有效字符）
+字数: 56
+原文: Cbeuub же ещё этих мягких французских булок да выпей чаю
+##### 记录结束 #####
+时间: 10:55:40
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（126 个有效字符）
+字数: 148
+原文: Машинный перевод — это раздел компьютерной лингвистики, в котором предложения переводятся с одного языка на другой с помощью компьютерной программы.
+##### 记录结束 #####
+时间: 10:55:46
+通道: Tesseract
+语言: 俄文（中文 2 %，西里尔 70 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（67 个有效字符）
+字数: 87
+原文: Ошибка 404 (страница не найдена): файл "config btt' He найден 一 попробуйте /help?id=123
+##### 记录结束 #####
+时间: 10:55:55
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 走的是 Windows 自带两遍流程
+字数: 10
+原文: 今天天气不错适合出门
+##### 记录结束 #####
+时间: 10:55:59
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 走的是 Windows 自带两遍流程
+字数: 62
+原文: 光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常⏎广泛的应用。
+##### 记录结束 #####
+时间: 10:56:05
+通道: WindowsOcr
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 走的是 Windows 自带两遍流程
+字数: 41
+原文: 使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布
+##### 记录结束 #####

@@ -1,0 +1,200 @@
+时间: 12:17:45
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:17:48
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.96，35 个有效字符）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:17:53
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:17:56
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:00
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:04
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:10
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:14
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:17
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:21
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.90，35 个有效字符）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 48
+原文: — ="⏎The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:28
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.96，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:32
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.96，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 12:18:37
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，120 个有效字符）
+字数: 141
+原文: Optical character recognition converts images of text into editable text.⏎It is used to read scanned documents and screenshots automatically.
+##### 记录结束 #####
+时间: 12:18:41
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，31 个有效字符）；Windows 读出来的是【光学字符识别是指汁算机识别图像中的文字 / 并转换为可编辑文本的过程。】，请核对
+字数: 33
+原文: 光学字符识别是指计算机识别图像中的文字⏎并转换为可编辑文本的过程。
+##### 记录结束 #####
+时间: 12:18:45
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.96，56 个有效字符）
+字数: 65
+原文: Ошибка сервера. Попробуйте обновить страницу или вернуться позже.
+##### 记录结束 #####
+时间: 12:18:51
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 60 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.86，24 个有效字符）
+字数: 34
+原文: #1 404 (Not Found): файл не найден
+##### 记录结束 #####
+时间: 12:18:56
+通道: Tesseract
+语言: 中文（中文 44 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，22 个有效字符）；Windows 读出来的是【版本 2 ℃ 已于 2024 年发布 config.txt】，请核对
+字数: 29
+原文: 版本 2.0 已于 2024 年发布 config.txt
+##### 记录结束 #####
+时间: 12:19:09
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 57 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.93，21 个有效字符）
+字数: 25
+原文: Файл config.txt не найден
+##### 记录结束 #####
+时间: 12:19:16
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，71 个有效字符）
+字数: 86
+原文: Server started on port 8080.⏎Database connection failed.⏎Please check the config file.
+##### 记录结束 #####
+时间: 12:19:21
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 33
+原文: 服务已启动，端口 8080 。⏎数据库连接失败。⏎请检查配置文件。
+##### 记录结束 #####
+时间: 12:19:25
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.92，78 个有效字符）
+字数: 97
+原文: 2024-05-01 INFO server listening 2024-05-01 WARN disk usage 92% 2024-05-01 ERROR connection reset
+##### 记录结束 #####
+时间: 12:19:33
+通道: WindowsOcr
+语言: （判定为乱码）
+耗时: 16 毫秒
+说明: Tesseract 置信度只有 0.67（低于 0.78，判定为乱码），不返回结果；⚠️ 选区的左边和上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 62
+原文: Machine translation cnwerts text from one language tO another.
+##### 记录结束 #####
+时间: 12:19:36
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，50 个有效字符）
+字数: 60
+原文: This is deliberately low contrast text on a grey background.
+##### 记录结束 #####
+时间: 12:19:40
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.94，34 个有效字符，用的是择优二值化后的图）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 45
+原文: Error 404 (Not Found): the file was not found
+##### 记录结束 #####
+时间: 12:19:48
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.82，32 个有效字符）
+字数: 49
+原文: HT TP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB
+##### 记录结束 #####

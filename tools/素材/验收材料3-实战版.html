@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>验收材料 3 · 实战版（多字体 · 多字号 · 多行 · 混排）</title>
+<style>
+  body { font-family: "Microsoft YaHei", sans-serif; background:#f5f5f7; margin:0; padding:24px 32px 80px; color:#222; }
+  h1   { font-size:20px; margin:0 0 6px; }
+  .tip { font-size:13px; color:#666; margin:0 0 20px; line-height:1.7; }
+  h2   { font-size:15px; color:#444; margin:26px 0 10px; padding-bottom:5px; border-bottom:2px solid #ddd; }
+  .blk { margin:10px 0; padding:12px 16px; border-radius:4px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+  .tag { display:inline-block; font-size:11px; color:#888; margin-bottom:6px; letter-spacing:.3px; }
+  p    { margin:0; }
+
+  /* ---- 8 种英文字体：同一句话，用来直接比对字体差异 ---- */
+  .f1 { font-family:"Times New Roman",serif;   font-size:20px; }
+  .f2 { font-family:Arial,sans-serif;          font-size:20px; }
+  .f3 { font-family:Georgia,serif;             font-size:20px; }
+  .f4 { font-family:Verdana,sans-serif;         font-size:20px; }
+  .f5 { font-family:Calibri,sans-serif;        font-size:20px; }
+  .f6 { font-family:"Segoe UI",sans-serif;     font-size:20px; }
+  .f7 { font-family:"Trebuchet MS",sans-serif; font-size:20px; }
+  .f8 { font-family:"Comic Sans MS",cursive;   font-size:20px; }
+
+  /* ---- 4 种字号 ---- */
+  .s1 { font-family:Arial,sans-serif; font-size:12px; }
+  .s2 { font-family:Arial,sans-serif; font-size:15px; }
+  .s3 { font-family:Arial,sans-serif; font-size:20px; }
+  .s4 { font-family:Arial,sans-serif; font-size:30px; }
+
+  /* ---- 中文字体 ---- */
+  .c-song  { font-family:"SimSun","宋体",serif;      font-size:20px; }
+  .c-hei   { font-family:"SimHei","黑体",sans-serif;  font-size:20px; }
+  .c-kai   { font-family:"KaiTi","楷体",serif;        font-size:20px; }
+  .c-fang  { font-family:"FangSong","仿宋",serif;    font-size:20px; }
+  .c-yahei { font-family:"Microsoft YaHei","微软雅黑",sans-serif; font-size:20px; }
+  .c-noto  { font-family:"Noto Sans SC",sans-serif;  font-size:20px; }
+
+  /* ---- 等宽（代码、日志常见） ---- */
+  .mono { font-family:Consolas,"Courier New",monospace; font-size:16px; }
+
+  /* ---- 俄文 ---- */
+  .ru { font-family:"Times New Roman",serif; font-size:20px; }
+
+  /* ---- 难底色 ---- */
+  .g-dark   { background:#1e1e2e; color:#e8e8f0; }
+  .g-grey   { background:#b9b9b9; color:#9a9a9a; }
+  .g-orange { background:#ff8c00; color:#00e676; }
+  .g-stripe { background:repeating-linear-gradient(45deg,#fff 0 6px,#dcdcdc 6px 12px); color:#222; }
+  .g-alpha  { background:rgba(255,0,128,.30); color:#000; }
+
+  /* ---- 关键：行距压紧，上下都紧挨着别的字 ----
+     模拟实战里「框选稍微高一点就切到邻行笔画」的情况 ---- */
+  .tight p { line-height:1.0; }
+  .tight { padding:10px 14px; }
+  .tight p + p { margin-top:0; }
+</style>
+</head>
+<body>
+
+<h1>验收材料 3 · 实战版</h1>
+<p class="tip">
+  这一份专门用来暴露前两份材料照不出的问题：<b>字体不一样、字号不一样、有多行、有中英俄混排</b>。<br>
+  一共 25 段，每段框一次，按 F → S → M → X → P → C 的顺序做。<br>
+  <b>P 组请特别注意</b>：那几段上下的字挨得很近，
+  如果你框的时候切到了上下邻行的笔画，<b>那不是框错了，那正是要测的东西</b>——如实记下来即可。
+</p>
+
+<h2>一 · 字体差异（同一句话，8 种字体）</h2>
+
+<div class="blk"><span class="tag">F1 · Times New Roman</span><p class="f1">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">F2 · Arial</span><p class="f2">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">F3 · Georgia</span><p class="f3">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">F4 · Verdana</span><p class="f4">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">F5 · Calibri</span><p class="f5">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">F6 · Segoe UI</span><p class="f6">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">F7 · Trebuchet MS</span><p class="f7">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">F8 · Comic Sans MS</span><p class="f8">The quick brown fox jumps over the lazy dog</p></div>
+
+<h2>二 · 字号差异（12 / 15 / 20 / 30 像素）</h2>
+
+<div class="blk"><span class="tag">S1 · 12 像素（最小）</span><p class="s1">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">S2 · 15 像素</span><p class="s2">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">S3 · 20 像素</span><p class="s3">The quick brown fox jumps over the lazy dog</p></div>
+<div class="blk"><span class="tag">S4 · 30 像素（最大）</span><p class="s4">The quick brown fox jumps over the lazy dog</p></div>
+
+<h2>三 · 多行段落（一次框整段）</h2>
+
+<div class="blk"><span class="tag">M1 · 英文两行 · Times New Roman</span>
+  <p class="f1">Optical character recognition converts images of text into editable text.<br>It is used to read scanned documents and screenshots automatically.</p></div>
+
+<div class="blk"><span class="tag">M2 · 中文两行 · 宋体</span>
+  <p class="c-song">光学字符识别是指计算机识别图像中的文字<br>并转换为可编辑文本的过程。</p></div>
+
+<div class="blk"><span class="tag">M3 · 俄文两行 · Times New Roman</span>
+  <p class="ru">Ошибка сервера. Попробуйте обновить страницу<br>или вернуться позже.</p></div>
+
+<h2>四 · 中英俄混排（实战里最常见的形态）</h2>
+
+<div class="blk"><span class="tag">X1 · 英文夹中文</span>
+  <p class="c-song">错误 404 (Not Found): файл не найден</p></div>
+
+<div class="blk"><span class="tag">X2 · 中文夹英文夹数字</span>
+  <p class="c-yahei">版本 2.0 已于 2024 年发布 config.txt</p></div>
+
+<div class="blk"><span class="tag">X3 · 俄文夹英文文件名</span>
+  <p class="ru">Файл config.txt не найден</p></div>
+
+<h2>五 · 行距压紧（框高了会切到邻行的字）</h2>
+
+<div class="blk tight"><span class="tag">P1 · 英文三行紧挨</span>
+  <p class="f2">Server started on port 8080.</p>
+  <p class="f2">Database connection failed.</p>
+  <p class="f2">Please check the config file.</p></div>
+
+<div class="blk tight"><span class="tag">P2 · 中文三行紧挨</span>
+  <p class="c-hei">服务已启动，端口 8080。</p>
+  <p class="c-hei">数据库连接失败。</p>
+  <p class="c-hei">请检查配置文件。</p></div>
+
+<div class="blk tight"><span class="tag">P3 · 等宽字体三行紧挨（像日志）</span>
+  <p class="mono">2024-05-01 INFO  server listening</p>
+  <p class="mono">2024-05-01 WARN  disk usage 92%</p>
+  <p class="mono">2024-05-01 ERROR connection reset</p></div>
+
+<h2>六 · 难底色（沿用材料 2 的几种）</h2>
+
+<div class="blk g-dark"><span class="tag">C1 · 深底浅色字</span>
+  <p class="f2">Machine translation converts text from one language to another.</p></div>
+
+<div class="blk g-grey"><span class="tag">C2 · 低对比度灰底</span>
+  <p class="f2">This is deliberately low contrast text on a grey background.</p></div>
+
+<div class="blk g-orange"><span class="tag">C3 · 橙底绿字</span>
+  <p class="f2">Error 404 (Not Found): the file was not found</p></div>
+
+<div class="blk g-stripe"><span class="tag">C4 · 斜条纹纹理底</span>
+  <p class="f2">HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB</p></div>
+
+</body>
+</html>

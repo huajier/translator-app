@@ -1,0 +1,24 @@
+时间: 12:57:13
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，54 个有效字符）
+字数: 63
+原文: Machine translation converts text from one language to another.
+##### 记录结束 #####
+时间: 12:57:16
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，54 个有效字符）
+字数: 63
+原文: Machine translation converts text from one language to another.
+##### 记录结束 #####
+时间: 12:57:19
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，54 个有效字符）
+字数: 63
+原文: Machine translation converts text from one language to another.
+##### 记录结束 #####

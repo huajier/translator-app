@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>翻译软件 · 取词验收材料（实战版）</title>
+<style>
+body { font-family: "Segoe UI", Arial, sans-serif; background:#f0f0f0; color:#111;
+       margin:0; padding:20px; }
+h1   { font-size:20px; margin:0 0 4px; }
+.note { font-size:13px; color:#555; margin:0 0 18px; max-width:1400px; }
+.blk { border-radius:6px; padding:14px 16px; margin:0 0 16px; position:relative; }
+.tag { font-size:12px; font-weight:bold; color:#fff; background:#333;
+       display:inline-block; padding:2px 9px; border-radius:4px; margin:0 0 9px; }
+p { font-size:15px; line-height:1.7; margin:0 0 6px; }
+.small { font-size:12px; line-height:1.7; margin:0 0 6px; }
+
+/* ---- 以下是各种真实场景的背景，用来测「复杂背景」 ---- */
+
+/* 渐变背景 + 深色文字 */
+.g1 { background:linear-gradient(135deg,#ffffff 0%,#c8d8ff 55%,#90b4ff 100%); color:#101828; }
+
+/* 深色背景 + 浅色文字 */
+.g2 { background:linear-gradient(160deg,#1b2838,#2f4858); color:#eef4ff; }
+
+/* 橙底绿字（用户第一轮就点名的场景） */
+.g3 { background:#ff8c00; color:#00e676; }
+
+/* 灰色底 + 低对比度文字（最容易失败的一种） */
+.g4 { background:#b9b9b9; color:#9a9a9a; }
+
+/* 图片纹理背景 + 文字压在上面 */
+.g5 { background:
+        repeating-linear-gradient(45deg,#7a9cc6 0px,#7a9cc6 12px,#6b8cb5 12px,#6b8cb5 24px);
+      color:#ffffff; }
+
+/* 半透明彩色块叠在渐变上 */
+.g6 { background:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,.55), transparent 55%),
+        radial-gradient(circle at 75% 65%, rgba(255,120,0,.45), transparent 50%),
+        linear-gradient(120deg,#e8f0fe,#d0e0f8);
+      color:#14213d; }
+
+/* 蓝底白字 */
+.g7 { background:#0d47a1; color:#ffffff; }
+
+/* 米色纸纹背景 */
+.g8 { background:#f5f0e6; color:#3d3529; border:1px solid #ddd6c5; }
+</style>
+</head>
+<body>
+
+<h1>取词验收材料 · 实战版</h1>
+<p class="note">这一版专门加了两类以前没测的：<b>复杂背景</b>（渐变、深色、橙底绿字、低对比度、纹理）和
+<b>俄文与英文长得极像的字母</b>。请只框文字、不要框编号标签。</p>
+
+<!-- ============ 一、英文：复杂背景 ============ -->
+<div class="blk g1">
+  <span class="tag">E1 · 英文 · 渐变浅底</span>
+  <p>The quick brown fox jumps over the lazy dog</p>
+</div>
+
+<div class="blk g2">
+  <span class="tag">E2 · 英文 · 深色背景浅色字</span>
+  <p>Machine translation is a type of computational linguistics where sentences are translated from one language to another.</p>
+</div>
+
+<div class="blk g3">
+  <span class="tag">E3 · 英文 · 橙底绿字</span>
+  <p>Error 404 (Not Found): the file was not found - try /help or e-mail me@example.com</p>
+</div>
+
+<div class="blk g4">
+  <span class="tag">E4 · 英文 · 低对比度灰底</span>
+  <p>This is deliberately low contrast text on a grey background, which is one of the hardest cases for any recognition engine.</p>
+</div>
+
+<div class="blk g5">
+  <span class="tag">E5 · 英文 · 斜条纹纹理底</span>
+  <p>HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB, see p.42.</p>
+</div>
+
+<div class="blk g6">
+  <span class="tag">E6 · 英文 · 半透明色块叠加</span>
+  <p>Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk g7">
+  <span class="tag">E7 · 英文 · 蓝底白字</span>
+  <p>Learning a language takes time but it is worth the effort.</p>
+</div>
+
+<div class="blk g8">
+  <span class="tag">E8 · 英文 · 米色纸纹底 · 小字</span>
+  <p class="small">Small printed text on a paper-like background is the case that trips up most recognition engines.</p>
+</div>
+
+<!-- ============ 二、俄文：专门盯「英俄混用」 ============ -->
+<div class="blk g1">
+  <span class="tag">R1 · 俄文 · 渐变浅底</span>
+  <p>Съешь же ещё этих мягких французских булок да выпей чаю</p>
+</div>
+
+<div class="blk g2">
+  <span class="tag">R2 · 俄文 · 深色背景浅色字</span>
+  <p>Машинный перевод — это раздел компьютерной лингвистики, в котором предложения переводятся с одного языка на другой.</p>
+</div>
+
+<div class="blk g3">
+  <span class="tag">R3 · 俄文 · 橙底绿字</span>
+  <p>Ошибка 404 (страница не найдена): файл не найден</p>
+</div>
+
+<div class="blk g4">
+  <span class="tag">R4 · 俄文 · 低对比度灰底</span>
+  <p>Съешь же ещё этих мягких французских булок да выпей чаю</p>
+</div>
+
+<div class="blk g6">
+  <span class="tag">R5 · 俄文 · 半透明色块叠加</span>
+  <p>Ошибка сервера. Попробуйте обновить страницу позже.</p>
+</div>
+
+<!-- ============ 二之二、俄文夹数字和英文：用户点名要修的场景 ============ -->
+<div class="blk g1">
+  <span class="tag">R6 · 俄文夹数字 · 浅底</span>
+  <p>Ошибка 404 (страница не найдена): файл не найден</p>
+</div>
+
+<div class="blk g2">
+  <span class="tag">R7 · 俄文夹数字与英文 · 深底</span>
+  <p>Файл занимает 2,5 МБ и загружается 30 секунд при 60 FPS</p>
+</div>
+
+<div class="blk g4">
+  <span class="tag">R8 · 俄文夹版本号 · 低对比度</span>
+  <p>Обновите ПО до версии 2.0 и перезапустите config.txt</p>
+</div>
+
+<div class="blk g3">
+  <span class="tag">R9 · 俄文夹数字 · 橙底绿字</span>
+  <p>Версия 1.2.3, ошибка 500, попробуйте позже</p>
+</div>
+
+<!-- ============ 三、中文：复杂背景 ============ -->
+<div class="blk g3">
+  <span class="tag">Z1 · 中文 · 橙底绿字</span>
+  <p>今天天气不错适合出门</p>
+</div>
+
+<div class="blk g5">
+  <span class="tag">Z2 · 中文 · 斜条纹纹理底</span>
+  <p>光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。</p>
+</div>
+
+<div class="blk g4">
+  <span class="tag">Z3 · 中文 · 低对比度灰底</span>
+  <p>使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布。</p>
+</div>
+
+</body>
+</html>

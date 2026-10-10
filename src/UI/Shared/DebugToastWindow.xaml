@@ -1,0 +1,64 @@
+<Window x:Class="TranslatorApp.UI.Shared.DebugToastWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="框选坐标提示"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        SizeToContent="WidthAndHeight"
+        ShowActivated="False"
+        Focusable="False"
+        IsTabStop="False">
+
+    <!--
+        DebugToastWindow —— 框选完成后弹出来的小提示卡。
+
+        这个窗口干嘛的：
+          框选完成后，在选区**旁边**弹一个小卡片。
+          阶段 2：显示坐标（验证框得准不准）；
+          阶段 3：先秒显坐标，认字完成后换成识别出来的文字。
+
+        【ShowActivated="False" —— 不写这一行会抢走焦点】
+          WPF 的 Window.Show() **默认会把窗口激活（抢到前台）**。
+          本程序要靠鼠标键盘钩子工作，抢走焦点会让用户操作失灵。
+          所以这里必须显式声明「显示但不激活」。
+
+        【卡片必须待在选区外面 —— 这是阶段 3 修的一个大坑】
+          早先卡片摆在选区左上角**里面**，而弹出时机又早于截图，
+          于是 OCR 认出来的是卡片上写的坐标，用户框的文字反而读不到。
+          摆放逻辑见 PlaceBesideSelection()。
+    -->
+    <!--
+        【2026-10-08 用户反馈，两条都改在这里】
+          ① 「停留时间太短了，改成鼠标移上去就不消失，没移上去 3 秒后消失」
+          ② 「太长的文字超出对话框大小就被省略掉了，我要完整显示」
+             → 去掉了 MainText 上限 120 字的截断，改为原文全文照登；
+             → 外面套 ScrollViewer，卡片再长也不会跑出屏幕。
+    -->
+    <Border Background="#F20F172A" CornerRadius="6" Padding="10,7"
+            BorderBrush="#FF38BDF8" BorderThickness="1">
+        <Grid>
+            <StackPanel>
+                <TextBlock x:Name="TitleText" Text="框选完成"
+                           Foreground="#FF94A3B8" FontSize="11" Margin="0,0,0,3" />
+
+                <!-- 全文照登，靠 ScrollViewer 限高。MaxHeight 随卡片位置动态调整。 -->
+                <ScrollViewer x:Name="TextScroll"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              MaxHeight="300">
+                    <TextBlock x:Name="MainText" Foreground="#FF38BDF8"
+                               FontSize="13" FontWeight="Bold"
+                               TextWrapping="Wrap" MaxWidth="420" />
+                </ScrollViewer>
+
+                <TextBlock x:Name="DetailText" Foreground="#FFCBD5E1"
+                           FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap" MaxWidth="420" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

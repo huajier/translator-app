@@ -1,0 +1,21 @@
+# 实战版验收材料 · 标准答案（比对时用，请勿修改）
+E1|The quick brown fox jumps over the lazy dog
+E2|Machine translation is a type of computational linguistics where sentences are translated from one language to another.
+E3|Error 404 (Not Found): the file was not found - try /help or e-mail me@example.com
+E4|This is deliberately low contrast text on a grey background, which is one of the hardest cases for any recognition engine.
+E5|HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB, see p.42.
+E6|Optical character recognition converts images of text into editable text.
+E7|Learning a language takes time but it is worth the effort.
+E8|Small printed text on a paper-like background is the case that trips up most recognition engines.
+R1|Съешь же ещё этих мягких французских булок да выпей чаю
+R2|Машинный перевод — это раздел компьютерной лингвистики, в котором предложения переводятся с одного языка на другой.
+R3|Ошибка 404 (страница не найдена): файл не найден
+R4|Съешь же ещё этих мягких французских булок да выпей чаю
+R5|Ошибка сервера. Попробуйте обновить страницу позже.
+R6|Ошибка 404 (страница не найдена): файл не найден
+R7|Файл занимает 2,5 МБ и загружается 30 секунд при 60 FPS
+R8|Обновите ПО до версии 2.0 и перезапустите config.txt
+R9|Версия 1.2.3, ошибка 500, попробуйте позже
+Z1|今天天气不错适合出门
+Z2|光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。
+Z3|使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布。

@@ -1,0 +1,14 @@
+# 取词验收 · 标准答案（比对时用，请勿修改）
+# 左边是编号，右边是那段文字「本来就该长什么样」。
+# 换行写成 <换行>，比对脚本会据此还原。
+A1|The quick brown fox jumps over the lazy dog
+A2|Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+A3|Error 404 (Not Found): the file "config.txt" wasn't found - try /help?id=123 or e-mail me@example.com (50% off)
+A4|HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB, ID #A17f-9x, e-mail: dev@corp.io; see p.42.
+A5|This paragraph is deliberately rendered in a small font size, because small text is where optical character recognition usually struggles the most.
+B1|Съешь же ещё этих мягких французских булок да выпей чаю
+B2|Машинный перевод — это раздел компьютерной лингвистики, в котором предложения переводятся с одного языка на другой с помощью компьютерной программы.
+B3|Ошибка 404 (страница не найдена): файл "config.txt" не найден — попробуйте /help?id=123
+C1|今天天气不错适合出门
+C2|光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+D1|使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布

@@ -1,0 +1,66 @@
+<Window x:Class="TranslatorApp.UI.SelectionOverlay.SelectionMaskWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="框选遮罩"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        Focusable="False"
+        IsTabStop="False"
+        SnapsToDevicePixels="True">
+
+    <!--
+        SelectionMaskWindow —— 框选时盖在所有显示器上的半透明遮罩 + 亮色选框（阶段 2，决策 2-3 选 B）
+
+        这个窗口干嘛的：
+          用户按住 Ctrl+Alt 拖鼠标时，整个屏幕被一层半透明灰罩盖住（提示「现在在框选」），
+          跟着鼠标画出一个亮色边框（提示「框到这里」），框里还会实时显示尺寸。
+
+        关键属性（少一个都会出 bug）：
+          AllowsTransparency=True   —— 必须透明，否则整屏变成一块不透明色板，什么都看不见
+          Background=Transparent     —— 同上，根背景要全透明
+          WindowStyle=None           —— 不要标题栏和边框
+          ShowInTaskbar=False        —— 遮罩不该出现在任务栏
+          Topmost=True               —— 遮罩必须在所有窗口最上面
+          Focusable=False            —— 遮罩不许抢焦点（抢了用户就没法继续打字）
+          WindowStartupLocation=Manual + 位置在代码里设 —— 窗口要盖满整个虚拟屏（含负坐标）
+
+        鼠标穿透（WS_EX_TRANSPARENT 等）不在 XAML 里，在 .cs 的 OnSourceInitialized 里设，
+        原因：那是窗口扩展样式，必须等窗口句柄创建出来才能设。
+    -->
+    <!-- 根节点必须是 Canvas：代码用 Canvas.SetLeft / Canvas.SetTop 来定位选框，
+         这两个附加属性只在父节点是 Canvas 时才生效（放在 Grid 里会被忽略、选框不动）。 -->
+    <Canvas x:Name="Root" Background="Transparent">
+        <!-- 半透明灰罩：盖住整块虚拟屏 -->
+        <Rectangle x:Name="Mask" Fill="#5C000000" Canvas.Left="0" Canvas.Top="0"
+                   Width="{Binding ElementName=Root, Path=ActualWidth}"
+                   Height="{Binding ElementName=Root, Path=ActualHeight}" />
+
+        <!-- 亮色选框：位置和大小由代码按鼠标实时改 -->
+        <Border x:Name="SelectionBox"
+                Background="#2640C0FF"
+                BorderBrush="#FF38BDF8"
+                BorderThickness="2"
+                Visibility="Collapsed"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top" />
+
+        <!-- 跟着选框走的尺寸提示 -->
+        <Border x:Name="SizeHint"
+                Background="#E60F172A"
+                CornerRadius="3"
+                Padding="6,2"
+                Visibility="Collapsed"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top">
+            <TextBlock x:Name="SizeHintText"
+                       Foreground="#FF38BDF8"
+                       FontSize="12"
+                       FontWeight="Bold" />
+        </Border>
+    </Canvas>
+</Window>

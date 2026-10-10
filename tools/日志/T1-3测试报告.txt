@@ -1,0 +1,38 @@
+﻿程序 pid=15088  主窗口=0x410A0C  托盘图标数=20
+--- 右键前窗口列表 ---
+   可见=False 类名=CiceroUIWndFrame 标题="CiceroUIWndFrame"
+   可见=True 类名=HwndWrapper[TranslatorApp;;3d31d0cc-2ed5-4211-9158-e776e765a0b9] 标题="翻译软件 v0.1 · 空壳"
+   可见=False 类名=GDI+ Hook Window Class 标题="GDI+ Window (TranslatorApp.exe)"
+   可见=False 类名=.NET-BroadcastEventWindow.5c39d4.0 标题=".NET-BroadcastEventWindow.5c39d4.0"
+   可见=False 类名=CiceroUIWndFrame 标题="CiceroUIWndFrame"
+   可见=False 类名=HwndWrapper[TranslatorApp;;0bc52768-879b-4b88-af40-17de3a153922] 标题=""
+   可见=False 类名=HwndWrapper[TranslatorApp;;f1685c2d-4bbe-4b5c-bec5-0f8d31db0e77] 标题="SystemResourceNotifyWindow"
+   可见=False 类名=HwndWrapper[TranslatorApp;;df866c5e-d48e-4ade-9678-0d032f57de6f] 标题="MediaContextNotificationWindow"
+   可见=False 类名=HwndWrapper[TranslatorApp;;062f7ef0-375b-419f-986a-0807a655cf83] 标题=""
+   可见=False 类名=MSCTFIME UI 标题="MSCTFIME UI"
+   可见=False 类名=IME 标题="Default IME"
+   可见=False 类名=IME 标题="Default IME"
+   可见=False 类名=IME 标题="Default IME"
+--- 发托盘右键消息 lParam=0x0205 ---
+--- 右键后窗口列表 ---
+   可见=True 类名=WindowsForms10.Window.20808.app.0.5c39d4_r3_ad1 标题=""
+   可见=True 类名=SysShadow 标题=""
+   可见=False 类名=CiceroUIWndFrame 标题="CiceroUIWndFrame"
+   可见=False 类名=WindowsForms10.Window.0.app.0.5c39d4_r3_ad1 标题=""
+   可见=True 类名=HwndWrapper[TranslatorApp;;3d31d0cc-2ed5-4211-9158-e776e765a0b9] 标题="翻译软件 v0.1 · 空壳"
+   可见=False 类名=GDI+ Hook Window Class 标题="GDI+ Window (TranslatorApp.exe)"
+   可见=False 类名=.NET-BroadcastEventWindow.5c39d4.0 标题=".NET-BroadcastEventWindow.5c39d4.0"
+   可见=False 类名=CiceroUIWndFrame 标题="CiceroUIWndFrame"
+   可见=False 类名=HwndWrapper[TranslatorApp;;0bc52768-879b-4b88-af40-17de3a153922] 标题=""
+   可见=False 类名=HwndWrapper[TranslatorApp;;f1685c2d-4bbe-4b5c-bec5-0f8d31db0e77] 标题="SystemResourceNotifyWindow"
+   可见=False 类名=HwndWrapper[TranslatorApp;;df866c5e-d48e-4ade-9678-0d032f57de6f] 标题="MediaContextNotificationWindow"
+   可见=False 类名=HwndWrapper[TranslatorApp;;062f7ef0-375b-419f-986a-0807a655cf83] 标题=""
+   可见=False 类名=MSCTFIME UI 标题="MSCTFIME UI"
+   可见=False 类名=IME 标题="Default IME"
+   可见=False 类名=IME 标题="Default IME"
+   可见=False 类名=IME 标题="Default IME"
+>>> T1-3 右键菜单弹出成功（新窗口 0x401136）
+--- 键盘 ↓ ↓ 回车 选「退出」---
+退出后 进程数=0  托盘图标数 20 -> 19
+>>> T1-4 进程已退出
+>>> T1-4 托盘图标已摘除，无幽灵图标

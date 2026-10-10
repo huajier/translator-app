@@ -1,0 +1,64 @@
+# 验收标准答案 3 · 实战版
+#
+# 【和答案 1、2 的差别】
+#   这一份对应 `验收材料3-实战版.html`，专门测前两份照不出的情况：
+#     · 8 种英文字体（同一句话）
+#     · 4 种字号（12 / 15 / 20 / 30 像素）
+#     · 多行段落（一次框整段）
+#     · 中英俄混排
+#     · 行距压紧（框高了会切到邻行的字）
+#     · 4 种难底色
+#
+# 【判定口径：用户 2026-10-09 亲自定的】
+#   一个词错一个字符 → 整词判错 → 整段判错，不给部分分。
+#
+# 【P 组请注意】
+#   P1/P2/P3 的上下行挨得很近。
+#   如果用户框选时切到了邻行的笔画、或者只框到某一行的一部分，
+#   **如实记录**——那正是这一组要测的东西，不要当成框错了。
+
+# ---- 一 · 字体差异 ----
+F1|The quick brown fox jumps over the lazy dog
+F2|The quick brown fox jumps over the lazy dog
+F3|The quick brown fox jumps over the lazy dog
+F4|The quick brown fox jumps over the lazy dog
+F5|The quick brown fox jumps over the lazy dog
+F6|The quick brown fox jumps over the lazy dog
+F7|The quick brown fox jumps over the lazy dog
+F8|The quick brown fox jumps over the lazy dog
+
+# ---- 二 · 字号差异 ----
+S1|The quick brown fox jumps over the lazy dog
+S2|The quick brown fox jumps over the lazy dog
+S3|The quick brown fox jumps over the lazy dog
+S4|The quick brown fox jumps over the lazy dog
+
+# ---- 三 · 多行段落 ----
+M1|Optical character recognition converts images of text into editable text.
+It is used to read scanned documents and screenshots automatically.
+M2|光学字符识别是指计算机识别图像中的文字
+并转换为可编辑文本的过程。
+M3|Ошибка сервера. Попробуйте обновить страницу
+или вернуться позже.
+
+# ---- 四 · 中英俄混排 ----
+X1|错误 404 (Not Found): файл не найден
+X2|版本 2.0 已于 2024 年发布 config.txt
+X3|Файл config.txt не найден
+
+# ---- 五 · 行距压紧 ----
+P1|Server started on port 8080.
+Database connection failed.
+Please check the config file.
+P2|服务已启动，端口 8080。
+数据库连接失败。
+请检查配置文件。
+P3|2024-05-01 INFO  server listening
+2024-05-01 WARN  disk usage 92%
+2024-05-01 ERROR connection reset
+
+# ---- 六 · 难底色 ----
+C1|Machine translation converts text from one language to another.
+C2|This is deliberately low contrast text on a grey background.
+C3|Error 404 (Not Found): the file was not found
+C4|HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB

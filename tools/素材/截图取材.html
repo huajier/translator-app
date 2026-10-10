@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>真实截图取材页</title>
+<style>
+/* ==========================================================
+   这个页面不是给人看的，是给**截图取材**用的。
+
+   目的：以前我画的测试图和真实屏幕差太远
+   （GDI+ 画的字和浏览器 ClearType 渲染的字，灰度完全不同），
+   于是测出来的分数虚高。2026-10-09 被用户实测打脸。
+
+   所以改成：**直接从浏览器里截图**，拿真实像素当测试素材。
+
+   为了让截图坐标可算，这里做了两个硬性约束：
+   1. 每块内容**高度固定 160 像素**，一块接一块，不留空隙；
+   2. 第一块从 y=100 开始，第 n 块的顶边就是 100 + (n-1)*160。
+
+   截图脚本按这个公式算坐标就不会偏。
+   ========================================================== */
+html, body { margin:0; padding:0; background:#ffffff; }
+#spacer { height:100px; }          /* 第一块从 y=100 开始 */
+.blk { height:160px; box-sizing:border-box; margin:0; padding:14px 20px; overflow:hidden; }
+.tag { font-size:12px; font-weight:bold; color:#fff; background:#333;
+       display:inline-block; padding:1px 8px; border-radius:3px; margin-bottom:6px; }
+p { font-size:16px; line-height:1.6; margin:0; }
+
+.g1 { background:linear-gradient(135deg,#ffffff 0%,#c8d8ff 55%,#90b4ff 100%); color:#101828; }
+.g2 { background:linear-gradient(160deg,#1b2838,#2f4858); color:#eef4ff; }
+.g3 { background:#ff8c00; color:#00e676; }
+.g4 { background:#b9b9b9; color:#9a9a9a; }
+.g5 { background:repeating-linear-gradient(45deg,#7a9cc6 0px,#7a9cc6 12px,#6b8cb5 12px,#6b8cb5 24px); color:#ffffff; }
+.g6 { background:radial-gradient(circle at 20% 30%, rgba(255,255,255,.55), transparent 55%),
+                    radial-gradient(circle at 75% 65%, rgba(255,120,0,.45), transparent 50%),
+                    linear-gradient(120deg,#e8f0fe,#d0e0f8); color:#14213d; }
+.g7 { background:#0d47a1; color:#ffffff; }
+</style>
+</head>
+<body>
+<div id="spacer"></div>
+
+<div class="blk g1"><span class="tag">S01</span>
+  <p>The quick brown fox jumps over the lazy dog</p></div>
+
+<div class="blk g2"><span class="tag">S02</span>
+  <p>Machine translation is a type of computational linguistics where sentences are translated from one language to another.</p></div>
+
+<div class="blk g3"><span class="tag">S03</span>
+  <p>Error 404 (Not Found): the file was not found - try /help or e-mail me@example.com</p></div>
+
+<div class="blk g4"><span class="tag">S04</span>
+  <p>This is deliberately low contrast text on a grey background, which is one of the hardest cases for any recognition engine.</p></div>
+
+<div class="blk g5"><span class="tag">S05</span>
+  <p>HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB, see p.42.</p></div>
+
+<div class="blk g6"><span class="tag">S06</span>
+  <p>Optical character recognition converts images of text into editable text.</p></div>
+
+<div class="blk g7"><span class="tag">S07</span>
+  <p>Learning a language takes time but it is worth the effort.</p></div>
+
+<div class="blk g1"><span class="tag">S08</span>
+  <p>Съешь же ещё этих мягких французских булок да выпей чаю</p></div>
+
+<div class="blk g2"><span class="tag">S09</span>
+  <p>Машинный перевод — это раздел компьютерной лингвистики, в котором предложения переводятся с одного языка на другой.</p></div>
+
+<div class="blk g3"><span class="tag">S10</span>
+  <p>Ошибка 404 (страница не найдена): файл не найден</p></div>
+
+<div class="blk g4"><span class="tag">S11</span>
+  <p>Съешь же ещё этих мягких французских булок да выпей чаю</p></div>
+
+<div class="blk g6"><span class="tag">S12</span>
+  <p>Ошибка сервера. Попробуйте обновить страницу позже.</p></div>
+
+<div class="blk g5"><span class="tag">S13</span>
+  <p>Съешь же ещё этих мягких французских булок да выпей чаю</p></div>
+
+<div class="blk g3"><span class="tag">S14</span>
+  <p>今天天气不错适合出门</p></div>
+
+<div class="blk g5"><span class="tag">S15</span>
+  <p>光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。</p></div>
+
+<div class="blk g4"><span class="tag">S16</span>
+  <p>使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布。</p></div>
+
+</body>
+</html>
