@@ -303,7 +303,7 @@ function Match-Records($answers, $records) {
     #     这种会单独说明「这几条记录确定不了是哪一段」，
     #     **不装作测过了，也不装作没测**，如实写出来。
     # ==========================================================
-    $bestFor = @()   # 每条记录最像哪一段
+    $bestFor = @()   # 每条记录最像哪一段（下面只用来排除，不可能段）
     for ($k = 0; $k -lt $records.Count; $k++) {
         $bestId = $null; $bestSim = 0.0
         foreach ($id in $answers.Keys) {
@@ -314,10 +314,54 @@ function Match-Records($answers, $records) {
     }
 
     $pairs = @{}; $used = @{}; $uncertain = @{}
-    foreach ($c in ($bestFor | Sort-Object Sim -Descending)) {
-        if ($c.Sim -lt 0.30) { continue }          # 配不上 → 当废框
-        if ($pairs.ContainsKey($c.Id) -or $used.ContainsKey($c.K)) { continue }
-        $pairs[$c.Id] = $c.K; $used[$c.K] = $true
+
+    # ⚠️【这里原本还有一趟「一条记录配一段」的贪心配对，本轮删掉了】
+    #   留着它会**先吃掉一条记录和一个段**（F1），
+    #   后面按文字分组的循环就少了一个名额——**S4 明明测了却报「没测」**。
+    #   而下面的分组逻辑**已经涵盖**了它：
+    #   只有一段的组就是「单段组」，效果完全一样；
+    #   多段的组才需要特殊处理。
+
+    # ==========================================================
+    # 【2026-10-10 补：同样文字的多段，之前会被误判成「没测」】
+    #
+    #   **现场**：用户完整跑了材料 3，26 条记录一条不落，
+    #   结果报告说 `F2、F3…F8、S1…S4 没测`。
+    #
+    #   **根因**：F1–F8 是**同一句话的 8 种字体**，S1–S4 是**同一句话的 4 种字号**，
+    #   那 12 段的**标准答案文字完全一样**。
+    #   而上面那条规则是「一条记录只能配它最像的那一段」——
+    #   12 条一模一样的记录里只有第一条能配上，
+    #   **剩下 11 条全被判成废框**，段落则显示「这次没测」。
+    #
+    #   **这是量表在骗人**：明明测了、明明全对，报告却说没测。
+    #   比识别烂更糟——**会让人以为软件坏了，去修根本没坏的地方**。
+    #
+    #   【修法：先按「标准答案文字」分组，同组记录按顺序轮流配】
+    #     组里有几段，就取匹配该文字的最好几条，一人一段。
+    #     没配上的段**仍然如实显示「没测」**——不假装测过。
+    # ==========================================================
+    $byText = @{}
+    foreach ($id in $answers.Keys) {
+        $key = (Normalize $answers[$id]).Replace(' ', '')
+        if (-not $byText.ContainsKey($key)) { $byText[$key] = New-Object System.Collections.ArrayList }
+        [void]$byText[$key].Add($id)
+    }
+    foreach ($key in $byText.Keys) {
+        $ids = @($byText[$key])
+        $hits = @()
+        for ($k = 0; $k -lt $records.Count; $k++) {
+            if ($used.ContainsKey($k)) { continue }
+            $s = Get-Overlap $answers[$ids[0]] $records[$k].原文
+            if ($s -ge 0.30) { $hits += [pscustomobject]@{ K=$k; Sim=$s } }
+        }
+        $hits = @($hits | Sort-Object Sim -Descending)
+        for ($g = 0; $g -lt $ids.Count; $g++) {
+            if ($g -ge $hits.Count) { break }
+            if ($pairs.ContainsKey($ids[$g])) { continue }
+            $pairs[$ids[$g]] = $hits[$g].K
+            $used[$hits[$g].K] = $true
+        }
     }
 
     # 配完还有剩：说明「有几条记录确定不了是哪一段」
