@@ -373,28 +373,41 @@ function Match-Records($answers, $records) {
     #     组里有几段，就取匹配该文字的最好几条，一人一段。
     #     没配上的段**仍然如实显示「没测」**——不假装测过。
     # ==========================================================
-    $byText = @{}
+    # ==========================================================
+    # 【2026-10-10 第 36 轮：按名次配是错的，必须「谁最像谁就配谁」】
+    #
+    #   **现场**：用户测了材料 1 的 D1，又重测了材料 3，
+    #   **两轮的框记进了同一个记录文件**（材料 3 里那些文字
+    #   `Optical character recognition converts images…`、
+    #   `Machine translation converts text…` 都不是材料 1 的段）。
+    #   结果报告把材料 1 判成 **2/6**，A3 写成
+    #   「『was』应是『"config.txt"』」、A5「缺 this 等 32 处」——
+    #   **根本不是一段话，明显是配错了行。**
+    #
+    #   **根因**：老代码是**按名次硬配**的——
+    #     先把候选按相似度排好序，再拿 `$ids[$g]` 去配 `$hits[$g]`。
+    #   **「答案的先后顺序」跟「像不像」没有任何关系**，
+    #   所以 A2 明明有 0.99 的记录，却分到了别人的。
+    #
+    #   【修法：先把所有「段 ↔ 记录」的候选全列出来，
+    #     再从最像的一对开始往下配，配过的两边都作废】
+    #   这样跨材料混在一起也不会串行——
+    #   **材料 1 的答案自然配材料 1 的记录，因为那才是它最像的。**
+    # ==========================================================
+    $cand = @()
     foreach ($id in $answers.Keys) {
-        $key = (Normalize $answers[$id]).Replace(' ', '')
-        if (-not $byText.ContainsKey($key)) { $byText[$key] = New-Object System.Collections.ArrayList }
-        [void]$byText[$key].Add($id)
-    }
-    foreach ($key in $byText.Keys) {
-        $ids = @($byText[$key])
-        $hits = @()
         for ($k = 0; $k -lt $records.Count; $k++) {
-            if ($used.ContainsKey($k)) { continue }
-            $s = Get-Overlap $answers[$ids[0]] $records[$k].原文
-            if ($s -ge 0.30) { $hits += [pscustomobject]@{ K=$k; Sim=$s } }
+            $s = Get-Overlap $answers[$id] $records[$k].原文
+            if ($s -ge 0.30) { $cand += [pscustomobject]@{ Id=$id; K=$k; Sim=$s } }
         }
-        $hits = @($hits | Sort-Object Sim -Descending)
-        for ($g = 0; $g -lt $ids.Count; $g++) {
-            if ($g -ge $hits.Count) { break }
-            if ($pairs.ContainsKey($ids[$g])) { continue }
-            $pairs[$ids[$g]] = $hits[$g].K
-            $used[$hits[$g].K] = $true
-            $simOf[$ids[$g]] = $hits[$g].Sim      # 记下相似度，输出时用来说明配得有多勉强
-        }
+    }
+    # 全局按相似度从高到低：谁最像谁先配
+    foreach ($c in @($cand | Sort-Object Sim -Descending)) {
+        if ($pairs.ContainsKey($c.Id)) { continue }
+        if ($used.ContainsKey($c.K)) { continue }
+        $pairs[$c.Id] = $c.K
+        $used[$c.K] = $true
+        $simOf[$c.Id] = $c.Sim      # 记下相似度，输出时用来说明配得有多勉强
     }
 
     # ==========================================================
@@ -481,7 +494,19 @@ if ($match.Extras.Count -gt 0) {
     foreach ($k in $match.Extras) {
         Write-Host ("     「{0}」  ← {1}" -f $records[$k].原文, $records[$k].时间) -ForegroundColor Yellow
     }
-    Write-Host '   多数是拖框过程中松开了 Ctrl/Alt，本该取消却照跑了。' -ForegroundColor DarkGray
+    # 🔴【2026-10-10 第 36 轮：这句是乱扣帽子，必须改掉】
+    #   原来写死了「多数是拖框过程中松开了 Ctrl/Alt」——
+    #   **可它从来没查过原因**。
+    #   第 36 轮它把材料 1 的 D1 那 5 条全扣成「松开了 Ctrl/Alt」，
+    #   **其实那 5 条是测对了的**（D1 本轮 5 次里 3 次完全正确），
+    #   **只是这一轮同时测了材料 3，两份材料的记录记进了同一个文件，配不上而已。**
+    #   **乱扣帽子比不写更糟**：会让人去修根本没坏的「松手取消」。
+    Write-Host '   ⚠️ 配不上原因多样（脚本查不出来，不要当成某一个原因）：' -ForegroundColor DarkGray
+    Write-Host '     · 这一轮同时测了多份材料，两份的记录记进了同一个文件；' -ForegroundColor DarkGray
+    Write-Host '     · 框到了两段之间的位置，识别出两段拼在一起的东西；' -ForegroundColor DarkGray
+    Write-Host '     · 拖框时松开了 Ctrl/Alt，本该取消却照跑了；' -ForegroundColor DarkGray
+    Write-Host '     · 这一条是**另一份材料**的记录，本来就不该配给这份答案。' -ForegroundColor DarkGray
+    Write-Host '   💡 建议：**一轮只测一份材料**，就不会混在一起了。' -ForegroundColor DarkGray
 }
 if ($missing.Count -gt 0) {
     Write-Host ''
