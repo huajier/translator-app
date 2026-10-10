@@ -759,6 +759,13 @@ public partial class App : System.Windows.Application
     private static string GetVersion()
     {
         var v = Assembly.GetEntryAssembly()?.GetName().Version;
-        return v == null ? "v0.3" : $"v{v.Major}.{v.Minor}";
+        if (v == null) return "v0.3.2";
+
+        // 【2026-10-10 顺带修的老毛病】
+        //   原来只显示 `v{Major}.{Minor}`，也就是 **v0.3.1 和 v0.3.2 显示出来一模一样**。
+        //   我们一版一版地改、一版一版地测，结果用户看到的版本号根本分不出来是哪一版——
+        //   **测的是哪一版都说不清，出了问题也对不上号。**
+        //   修订号（Patch）现在也显示出来。
+        return $"v{v.Major}.{v.Minor}.{v.Build}";
     }
 }
