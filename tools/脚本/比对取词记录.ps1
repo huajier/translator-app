@@ -228,7 +228,14 @@ function Test-Segment([string]$want, [string]$got) {
             $skipG = $lcs[($i * $cols) + ($j + 1)]
             $repl  = $lcs[(($i + 1) * $cols) + ($j + 1)]
             if ($repl -ge $skipW -and $repl -ge $skipG) {
-                $wrong += ("「{0}」应是「{1}」" -f $w[$i], $g[$j]); $i++; $j++
+                # 🔴【2026-10-10 修正一处说反了的提示】
+    #   原来写的是 `-f $w[$i], $g[$j]`（标准在前、实际在后），
+    #   可这句话是「「X」应是「Y」」——**读起来就成了「标准应该是实际」，正好说反**。
+    #   比如材料 1 的 A3，实际报成
+    #     「"config.txt"」应是「“config.txt"」
+    #   实际是**标准是直角引号、识别成了弯引号**，提示却把弯引号说成了正确答案。
+    #   **看着像软件做对了，其实做错了——报告会误导人。**
+    $wrong += ("「{0}」应是「{1}」" -f $g[$j], $w[$i]); $i++; $j++
             }
             elseif ($skipG -gt $skipW) {
                 $wrong += ("多出「{0}」" -f $g[$j]); $extra++; $j++
