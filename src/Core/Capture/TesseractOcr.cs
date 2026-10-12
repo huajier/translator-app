@@ -161,6 +161,41 @@ internal sealed class TesseractOcr
             AppLogger.Info($"Tesseract 认完（{language}）：用时 {Environment.TickCount64 - start} 毫秒，" +
                            $"置信度 {confidence:F2}，{text.Length} 字");
 
+            // ==========================================================
+            // 【2026-10-12 只加日志、不改行为：让引擎逐词自报】
+            //
+            //   【为什么加这个】
+            //     E5 和 X2 这两段一直抛硬币（E5 只有 52%、X2 64% 正确），
+            //     而整句的平均分一直很高（E5 有 0.91~0.95）。
+            //     **平均分高，不代表每个字都认得准**——
+            //     错的只是那几个符号，平均分被整句稀释掉了。
+            //
+            //     查日志查实了：E5、E6 **整段只跑了一次识别**（五路那一段根本没跑，
+            //     因为门是「置信度低于 0.90 才跑」），**只有一张选票，投票无从下手**。
+            //     X2 有三票，但 2:1 站在错的那边。
+            //     → **「多路投票」这条路对这两段是走不通的**，得先看清引擎自己
+            //       觉得哪儿没把握。
+            //
+            //   【这两个接口是干什么的】
+            //     GetConfidence(Word)          → **这个词**自己有多少把握（不是整句平均分）
+            //     GetWordIsFromDictionary()    → **这个词在不在词典里**
+            //
+            //     第二个尤其关键：LV-ROVER 那篇论文的核心就是
+            //     「已经在词典里的词，不许被多数票推翻」。
+            //     **这两个接口封装里一直有，我们从来没调用过。**
+            //
+            //   【这一段严格只打日志，一个字都不改】
+            //     所以现在还不能拿它做任何判断——
+            //     得先看 E5 那个「|」和「p42.」、X2 那个「config txt」
+            //     **词级分数到底低不低、词典认不认**，数据说什么再定规则。
+            //
+            //   【为什么单独套一个 try】
+            //     外面那个 catch 会把任何异常变成「识别失败、结果为空」——
+            //     诊断代码一旦出错，**会把好好的识别结果弄丢**。
+            //     所以这里自己兜住，坏了就当没打日志，**绝不影响识别**。
+            // ==========================================================
+            LogWordSelfReport(page, language);
+
             return string.IsNullOrWhiteSpace(text)
                 ? new Result(null, 0)
                 : new Result(text, confidence);
@@ -380,5 +415,68 @@ internal sealed class TesseractOcr
             parts.Append(cur.GetType().Name).Append(' ').Append(cur.Message);
         }
         return parts.ToString();
+    }
+
+    /// <summary>
+    /// 【2026-10-12 新加 · 只打日志，不改任何识别行为】
+    /// 让引擎**逐词自报**：这个词多少分、在不在词典里。
+    ///
+    /// 【要解决什么】
+    ///   E5、E6、X2 这三段的整句平均分都在 0.90~0.95 看着很稳，
+    ///   可 E5 只有 52%、X2 只有 64% 正确。
+    ///   **错的是那几个符号，平均分被整句的字稀释掉了，看不出来。**
+    ///
+    ///   而现在也没别的办法：E5、E6 整段只跑了一次识别，
+    ///   **只有一张选票，投票无从下手**；X2 有三票但 2:1 站在错的那边。
+    ///   所以得先让引擎自己说：**哪个词它没把握。**
+    ///
+    /// 【为什么单独 try】
+    ///   外面那个 catch 会把任何异常变成「识别失败、结果为空」。
+    ///   诊断代码一旦出错，**会把好好的识别结果弄丢**——
+    ///   所以这里自己兜住，坏了就当没打这条日志，**绝不影响识别**。
+    ///
+    /// 【为什么加在类的最后面】
+    ///   这个类中间有大量大括号，插在中间改过一次就把括号平衡弄坏过。
+    ///   **以后也一律加在最后。**
+    /// </summary>
+    private static void LogWordSelfReport(Page page, string language)
+    {
+        try
+        {
+            var report = new System.Text.StringBuilder();
+            int count = 0;
+
+            using var it = page.GetIterator();
+            it.Begin();
+            do
+            {
+                string word = it.GetText(PageIteratorLevel.Word) ?? "";
+                if (string.IsNullOrWhiteSpace(word)) continue;
+
+                float wordConf = it.GetConfidence(PageIteratorLevel.Word);
+                bool inDict = it.GetWordIsFromDictionary();
+
+                if (count > 0) report.Append(" ｜ ");
+                report.Append('【').Append(word.Trim())
+                      .Append('】').Append(' ').Append(wordConf.ToString("F2"))
+                      .Append(inDict ? " 词典✓" : " 词典✗");
+                count++;
+            }
+            while (it.Next(PageIteratorLevel.Word));
+
+            if (count > 0)
+            {
+                AppLogger.Info($"  词级自报（{language}）共 {count} 词：" + report);
+            }
+            else
+            {
+                AppLogger.Info($"  词级自报（{language}）：**一个词都没取到**（这条诊断本身可能失效了）");
+            }
+        }
+        catch (Exception ex)
+        {
+            // 诊断代码失败**绝不能影响识别**，所以只记一行，不往上抛。
+            AppLogger.Warn($"词级自报没跑成（不影响识别）：{ex.GetType().Name} {ex.Message}");
+        }
     }
 }
