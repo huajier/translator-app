@@ -128,7 +128,25 @@ internal sealed class TesseractOcr
     ///   实测（用户 2026-10-09 验收材料）：
     ///     认对了 0.81~0.95，在瞎猜 0.09~0.41——中间分得很开，很好用。
     /// </param>
-    public readonly record struct Result(string? Text, double Confidence);
+    /// <param name="MinWordConfidence">
+    ///   **这一句里分数最低的那个词**是多少（0~100，跟引擎自报的一样，没换算）。
+    ///
+    ///   【为什么加这个，2026-10-12】
+    ///     整句平均分会把错**藏起来**：E5 整句一直是 0.89~0.93 看着很稳，
+    ///     可那个 `HTTP/2.0` 一个词的分数十次分别是
+    ///     17.31 / 83.02 / 88.66 / 17.31 / 38.00 / **0.00** / 33.89 / 83.02 / 88.66 / 83.02，
+    ///     而 E5 **十次全错**。同一个分数，看整句看不出问题，看单词就看得出来。
+    ///
+    ///     用户实测 20 次的结论：**出现 0.00 的 4 次，全错；没出现的一次也没漏。**
+    ///
+    ///   【现在还只是拿来看的】
+    ///     **还没有任何一个判断用它**——改了它就等于改了行为，
+    ///     而「多路投票选哪一份」还是老问题（B3 的教训：多一个候选多一次换错的机会）。
+    ///     所以先只记下来，等数据够了再定规矩。
+    ///
+    ///   没取到词时给 100（意思是「没发现不稳的词」），避免误触发。
+    /// </param>
+    public readonly record struct Result(string? Text, double Confidence, double MinWordConfidence = 100.0);
 
     /// <summary>认一段图，返回文字和置信度；失败返回空结果（不抛异常）。</summary>
     public static Result TryRecognize(System.Drawing.Bitmap bitmap, string language)
@@ -194,11 +212,42 @@ internal sealed class TesseractOcr
             //     诊断代码一旦出错，**会把好好的识别结果弄丢**。
             //     所以这里自己兜住，坏了就当没打日志，**绝不影响识别**。
             // ==========================================================
-            LogWordSelfReport(page, language);
+            float? minWordConfidence = LogWordSelfReport(page, language);
+
+            // ==========================================================
+            // 【2026-10-12 第二段诊断：补跑几路，把每一路都打出来】
+            //
+            //   【这一段要回答的问题】
+            //     「认出来有个词分数是 0.00」这件事我们已经知道了（上一段量出来的）。
+            //     **但接下来挑哪一份，还是没答案。**
+            //
+            //     B3 的教训摆在那儿：四路里分数更高的那份**反而是全错的**，
+            //     「分数高就用分数高」会把已经认对的换错。
+            //     → 所以在定「投票怎么投」之前，得先看清楚一件事实：
+            //       **真到了要投票的时候，几路里面到底有没有一份是对的？**
+            //
+            //     · 有一份对的 → 投票有意义，值得继续往下做。
+            //     · 一份对的都没有 → 投票就是白折腾，得换别的思路（比如改预处理）。
+            //
+            //   【所以这次严格只打日志，一个字都不改】
+            //     补跑的几路**只打印**，结果**不用来替换**现有结果，
+            //     选哪一份仍旧走原来那套规则。
+            //     这样测出来的成绩**和现在完全一样**，不会把别的地方弄坏。
+            //
+            //   【什么时候才补跑】
+            //     只在**最低词级分低于 50** 时才花这个时间（约 0.7 秒）。
+            //     E6 全对的 5 次最低分是 95.90~96.07，**一次都不会触发**。
+            //     E5 十次里有 7 次会触发，X2 那次框没框全的也会触发。
+            //     → 平时不拖慢速度，只有明显不对劲的时候才多看几眼。
+            // ==========================================================
+            if (minWordConfidence.HasValue && minWordConfidence.Value < LowWordConfidenceThreshold)
+            {
+                LogChannelVotes(bitmap, language, minWordConfidence.Value);
+            }
 
             return string.IsNullOrWhiteSpace(text)
                 ? new Result(null, 0)
-                : new Result(text, confidence);
+                : new Result(text, confidence, minWordConfidence ?? 100.0);
         }
         catch (Exception ex)
         {
@@ -439,12 +488,17 @@ internal sealed class TesseractOcr
     ///   这个类中间有大量大括号，插在中间改过一次就把括号平衡弄坏过。
     ///   **以后也一律加在最后。**
     /// </summary>
-    private static void LogWordSelfReport(Page page, string language)
+    /// <returns>
+    ///   这一句里**分数最低的那个词**的分数（0~100）；
+    ///   一个词都没取到、或者中途出错，返回 null（调用方按「没发现问题」处理）。
+    /// </returns>
+    private static float? LogWordSelfReport(Page page, string language)
     {
         try
         {
             var report = new System.Text.StringBuilder();
             int count = 0;
+            float lowest = 100f;
 
             using var it = page.GetIterator();
             it.Begin();
@@ -455,6 +509,7 @@ internal sealed class TesseractOcr
 
                 float wordConf = it.GetConfidence(PageIteratorLevel.Word);
                 bool inDict = it.GetWordIsFromDictionary();
+                if (wordConf < lowest) lowest = wordConf;
 
                 if (count > 0) report.Append(" ｜ ");
                 report.Append('【').Append(word.Trim())
@@ -466,17 +521,85 @@ internal sealed class TesseractOcr
 
             if (count > 0)
             {
-                AppLogger.Info($"  词级自报（{language}）共 {count} 词：" + report);
+                AppLogger.Info($"  词级自报（{language}）共 {count} 词，最低 {lowest:F2}：" + report);
             }
             else
             {
                 AppLogger.Info($"  词级自报（{language}）：**一个词都没取到**（这条诊断本身可能失效了）");
             }
+
+            return count > 0 ? lowest : (float?)null;
         }
         catch (Exception ex)
         {
             // 诊断代码失败**绝不能影响识别**，所以只记一行，不往上抛。
             AppLogger.Warn($"词级自报没跑成（不影响识别）：{ex.GetType().Name} {ex.Message}");
+            return null;
+        }
+    }
+
+    // ==============================================================
+    // 【2026-10-12 只加日志、不改行为：最低词级分太低时，补跑几路看看】
+    //
+    //   触发门槛：这一句里分数最低的那个词低于 50 分。
+    //   数据依据（用户 2026-10-12 实测 20 次）：
+    //     出现 0.00 的 4 次，全错；
+    //     全对的 E6 五次，最低分 95.90~96.07，**一次都不触发**。
+    //
+    //   补跑的是四路（红/绿/蓝/灰度/局部阈值）加「红通道不二值化」，
+    //   **每一路的结果只打印，不参与挑选**——
+    //   现在挑哪一份仍旧走原来那套规则，所以成绩和现在完全一样。
+    //   这一步只为了回答一个问题：**几路里到底有没有一份是对的。**
+    // ==============================================================
+    private const double LowWordConfidenceThreshold = 50.0;
+
+    /// <summary>重入保护：补跑的那几路自己也会调 TryRecognize，不能再往下钻，不然会无限套娃。</summary>
+    private static bool _insideChannelVotes;
+
+    private static void LogChannelVotes(System.Drawing.Bitmap bitmap, string language, double minWordConfidence)
+    {
+        if (_insideChannelVotes) return;
+        _insideChannelVotes = true;
+
+        try
+        {
+            AppLogger.Info(
+                $"═══ 补跑几路（只看不换）：这一句最低词级分只有 {minWordConfidence:F2}，" +
+                $"说明**有字没认出来**。下面每一路认出了什么，**只打印，不影响结果** ═══");
+
+            var names = new[] { "红通道", "绿通道", "蓝通道", "灰度", "局部阈值" };
+            System.Drawing.Bitmap[] planes = ImagePreprocessor.PrepareAllPlanes(bitmap);
+
+            try
+            {
+                for (int i = 0; i < planes.Length; i++)
+                {
+                    var r = TryRecognize(planes[i], language);
+                    AppLogger.Info(
+                        $"  补跑·{names[i]}：分数 {r.Confidence:F2}，最低词级分 {r.MinWordConfidence:F2}，" +
+                        $"内容【{(r.Text ?? "").Replace("\n", " ")}】");
+                }
+
+                using var redGray = ImagePreprocessor.PrepareRedChannelGray(bitmap);
+                var gray = TryRecognize(redGray, language);
+                AppLogger.Info(
+                    $"  补跑·红通道不二值化：分数 {gray.Confidence:F2}，最低词级分 {gray.MinWordConfidence:F2}，" +
+                    $"内容【{(gray.Text ?? "").Replace("\n", " ")}】");
+            }
+            finally
+            {
+                foreach (var p in planes) p?.Dispose();
+            }
+
+            AppLogger.Info("═══ 补跑结束：以上各路**一律不作数**，选哪一份仍旧按原来的规矩 ═══");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"补跑几路没跑成（不影响识别）：{ex.GetType().Name} {ex.Message}");
+        }
+        finally
+        {
+            _insideChannelVotes = false;
         }
     }
 }
