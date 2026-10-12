@@ -616,12 +616,66 @@ internal sealed class OcrTextCapture : ITextCapture
                             bool stillRussian = LanguageDetector.CountCyrillicRatio(rusEngResult.Text) > MinCyrillicRatioForRussian;
                             bool notWorse = rusEngResult.Confidence >= best.Confidence - 0.08;
 
-                            if (stillRussian && rusEngKeepsLatin && notWorse)
+                            // ==============================================================
+                            // 【2026-10-12 X1 实测暴露的漏洞：这道闸门只保护拉丁字母】
+                            //
+                            // 现场（X1 = `错误 404 (Not Found)：файл не найден`，中英俄三语混排）：
+                            //   rus+eng  0.88 分  【ER 404 (Not Found): файл не найден 】 ← 俄文是对的
+                            //   eng      0.71 分  【Fir 404 (Not Found): dain He Halex  】 ← 俄文全糊
+                            //   **结果 modelUsed 留在了 eng**，
+                            //   四路循环也跟着用 eng 跑，**结构上就认不了西里尔字母**。
+                            //
+                            // 为什么换不过去——三个条件对三语混排**一个都不占**：
+                            //   ① rusEngKeepsLatin：比的是**拉丁字母比例**，
+                            //      两边都是拉丁字母为主，rus+eng 并不占优 → 判 false
+                            //   ② stillRussian：要求**俄文占比 > 50%**，
+                            //      而 X1 的俄文只占一半（`файл не найден` 对 `404 (Not Found)`）→ 判 false
+                            //   ③ notWorse：这一条 rus+eng 其实是过的（0.88 ≥ 0.71-0.08）
+                            //
+                            //   **根因：这道闸门是在 2026-09 为「拉丁字母」设计的，
+                            //   从头到尾就没有保护过西里尔字母。**
+                            //   R8 修的是 `config.txt`→`сопйддхе`（丢拉丁字母），
+                            //   方向对、但只做了一半——**另一半（丢西里尔字母）没人管**。
+                            //
+                            // 【怎么补：对称地补上西里尔这一侧】
+                            //   如果当前最好的结果**一个西里尔字母都没有**，
+                            //   而 rus+eng 认出了**实实在在的西里尔字母**，
+                            //   那说明 rus+eng 读到了一段当前结果**根本读不到的东西**——
+                            //   这跟「保住拉丁字母」是同一个性质的理由。
+                            //
+                            // 【会不会破坏 R8？不会】
+                            //   R8 当时的局面是**反过来**的：纯 rus 满是假西里尔（`сопйддхе`），
+                            //   rus+eng 满是真拉丁（`config.txt`）。
+                            //   新条件要求「**当前最好的结果没有西里尔**」才触发——
+                            //   纯 rus 的结果西里尔满满当当，**新条件不成立**，
+                            //   仍旧由原来的拉丁字母条件接管。**两条各管一侧，不重叠。**
+                            //
+                            // 【实测依据，不是拍脑袋】
+                            //   X1 连框 5 次：**用 rus+eng 的那 1 次全对，
+                            //   用 eng 的那 4 次俄文全糊。**
+                            //   换句话说「这次到底走哪条路」和结果对错**完全相关**。
+                            //
+                            // ⚠️ **这是一处全局闸门的改动，可能影响别段**——
+                            //    所以下一轮**必须把材料 1、2、3 全测一遍**，不能只看 X1。
+                            // ==============================================================
+                            bool currentHasNoCyrillic = LanguageDetector.CountCyrillicRatio(best.Text) <= 0.02;
+                            bool rusEngFindsCyrillic = LanguageDetector.CountCyrillicRatio(rusEngResult.Text) >= 0.10;
+                            double currentCyr = LanguageDetector.CountCyrillicRatio(best.Text);
+                            double rusEngCyr = LanguageDetector.CountCyrillicRatio(rusEngResult.Text);
+
+                            bool keepLatinAsBefore = stillRussian && rusEngKeepsLatin && notWorse;
+                            bool keepCyrillicNow = currentHasNoCyrillic && rusEngFindsCyrillic && notWorse;
+
+                            if (keepLatinAsBefore || keepCyrillicNow)
                             {
+                                bool usedCyrillicRule = keepCyrillicNow && !keepLatinAsBefore;
                                 best = rusEngResult;
                                 modelUsed = TesseractOcr.Languages.RussianPlusEnglish;
                                 AppLogger.Info(
-                                    $"俄英混合模型保住了原文里的拉丁字母（置信度 {rusEngResult.Confidence:F2}），改用它");
+                                    $"改用俄英混合模型（置信度 {rusEngResult.Confidence:F2}）：" +
+                                    (usedCyrillicRule
+                                        ? $"原结果一个西里尔字母都没有（{currentCyr:F2}），而它认出了（{rusEngCyr:F2}）"
+                                        : "它保住了原文里的拉丁字母"));
                             }
                         }
 
