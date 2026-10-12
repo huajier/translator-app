@@ -780,10 +780,52 @@ internal sealed class OcrTextCapture : ITextCapture
                                     int bestChars = TextNormalizer.CountMeaningfulChars(
                                         TextNormalizer.Normalize(best.Text ?? ""));
 
+                                    // ==========================================================
+                                    // 【2026-10-12 用户定的「甲」：分数更高、字少得不多，就该认分数】
+                                    //
+                                    //   **原来那条规矩的代价，是 B3 上 6 次全错。**
+                                    //   B3（`… файл "config.txt" не найден — попробуйте /help?id=123`）
+                                    //   四路里**唯一两份全对的**，被这样否掉：
+                                    //     「局部阈值」0.88  【… файл “config.txt” … /help?id=123】 ← 两处都对
+                                    //     「绿通道」  0.86  【… файл "config.txt™ … /helptid=123】   ← 两处都错
+                                    //     「局部阈值」分数更高（0.88 > 0.86）但有效字符更少（66 < 67），**不采用**
+                                    //
+                                    //   **6 次一模一样，连日志文字都不差一个字。**
+                                    //   → 这一段的错，不是引擎认不出，是**选那一份的时候把它扔了**。
+                                    //
+                                    //   【为什么不能简单地「分数高就用分数高」】
+                                    //     F5 当年就是**只比分数**换出来的整段乱码（19 字 < 55 字也照换）。
+                                    //     所以「字少就不采用」这条**有道理，得留着**。
+                                    //     **这次补的是它漏掉的那一小块**：
+                                    //     字**少得很少**的时候，它否决的是**更好的**结果。
+                                    //
+                                    //   【补法：给「字少」定一个容忍范围】
+                                    //     少的比例 ≤ 一成 → 认分数（字少是正常的，不是内容缺失）
+                                    //     少的比例 >  一成 → 仍然否决（这才是 F5 那种内容缺失）
+                                    //
+                                    //   另加一条**分数要拉开**才作数：
+                                    //     分数只高 0.001 那是噪声，不能拿来换掉已经对的那份。
+                                    //
+                                    //   【拿已知案例验一遍】
+                                    //     B3  66 / 67 → 少 1.5% ≤ 一成，且 0.88 > 0.86+0.01 → **采用** ✅
+                                    //     F5  19 / 55 → 少 65% > 一成 → **仍然否决** ✅（保住原来的修复）
+                                    // ==========================================================
+                                    const double CharDeficitTolerance = 0.10;
+                                    const double ConfidenceMargin = 0.01;
+
+                                    int allowedChars = bestChars <= 0
+                                        ? 0
+                                        : (int)Math.Ceiling(bestChars * (1.0 - CharDeficitTolerance));
+
+                                    bool moreChars = planeChars > bestChars;
+                                    bool sameCharsBetterScore =
+                                        planeChars >= bestChars && planeResult.Confidence > best.Confidence;
+                                    bool slightlyFewerButClearlyBetterScore =
+                                        planeChars >= allowedChars
+                                        && planeResult.Confidence > best.Confidence + ConfidenceMargin;
+
                                     bool planeClearlyBetter =
-                                        planeChars > bestChars
-                                        || (planeChars >= bestChars
-                                            && planeResult.Confidence > best.Confidence);
+                                        moreChars || sameCharsBetterScore || slightlyFewerButClearlyBetterScore;
 
                                     if (planeClearlyBetter)
                                     {
@@ -791,17 +833,26 @@ internal sealed class OcrTextCapture : ITextCapture
                                             $"「{PlaneNames[i]}」这一路确实更好（分数 {planeResult.Confidence:F2}/{best.Confidence:F2}，" +
                                             $"有效字符 {planeChars}/{bestChars} 个），改用它");
 
+                                        if (slightlyFewerButClearlyBetterScore && !moreChars && !sameCharsBetterScore)
+                                        {
+                                            double lostPct = (1.0 - (double)planeChars / Math.Max(bestChars, 1)) * 100;
+                                            AppLogger.Info(
+                                                $"　　↑ 它字少 {bestChars - planeChars} 个（{lostPct:F0}%，在容忍范围内），" +
+                                                $"但分数高 {planeResult.Confidence - best.Confidence:F2}（超过 {ConfidenceMargin:F2} 的门槛）" +
+                                                $"——**字少这么点不算内容缺失，认分数**");
+                                        }
+
                                         best = planeResult;
                                         usedPrepared = true;
                                         bestPlane = planes[i];
                                     }
                                     else if (planeResult.Confidence > best.Confidence)
                                     {
-                                        // 分数高但**内容更少**：这种情况以前是直接换，
-                                        // 换出来就是 F5 那种整段乱码。
+                                        // 分数高但**内容明显更少**：以前一律不换，
+                                        // F5 那次就是「只比分数」换出来的整段乱码。
                                         AppLogger.Info(
                                             $"「{PlaneNames[i]}」分数更高（{planeResult.Confidence:F2} > {best.Confidence:F2}）" +
-                                            $"但有效字符更少（{planeChars} < {bestChars}），**不采用**");
+                                            $"但有效字符少太多（{planeChars} < {allowedChars}，比容忍下限还少 {allowedChars - planeChars} 个），**不采用**");
                                     }
                                 }
 
@@ -873,6 +924,31 @@ internal sealed class OcrTextCapture : ITextCapture
                                     bool notMuchWorse = grayResult.Confidence >= oldConfidence - 0.10;
 
                                     // ==========================================================
+                                    // 【2026-10-12 用户定的「甲」，与四路择优**用同一把尺子**】
+                                    //
+                                    //   **B3 上这一处也被扔过。** 6 次里这一版的现场：
+                                    //     「红通道不二值化」0.91，66 个有效字符，内容**两处都对**
+                                    //       【… файл “config.txt” … /help?id=123】
+                                    //     当时手上那份是 0.86、67 字、两处都错
+                                    //       【… файл "config.txt™ … /helptid=123】
+                                    //     三条老规矩**一条都不成立**：
+                                    //       notWorseAtAll  66 ≥ 67  → 不成立
+                                    //       muchMore       66 ≥ 77  → 不成立
+                                    //       rescued        0.86 已过 0.78 线 → 不成立
+                                    //
+                                    //   跟四路那次是**同一个毛病**：
+                                    //   字少这么一两个，恰恰是**更干净的结果**，却被当成「内容缺失」。
+                                    // ==========================================================
+                                    const double CharDeficitTolerance2 = 0.10;
+                                    const double ConfidenceMargin2 = 0.01;
+                                    int allowedChars2 = oldChars <= 0
+                                        ? 0
+                                        : (int)Math.Ceiling(oldChars * (1.0 - CharDeficitTolerance2));
+                                    bool slightlyFewerButClearlyBetter =
+                                        newChars >= allowedChars2
+                                        && grayResult.Confidence > oldConfidence + ConfidenceMargin2;
+
+                                    // ==========================================================
                                     // 【2026-10-10 材料 2 的 R3：第四次栽在「字数多」这个坑上】
                                     //
                                     //   **现场**（橙底绿字的俄文，两遍都返回「（空）」）：
@@ -905,10 +981,19 @@ internal sealed class OcrTextCapture : ITextCapture
                                     bool rescued = oldIsDoomed
                                                 && grayResult.Confidence >= MinimumAcceptableConfidence;
 
-                                    if (notWorseAtAll || rescued)
+                                    if (notWorseAtAll || rescued || slightlyFewerButClearlyBetter)
                                     {
                                         best = grayResult;
                                         usedPrepared = true;
+                                        if (slightlyFewerButClearlyBetter && !notWorseAtAll && !rescued)
+                                        {
+                                            double lostPct2 = (1.0 - (double)newChars / Math.Max(oldChars, 1)) * 100;
+                                            AppLogger.Info(
+                                                $"这一版字少 {oldChars - newChars} 个（{lostPct2:F0}%，在容忍范围内），" +
+                                                $"但分数高 {grayResult.Confidence - oldConfidence:F2}（超过 {ConfidenceMargin2:F2} 的门槛）" +
+                                                $"——**字少这么点不算内容缺失，认分数**，改用它");
+                                        }
+                                        else
                                         AppLogger.Info(rescued
                                             ? $"原来那份置信度只有 {oldConfidence:F2}（低于 {MinimumAcceptableConfidence:F2}，"
                                               + $"本来就要当乱码扔掉），这一版有 {grayResult.Confidence:F2} 已经过线——"
