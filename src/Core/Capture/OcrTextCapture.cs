@@ -1231,6 +1231,28 @@ internal sealed class OcrTextCapture : ITextCapture
                         //     Windows 已经明明白白认出这是中文，
                         //     **这个信号比信 chi_sim 可靠得多**——
                         //     因为 chi_sim 正是在这张橙底图上失灵的那个。
+                        //
+                        // ==============================================================
+                        // 【2026-10-12 Z1 加的诊断日志】
+                        //
+                        //   Z1（`今天天气不错适合出门`，橙底绿字）**又失败了**，
+                        //   但日志里只看到 chi_sim 一次调用（0.77、6 字），
+                        //   **「中文红通道补试」这一行根本没出现**——
+                        //   也就是说下面这个门没开。
+                        //
+                        //   **可到底是哪个条件没满足，光看代码看不出来**
+                        //   （静态分析已经猜错两轮，不想再猜第三次）。
+                        //   所以把两个条件**各自的实际取值**打出来，
+                        //   下轮一跑就知道该修哪个。
+                        // ==============================================================
+                        bool redGateLowConf = best.Confidence < MinimumAcceptableConfidence;
+                        bool redGateWindowsIsChinese = LanguageDetector.IsMostlyChinese(TextNormalizer.Normalize(text));
+
+                        AppLogger.Info(
+                            $"中文红通道补试的门：best 置信度 {best.Confidence:F2}（要 < {MinimumAcceptableConfidence:F2} → {redGateLowConf}）、" +
+                            $"Windows 那边是不是中文（{redGateLowConf} ? {redGateWindowsIsChinese}）→ " +
+                            $"{(redGateLowConf && redGateWindowsIsChinese ? "会跑" : "**不会跑**")}");
+
                         if (best.Confidence < MinimumAcceptableConfidence
                             && LanguageDetector.IsMostlyChinese(TextNormalizer.Normalize(text)))
                         {
