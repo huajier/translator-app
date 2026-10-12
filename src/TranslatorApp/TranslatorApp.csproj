@@ -143,18 +143,29 @@
     不许用字符串拼路径）。
     注意：tessdata 是数据不是代码，体积大、随版本更新，所以不入库（见 .gitignore）。
 
-    【v0.3.1 换成 tessdata_best（官方三套里最准的那套）】
-      官方 Data-Files 页面列了三套模型的取舍：
-        tessdata_best → 「最准」，官方标注最慢
-        tessdata      → 稍快，准确性略差
-        tessdata_fast → 最快，最不准
-      用户 2026-10-09 定的方向就是换最准的。
-      体积从约 10MB 涨到约 42MB，**换来的是细笔画和小字号上的明显提升**
-      （正是 E5 丢句点、R8 把 config.txt 认错的那一类问题）。
-      旧的 assets\tessdata 保留着，方便随时退回 v0.3 对照。
+    【2026-10-12 真正启用 tessdata_best（引擎保持 5.5.3 不动）】
+      上面这段注释是 **v0.3.1 就写下的**，但当时**实际路径一直指向 assets\tessdata**，
+      也就是说「换 best」写在了注释里，**代码从来没换过**。
+      这次把话说清楚：**一轮只改模型这一个东西，引擎版本一行没动。**
+
+      为什么单独动模型：
+        引擎和模型是**两个独立的旋钮**，代码里模型就是一个文件夹路径，
+        跟引擎版本毫无关系（TesseractOcr 只做 `new TesseractEngine(tessdata, lang)`）。
+        之前把「退回 5.0」和「换 best」捆在一起说，
+        等于**一轮改两个变量，D1 好了也说不清是谁的功劳**。
+
+      针对的具体毛病：
+        D1 的 `API` 被认成 `APIl` —— 这是 `I` 和 `l` 这种**相近字形的分辨错误**，
+        而 standard 档为了速度砍掉了大量训练数据，字形分辨正是被砍掉的部分之一。
+        best 档是同一个网络的全尺寸版本（eng 3.9 MB → 14.7 MB）。
+
+      ⚠️ **这只是「值得一试」，不是「一定管用」**——
+      实测数据是：引擎 5.5.3 + standard → D1 0/10；
+      引擎 5.5.3 + best **尚未测过**，测完才知道。
+      旧的 assets\tessdata 保留着，一行就能退回。
   -->
   <ItemGroup>
-    <Content Include="..\..\assets\tessdata\**\*" Link="tessdata\%(RecursiveDir)%(Filename)%(Extension)">
+    <Content Include="..\..\assets\tessdata_best\**\*" Link="tessdata\%(RecursiveDir)%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
@@ -179,7 +190,7 @@
   -->
   <Target Name="EnsureTessdataInPublishDir" AfterTargets="Publish">
     <ItemGroup>
-      <_TessdataFiles Include="$(MSBuildProjectDirectory)\..\..\assets\tessdata\**\*" />
+      <_TessdataFiles Include="$(MSBuildProjectDirectory)\..\..\assets\tessdata_best\**\*" />
       <!-- 一一对应出目标路径：%1 是根目录，%2 是子目录（可能是 best\、也可能是空） -->
       <_TessdataDest Include="@(_TessdataFiles->'$(PublishDir)tessdata\%(RecursiveDir)%(Filename)%(Extension)')" />
     </ItemGroup>
