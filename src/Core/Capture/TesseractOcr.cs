@@ -172,12 +172,23 @@ internal sealed class TesseractOcr
             }
 
             using var pix = Pix.LoadFromMemory(png);
-            using var page = engine.Process(pix);
-            string text = page.GetText() ?? string.Empty;
-            double confidence = page.GetMeanConfidence();
+            string text;
+            double confidence;
+            float? minWordConfidence;
 
-            AppLogger.Info($"Tesseract 认完（{language}）：用时 {Environment.TickCount64 - start} 毫秒，" +
-                           $"置信度 {confidence:F2}，{text.Length} 字");
+            // 【2026-10-12 修一个自己挖的坑：必须用大括号把 page 的范围关住】
+            //   引擎是**一次只能处理一张图**的（Only one image can be processed at once）。
+            //   上一版把「补跑几路」写在 `using var page` 还没释放的时候，
+            //   结果补跑的六路**全部报这个错、一路都没跑成**，
+            //   白白浪费了用户一整轮 20 次实测。
+            //   → 所以这里改成显式的大括号：**先算完、先把 page 释放掉，再去补跑。**
+            using (var page = engine.Process(pix))
+            {
+                text = page.GetText() ?? string.Empty;
+                confidence = page.GetMeanConfidence();
+
+                AppLogger.Info($"Tesseract 认完（{language}）：用时 {Environment.TickCount64 - start} 毫秒，" +
+                               $"置信度 {confidence:F2}，{text.Length} 字");
 
             // ==========================================================
             // 【2026-10-12 只加日志、不改行为：让引擎逐词自报】
@@ -212,7 +223,8 @@ internal sealed class TesseractOcr
             //     诊断代码一旦出错，**会把好好的识别结果弄丢**。
             //     所以这里自己兜住，坏了就当没打日志，**绝不影响识别**。
             // ==========================================================
-            float? minWordConfidence = LogWordSelfReport(page, language);
+            minWordConfidence = LogWordSelfReport(page, language);
+            }   // ← page 到这里已经释放，下面才可以再喂图给同一个引擎
 
             // ==========================================================
             // 【2026-10-12 第二段诊断：补跑几路，把每一路都打出来】
@@ -237,8 +249,12 @@ internal sealed class TesseractOcr
             //   【什么时候才补跑】
             //     只在**最低词级分低于 50** 时才花这个时间（约 0.7 秒）。
             //     E6 全对的 5 次最低分是 95.90~96.07，**一次都不会触发**。
-            //     E5 十次里有 7 次会触发，X2 那次框没框全的也会触发。
             //     → 平时不拖慢速度，只有明显不对劲的时候才多看几眼。
+            //
+            //   【必须在 page 释放之后才跑】
+            //     引擎一次只能处理一张图。v0.3.5 把这段写在 page 还没释放的时候，
+            //     **六路全部报「Only one image can be processed at once」、一路没跑成**，
+            //     白费了用户一整轮实测。这个位置是照着那句报错改的。
             // ==========================================================
             if (minWordConfidence.HasValue && minWordConfidence.Value < LowWordConfidenceThreshold)
             {
