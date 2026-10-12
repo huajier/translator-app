@@ -532,18 +532,53 @@ $names = @($answers.Keys)
 #  每一段要不要「测几次都全对」，**光看一次的结果根本不知道**。
 #  这一段把每条记录都对回它自己那一段，再按段数次数。
 if ($逐条) {
+    # ==============================================================
+    # 🔴【2026-10-12 补：标准答案文字相同的几段，必须拆开分】
+    #
+    #   **现场**：材料 2 的 R1 和 R4 答案**一字不差**，
+    #             R3 和 R6 也一字不差：
+    #               R1|Съешь же ещё этих мягких французских булок да выпей чаю
+    #               R4|Съешь же ещё этих мягких французских булок да выпей чаю
+    #   「一条记录只配它最像的那一段」于是把 10 条全塞给了 R1，
+    #   **报告写着「R4 这轮没测」——可用户明明测了 5 次。**
+    #
+    #   **【为什么不能按顺序平分——那样更糟】**
+    #     材料 3 的 F1–F8、S1–S4 共 **12 段，答案一模一样**
+    #     （同一句话，只是 8 种字体 + 4 种字号）。
+    #     用户把 F1 测了 5 次，文件里就是 5 条 F1 的记录。
+    #     按 `$k % 12` 平分 → 报告会说
+    #       F1 测了 1 次、F2 测了 1 次……F5 测了 1 次
+    #     **F2–F8 明明一次都没测，报告却说它们测过了。**
+    #     那比不分组更糟——**凭空造出一堆「测过了」。**
+    #
+    #   【所以：同文的段一律不拆】
+    #     全部记录归到一组，**按同一份标准答案判定**（答案一样，判定必然一样），
+    #     报告里把这一组的编号**一起列出来**，次数算这一组一共测了几次。
+    #   **不猜哪条记录属于哪一段。**
+    # ==============================================================
+    $byText = [ordered]@{}
+    foreach ($id in $answers.Keys) {
+        $key = Normalize $answers[$id]
+        if (-not $byText.Contains($key)) { $byText[$key] = @() }
+        $byText[$key] += $id
+    }
+    $firstOfText = @{}
+    foreach ($key in $byText.Keys) { $firstOfText[$key] = @($byText[$key])[0] }
+
     $rowsS = @()
     foreach ($k in 0..($records.Count - 1)) {
         $rec = $records[$k]
-        $bestId = $null; $bestSim = 0.0
+        $bestKey = $null; $bestSim = 0.0
         foreach ($id in $answers.Keys) {
             $s = Get-Overlap $answers[$id] $rec.原文
-            if ($s -gt $bestSim) { $bestSim = $s; $bestId = $id }
+            if ($s -gt $bestSim) { $bestSim = $s; $bestKey = (Normalize $answers[$id]) }
         }
-        if ($null -eq $bestId) { continue }
-        $r = Test-Segment $answers[$bestId] $rec.原文
+        if ($null -eq $bestKey) { continue }
+
+        $rep = $firstOfText[$bestKey]
+        $r = Test-Segment $answers[$rep] $rec.原文
         $rowsS += [pscustomobject]@{
-            编号 = $bestId; 相似度 = $bestSim; 全对 = $r.全对
+            编号 = $rep; 同文 = @($byText[$bestKey]); 相似度 = $bestSim; 全对 = $r.全对
             错词 = $r.错词; 实际 = $rec.原文; 时间 = $rec.时间
         }
     }
@@ -555,14 +590,44 @@ if ($逐条) {
     Write-Host '编号   测了几次   对   错   稳定吗'
     Write-Host ('-' * 62)
 
+    # 同文的段**合并成一行**，编号全列出来
+    # （材料 3 的 F1–F8、S1–S4 是同一句话的 12 种字体/字号；
+    #   材料 2 的 R1/R4、R3/R6 也是同文。
+    #   **同文就不猜哪条属于哪段**——猜错会凭空造出「测过了」。）
+    $groupRows = @(); $seenGrp = @{}
     foreach ($id in $names) {
         $hits = @($rowsS | Where-Object { $_.编号 -eq $id })
         if ($hits.Count -eq 0) {
-            Write-Host ("{0,-5} {1}" -f $id, '这轮没测') -ForegroundColor DarkGray
+            # 🔴 别把同组的成员再单独报一次「这轮没测」——
+            #   R1、R4 同文时记录全归到 R1 那一组，
+            #   R4 自己手上是 0 条，**可它明明跟 R1 一起测过了。**
+            $inSomeGroup = $false
+            foreach ($id2 in $names) {
+                $h2 = @($rowsS | Where-Object { $_.编号 -eq $id2 })
+                if ($h2.Count -gt 0 -and (@($h2[0].同文) -contains $id)) { $inSomeGroup = $true; break }
+            }
+            if (-not $inSomeGroup) {
+                $groupRows += [pscustomobject]@{ 标签=$id; 次数=0; 对=0; 错=0; 记录=@() }
+            }
             continue
         }
+        $grp = @($hits[0].同文)
+        if ($seenGrp.ContainsKey(($grp -join ','))) { continue }
+        $seenGrp[($grp -join ',')] = $true
         $okN = @($hits | Where-Object { $_.全对 }).Count
-        $badN = $hits.Count - $okN
+        $groupRows += [pscustomobject]@{
+            标签 = ($grp -join '、'); 次数 = $hits.Count
+            对 = $okN; 错 = ($hits.Count - $okN); 记录 = $hits
+        }
+    }
+
+    foreach ($g in $groupRows) {
+        $id = $g.标签; $hits = $g.记录
+        if ($g.次数 -eq 0) {
+            Write-Host ("{0,-34} {1}" -f $id, '这轮没测') -ForegroundColor DarkGray
+            continue
+        }
+        $okN = $g.对; $badN = $g.错
 
         # 「稳」的判据：5 次里错 1 次，就该当成有问题看，不是「偶尔」
         if ($okN -eq $hits.Count)      { $tag = '✅ 稳';  $col = 'Green' }
@@ -571,7 +636,7 @@ if ($逐条) {
         elseif ($okN / $hits.Count -ge 0.8) { $tag = '🟡 大致稳'; $col = 'Yellow' }
         else                           { $tag = '🔴 抛硬币'; $col = 'Red' }
 
-        Write-Host ('{0,-5} {1,6}  {2,4} {3,4}   {4}' -f $id, $hits.Count, $okN, $badN, $tag) `
+        Write-Host ('{0,-34} {1,3}次 {2,3}对 {3,3}错   {4}' -f $id, $hits.Count, $okN, $badN, $tag) `
             -ForegroundColor $col
 
         if ($badN -gt 0) {
