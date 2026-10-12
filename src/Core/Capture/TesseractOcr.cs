@@ -273,7 +273,7 @@ internal sealed class TesseractOcr
             }
             catch (Exception ex)
             {
-                AppLogger.Warn($"Tesseract 引擎（{language}）初始化失败：{ex.GetType().Name} {ex.Message}");
+                AppLogger.Warn($"Tesseract 引擎（{language}）初始化失败：{DescribeException(ex)}");
                 return null;
             }
         }
@@ -350,8 +350,35 @@ internal sealed class TesseractOcr
             {
                 _initFailed = true;
                 AppLogger.Warn($"Tesseract 引擎初始化失败，英文/俄文将退回到 Windows 自带（质量会明显变差）：" +
-                            $"{ex.GetType().Name} {ex.Message}");
+                            $"{DescribeException(ex)}");
             }
         }
+    }
+
+    /// <summary>
+    /// 把异常一层一层拆开写出来。
+    ///
+    /// 【2026-10-10 换引擎 5.5.3 时踩到的】
+    ///   原来只写 `ex.GetType().Name + ex.Message`，于是日志里全是同一句
+    ///     `TargetInvocationException Exception has been thrown by the target of an invocation.`
+    ///   **这句话等于没说**——
+    ///   真正的原因（到底是哪个函数找不到）藏在 InnerException 里，
+    ///   而 .NET 封装是反射调用，**一层套一层，最深的有四五层**。
+    ///   结果就是：**知道失败了，却不知道为什么失败，只能靠猜。**
+    ///
+    ///   这次换引擎最大的教训：
+    ///   我拿「35 个库全装上了」当成「引擎能用了」——
+    ///   **库能装进内存，和封装能驱动它，是两回事。**
+    /// </summary>
+    private static string DescribeException(Exception ex)
+    {
+        var parts = new System.Text.StringBuilder();
+        int depth = 0;
+        for (Exception? cur = ex; cur != null && depth < 8; cur = cur.InnerException, depth++)
+        {
+            if (depth > 0) parts.Append(" → 原因：");
+            parts.Append(cur.GetType().Name).Append(' ').Append(cur.Message);
+        }
+        return parts.ToString();
     }
 }

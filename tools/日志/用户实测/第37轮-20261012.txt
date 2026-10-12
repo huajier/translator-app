@@ -1,0 +1,136 @@
+时间: 08:05:10
+通道: WindowsOcr
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 78 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带
+字数: 41
+原文: 使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布
+##### 记录结束 #####
+时间: 08:05:19
+通道: WindowsOcr
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带
+字数: 41
+原文: 使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布
+##### 记录结束 #####
+时间: 08:05:23
+通道: WindowsOcr
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带
+字数: 41
+原文: 使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布
+##### 记录结束 #####
+时间: 08:05:27
+通道: WindowsOcr
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带
+字数: 41
+原文: 使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布
+##### 记录结束 #####
+时间: 08:05:31
+通道: WindowsOcr
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带
+字数: 41
+原文: 使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布
+##### 记录结束 #####
+时间: 08:05:45
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 08:05:49
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 08:05:57
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 46
+原文: The quick bro 、 1 fox jumps ove r the lazy dog
+##### 记录结束 #####
+时间: 08:06:01
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 08:06:04
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 44
+原文: The quick brown fox jumps over the lazy d og
+##### 记录结束 #####
+时间: 08:06:08
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 42
+原文: The quick brown fox jumps over the 》 a dog
+##### 记录结束 #####
+时间: 08:06:13
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 08:06:16
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 44
+原文: The qu ick brown fox jumps over the lazy d09
+##### 记录结束 #####
+时间: 08:06:20
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 42
+原文: The quiCk brown fox jumps over the 《 y dog
+##### 记录结束 #####
+时间: 08:06:22
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 45
+原文: The quick brown fox jumps over the 《 azy d og
+##### 记录结束 #####
+时间: 08:06:25
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 08:06:28
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 44
+原文: The quick b rown fox jumps over the lazy dog
+##### 记录结束 #####
