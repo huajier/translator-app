@@ -352,7 +352,16 @@ internal static class ImagePreprocessor
         for (int t = 0; t <= 255; t++)
         {
             countBelow += counts[t];
-            sumBelow += (long)t * sums[t];
+            // 【2026-10-12 修正】原来写的是 `sumBelow += (long)t * sums[t];`，多乘了一个 t。
+            //   原因：Accumulate 里写的是 `sums[plane][value] += value;`——
+            //   也就是说 sums[t] **本身已经是「桶 t 里所有像素灰度的总和」**，不用再乘 t。
+            //   多乘一次的后果：类间方差里的两个均值全是假的，BestThreshold 在
+            //   非纯白底的图上会算出 254（等于「除了纯白都算字」），
+            //   于是红/绿/蓝/灰度四路全变成一块黑方框，引擎读出什么都是空的。
+            //   白底黑字的图直方图九成以上堆在 255，这个错会「碰巧蒙对」，
+            //   所以一直没人发现——直到条纹底的 E5 才露馅。
+            //   证据：tools\日志\阶段3-验收.md 一百一十六节（tools\探针 实测）。
+            sumBelow += sums[t];
             int countAbove = total - countBelow;
             if (countBelow == 0 || countAbove == 0) continue;
 
