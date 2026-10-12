@@ -43,7 +43,23 @@
 
 param(
     [string]$Version = 'v0.3.1',
-    [string]$AnswerFile = '验收标准答案2.txt'
+    [string]$AnswerFile = '验收标准答案2.txt',
+    # ==================================================================
+    # 【2026-10-12 新增 -Skip N】
+    #
+    #   记录文件是**当天累计**的（一天一个文件，从早测到晚都往里追加），
+    #   所以默认会**把之前几轮的旧记录也算进来**。
+    #
+    #   【这个坑已经咬了五次】
+    #     第36轮：材料1和材料3混在一份文件里，标准答案配错，报了假的 ❌
+    #     第37轮：引擎没起来那一轮的坏数据，一直被反复计算
+    #     本  轮：拿第37轮的坏数据当今天的结果报给用户
+    #   ——**量表自己会说谎，比软件出错严重得多。**
+    #
+    #   用法：上一轮一共 N 条，判新一轮就写 -Skip N
+    #   例：powershell -File 比对取词记录.ps1 -Version v0.3.2 -AnswerFile 验收标准答案.txt -Skip 17
+    # ==================================================================
+    [int]$Skip = 0
 )
 
 $ErrorActionPreference = 'Stop'
@@ -114,6 +130,16 @@ foreach ($line in Get-Content $recordFile -Encoding UTF8) {
     elseif ($null -ne $cur -and $line -match '^原文:\s*(.+)$')          { $cur.原文 = $Matches[1] }
 }
 if ($null -ne $cur) { $records += $cur }
+
+# 【2026-10-12】只留本轮新测的那些，旧记录不算
+if ($Skip -gt 0) {
+    if ($Skip -ge $records.Count) {
+        Write-Host "要跳过 $Skip 条，但文件里只有 $($records.Count) 条。" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "已跳过前 $Skip 条旧记录，本次只判后面 $($records.Count - $Skip) 条。" -ForegroundColor DarkGray
+    $records = @($records[$Skip..($records.Count - 1)])
+}
 
 if ($records.Count -eq 0) {
     Write-Host "记录文件里没有可用的记录。" -ForegroundColor Red
@@ -440,13 +466,32 @@ Write-Host ''
 Write-Host "版本：$Version    记录：$([System.IO.Path]::GetFileName($recordFile))" -ForegroundColor DarkGray
 Write-Host "判定标准（用户定）：一个词错一个字符就整词判错；一个词错整段就判错。" -ForegroundColor DarkGray
 Write-Host ''
-Write-Host '编号   判定    词   错词  引擎        耗时'
-Write-Host ('-' * 74)
+Write-Host '编号   判定    词   错词  配对度  引擎        耗时'
+Write-Host ('-' * 84)
 
 $rows = @()
 $missing = @()
+$forced = @()
 foreach ($id in $names) {
     if (-not $match.Pairs.ContainsKey($id)) { $missing += $id; continue }
+
+    # ==============================================================
+    # 【2026-10-12】把「这一对配得有多勉强」**印出来**
+    #
+    #   之前脚本把相似度算出来存在 $match.Sim 里，**却从来没显示过**，
+    #   于是硬凑出来的配对在报告里长得和正常配对一模一样：
+    #     A2 的标准答案有 49 个词，
+    #     报告却写「实际：another.」——一个词，
+    #     **一眼就看出根本不是同一段文字**，可报告照样判它「判错 33 处」。
+    #
+    #   **这是量表第 6 次骗人，而且这次是「有证据却不给人看」。**
+    #   ——量表自己会说谎，比软件出错严重得多：
+    #     假的 ❌ 会让人去修根本没坏的东西。
+    # ==============================================================
+    $sim   = $match.Sim[$id]
+    $simTxt = if ($null -eq $sim) { '  ??  ' } else { '{0,5:N2}' -f $sim }
+    $isWeak = ($null -ne $sim -and $sim -lt 0.55)
+    if ($isWeak) { $forced += $id }
 
     $rec  = $records[$match.Pairs[$id]]
     $want = $answers[$id]
@@ -454,33 +499,42 @@ foreach ($id in $names) {
     $r    = Test-Segment $want $got
 
     $mark = if ($r.全对) { '✅ 全对' } else { '❌ 判错' }
-    $rows += [pscustomobject]@{ 编号=$id; 全对=$r.全对; 词数=$r.词数; 错词数=$r.错词数;
+    if ($isWeak) { $mark = '⚠️ 没测' }
+    $rows += [pscustomobject]@{ 编号=$id; 全对=$r.全对; 弱配=$isWeak; 相似度=$sim; 词数=$r.词数; 错词数=$r.错词数;
                                 错词=$r.错词; 仅大小写=$r.仅大小写; 少词=$r.少词; 多词=$r.多词;
                                 引擎=$rec.通道; 耗时=$rec.耗时; 说明=$rec.说明;
                                 标准=$want; 实际=$got }
 
     Write-Host ('{0,-5} {1,-7} {2,-4} {3,-5} {4}  {5,-10} {6}' -f `
-                $id, $mark, $r.词数, $r.错词数, '', $rec.通道, $rec.耗时) `
-              -ForegroundColor $(if ($r.全对) { 'Green' } else { 'Red' })
+                $id, $mark, $r.词数, $r.错词数, $simTxt, $rec.通道, $rec.耗时) `
+              -ForegroundColor $(if ($isWeak) { 'Yellow' } elseif ($r.全对) { 'Green' } else { 'Red' })
 }
 
 # ---------- 5. 总结 ----------
 if ($rows.Count -gt 0) {
-    $ok   = @($rows | Where-Object { $_.全对 }).Count
-    $bad  = @($rows | Where-Object { -not $_.全对 }).Count
-    $totW = ($rows | Measure-Object -Property 词数 -Sum).Sum
-    $badW = ($rows | Measure-Object -Property 错词数 -Sum).Sum
+    # 【2026-10-12】弱配对的段**不计入成绩**——它们本来就是没测
+    $real   = @($rows | Where-Object { -not $_.弱配 })
+    $weak   = @($rows | Where-Object { $_.弱配 })
+    $ok     = @($real | Where-Object { $_.全对 }).Count
+    $bad    = @($real | Where-Object { -not $_.全对 }).Count
+    $totW   = ($real | Measure-Object -Property 词数 -Sum).Sum
+    $badW   = ($real | Measure-Object -Property 错词数 -Sum).Sum
 
     Write-Host ''
-    Write-Host ('=' * 74)
-    Write-Host ("总判定：{0} 段全对 / {1} 段判错（共 {2} 段）" -f $ok, $bad, $rows.Count) -ForegroundColor $(if ($bad -eq 0) { 'Green' } else { 'Yellow' })
+    Write-Host ('=' * 84)
+    Write-Host ("真正测到的：{0} 段全对 / {1} 段判错（共 {2} 段）" -f $ok, $bad, $real.Count) -ForegroundColor $(if ($bad -eq 0) { 'Green' } else { 'Yellow' })
     if ($totW -gt 0) {
         Write-Host ("词判定：{0} 个词里 {1} 个全对，{2} 个判错" -f $totW, ($totW - $badW), $badW) -ForegroundColor DarkGray
+    }
+    if ($weak.Count -gt 0) {
+        Write-Host ''
+        Write-Host ("⚠️ 这 {0} 段**这次没测**，不能算成绩（配上的记录跟标准答案差太远）：{1}" -f `
+                    $weak.Count, (($weak | ForEach-Object { '{0}(配对度 {1:N2})' -f $_.编号, $_.相似度 }) -join '、')) -ForegroundColor Yellow
     }
     if ($bad -gt 0) {
         Write-Host ''
         Write-Host '判错的段落：' -ForegroundColor Red
-        foreach ($r in ($rows | Where-Object { -not $_.全对 })) {
+        foreach ($r in ($real | Where-Object { -not $_.全对 })) {
             $first = if ($r.错词.Count -gt 0) { $r.错词[0] } else { '（词数对不上）' }
             $more  = if ($r.错词.Count -gt 1) { " 等 $($r.错词.Count) 处" } else { '' }
             Write-Host ("  {0,-4} {1}{2}" -f $r.编号, $first, $more) -ForegroundColor Red
