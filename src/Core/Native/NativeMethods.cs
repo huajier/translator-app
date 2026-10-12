@@ -66,21 +66,138 @@ public static class NativeLibraryPreloader
 
     /// <summary>
     /// 从 exe 所在目录的 x64\ 子目录里预加载 Tesseract 依赖的原生库。
-    /// Tesseract 依赖 leptonica，所以两个都要，且**先 leptonica 后 tesseract**（依赖顺序）。
+    ///
+    /// 【2026-10-10 换引擎 5.0 → 5.5.3：这里整个重写了】
+    ///
+    ///   **5.5.3 的依赖不是两个，是 28 个**：
+    ///     5.0  只要 leptonica-1.82.0.dll + tesseract50.dll
+    ///     5.5.3 libtesseract-5.dll 拖着一整条链——
+    ///           libstdc++-6(25MB)、libgcc、libwinpthread、leptonica、
+    ///           png/jpeg/tiff/webp/zlib/lzma/zstd/brotli、libarchive、libunistring…
+    ///
+    ///   **而且文件名全变了**：
+    ///     5.0   tesseract50.dll       + leptonica-1.82.0.dll
+    ///     5.5.3 libtesseract-5.dll    + libleptonica-6.dll
+    ///
+    ///   【为什么不能把顺序和名字写死】
+    ///     ① 写死名字：升级一次引擎就要改一次代码，
+    ///        而且**改漏一个就是启动失败**。
+    ///     ② 写死顺序：28 个库的依赖顺序手写出来，
+    ///        **早加载晚依赖的照样失败**（实测里 libgcc 就因为先于
+    ///        libwinpthread 加载而失败过）。
+    ///
+    ///   【改成什么】
+    ///     **扫目录，反复加载，直到一轮下来没有任何新进展为止。**
+    ///     先能加载的（依赖都在的）先装上，装不上的下一轮再来，
+    ///     **几轮之后剩下的就是真的缺依赖，会如实报出来**。
+    ///     这样**加库、删库、升版本都不用改代码**。
+    ///
+    ///   【tesseract 必须改名】
+    ///     .NET 封装把库名写死成 `tesseract50.dll`
+    ///     （它自己调 `LoadLibrary("tesseract50.dll")`），
+    ///     所以发布目录里那个文件**必须叫 tesseract50.dll**，
+    ///     哪怕它里面装的是 5.5.3。
+    ///     ——**文件名是给封装看的，不是给人看的**；
+    ///       所以下面会**另外把引擎真实版本读出来写进日志**，
+    ///       免得日志和文件名对不上，**自己骗自己**。
     /// </summary>
     public static bool PreloadTesseractChain(string exeDirectory)
     {
         string nativeDir = System.IO.Path.Combine(exeDirectory, "x64");
 
-        bool leptonica = Preload(nativeDir, "leptonica-1.82.0.dll");
-        bool tesseract = Preload(nativeDir, "tesseract50.dll");
+        if (!System.IO.Directory.Exists(nativeDir))
+        {
+            AppLogger.Warn($"预加载 Tesseract 原生库：目录不存在 {nativeDir}");
+            return false;
+        }
+
+        // 【必须先加搜索路径】否则加载 libgcc 时找不到同目录下的 libwinpthread——
+        //   实测踩过：LoadLibrary 返回错误 126（找不到模块），
+        //   而报错**并不会告诉你是哪个依赖缺了**。
+        SetDllDirectory(nativeDir);
+
+        var pending = new List<string>(System.IO.Directory.GetFiles(nativeDir, "*.dll"));
+        var loaded = new List<string>();
+        var failed = new List<string>();
+
+        // 反复扫，直到一轮下来没有任何新进展 = 剩下的都是真的装不上
+        bool progress = true;
+        while (progress && pending.Count > 0)
+        {
+            progress = false;
+            for (int i = pending.Count - 1; i >= 0; i--)
+            {
+                string path = pending[i];
+                try
+                {
+                    NativeLibrary.Load(path);
+                    loaded.Add(System.IO.Path.GetFileName(path));
+                    pending.RemoveAt(i);
+                    progress = true;
+                }
+                catch
+                {
+                    // 这一轮还装不上，留到下一轮（依赖可能还没就位）
+                }
+            }
+        }
+
+        failed.AddRange(pending);
+
+        // 关键的两个必须有
+        bool tesseractOk = loaded.Any(n => n.Equals("tesseract50.dll", StringComparison.OrdinalIgnoreCase));
+        bool leptonicaOk = loaded.Any(n => n.StartsWith("leptonica", StringComparison.OrdinalIgnoreCase)
+                                        || n.StartsWith("libleptonica", StringComparison.OrdinalIgnoreCase));
 
         AppLogger.Info(
-            $"预加载 Tesseract 原生库：leptonica={Describe(leptonica)} tesseract={Describe(tesseract)}" +
-            $"（目录 {nativeDir}，目录存在={System.IO.Directory.Exists(nativeDir)}）");
+            $"预加载 Tesseract 原生库：成功 {loaded.Count} 个" +
+            $"（tesseract={Describe(tesseractOk)} leptonica={Describe(leptonicaOk)}，" +
+            $"目录 {nativeDir}）" +
+            (failed.Count > 0
+                ? $"；⚠️ 装不上 {failed.Count} 个：{string.Join("、", failed.Select(System.IO.Path.GetFileName).Take(8))}"
+                : "；全部成功"));
 
-        return leptonica && tesseract;
+        // 装上了就把引擎的真实版本读出来 —— 文件名写着 50，日志得说真话
+        try
+        {
+            if (NativeLibrary.TryGetExport(
+                    NativeLibrary.Load(System.IO.Path.Combine(nativeDir, "tesseract50.dll")),
+                    "TessVersion", out IntPtr verFn))
+            {
+                var versionFunc = Marshal.GetDelegateForFunctionPointer<TessVersionFn>(verFn);
+                IntPtr verPtr = versionFunc();
+                string real = verPtr == IntPtr.Zero
+                    ? "(读不到)"
+                    : (Marshal.PtrToStringAnsi(verPtr) ?? "(读不到)");
+                AppLogger.Info($"Tesseract 引擎真实版本：{real}（文件名 tesseract50.dll 只是为了迎合 .NET 封装的固定库名）");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"读引擎版本失败（不影响识别）：{ex.GetType().Name} {ex.Message}");
+        }
+
+        return tesseractOk && leptonicaOk;
     }
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate IntPtr TessVersionFn();
+
+    /// <summary>
+    /// 把目录加进本进程的 DLL 搜索路径。
+    ///
+    /// 【为什么需要 —— 2026-10-10 换 5.5.3 时实测踩到】
+    ///   5.5.3 的原生库是一串（28 个），互相依赖。
+    ///   `LoadLibrary("完整路径\libgcc_s_seh-1.dll")` 成功与否，
+    ///   取决于**它自己要的 libwinpthread 能不能被找到**——
+    ///   而默认搜索路径里**没有我们这个目录**，
+    ///   于是报错误 126（找不到模块），
+    ///   **而且报错不会告诉你是哪个依赖缺了**，排查起来非常费劲。
+    ///
+    ///   把目录加进搜索路径之后，整串库就都能自己找到彼此了。
+    /// </summary>
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool SetDllDirectory(string path);
 
     private static string Describe(bool ok) => ok ? "成功" : "失败";
 }
