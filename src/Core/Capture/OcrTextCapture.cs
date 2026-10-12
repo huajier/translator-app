@@ -168,11 +168,16 @@ internal sealed class OcrTextCapture : ITextCapture
         //       · 「切到半个字」的检测也正常（它按「暗的才算笔画」判断，
         //         深色背景上会**每一列都判成有笔画**，全是误报）
         //
-        //   【判断深底还是浅底，不拍阈值，看平均亮度】
-        //     图上文字通常只占一小块，**平均亮度基本就是底色**。
-        //     这是数据本身的性质，不是拍脑袋定的数。
+        //   【判断深底还是浅底，2026-10-12 已改判据】
+        //     原来比的是「平均亮度 < 110」，**只看平均亮度会把「浅字暗底」漏掉**
+        //     （白字会把平均值往上拉，E5 平均亮度 154.4 就这样被判成了浅底）。
+        //     现在改成看**四边最外一圈像素落在 Otsu 阈值的哪一侧**，理由和四张图的
+        //     对照数据写在 `ImagePreprocessor.NeededInversion` 的注释里。
         // ==========================================================
-        using Bitmap? raw = ImagePreprocessor.MakeLightBackground(captured);
+        bool deepBackground = ImagePreprocessor.AnalyzeBackground(captured, out int bgThreshold, out int ringDark, out int ringTotal);
+        using Bitmap? raw = deepBackground
+            ? ImagePreprocessor.Invert(captured)
+            : new Bitmap(captured);
 
         // ==========================================================
         // 【2026-10-10】把「底色判断」这件事本身的数字打进日志，
@@ -198,14 +203,15 @@ internal sealed class OcrTextCapture : ITextCapture
         //     框完选区按一下，那一块区域就会存成 PNG。
         // ======================================================================
         double brightness = ImagePreprocessor.MeasureAverageLuminance(captured);
-        if (brightness < 110)
+        if (deepBackground)
         {
-            AppLogger.Info($"这一段是深底浅字（深色模式）：平均亮度 {brightness:F1}（低于 110），" +
-                           "已整张反色后再识别");
+            AppLogger.Info($"这一段是深底浅字（深色模式）：Otsu 阈值 {bgThreshold}，四边最外一圈 {ringDark}/{ringTotal} 个像素落在暗侧，" +
+                           $"已整张反色后再识别（平均亮度 {brightness:F1}，仅供参考，不参与判断）");
         }
         else
         {
-            AppLogger.Info($"这一段是浅底（平均亮度 {brightness:F1}），不反色");
+            AppLogger.Info($"这一段是浅底，不反色：Otsu 阈值 {bgThreshold}，四边最外一圈 {ringDark}/{ringTotal} 个像素落在暗侧" +
+                           $"（平均亮度 {brightness:F1}，仅供参考，不参与判断）");
         }
 
 

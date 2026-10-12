@@ -933,8 +933,95 @@ internal static class ImagePreprocessor
     ///
     /// 【深色模式在实战里非常常见】
     ///   VS Code、终端、浏览器深色主题、聊天软件夜间模式……全是深底浅字。
+    ///
+    /// ================================================================
+    /// 【2026-10-12 改判据：不再看平均亮度，改看「四边最外一圈落在哪一侧」】
+    ///
+    ///   【原来的判据错在哪 —— E5 的实测现场】
+    ///     E5 存图（`release\V0.3.2.4\debug-screenshots\sel_20261012_132454_985.png`）
+    ///     探针量到的分位数：底 `#6b8cb5`~`#7a9cc6` 灰度 **134~150**，字 `#ffffff` 灰度 **219~244**
+    ///       → 明明是**白字暗底**，探针二值化全判反，E5 十次里九次错在
+    ///         「行首多一个 `|`」或「吞掉 `p.42.` 的点」。
+    ///     但这张图的**平均亮度是 154.4**，高于 110 → 判成「浅底，不反色」。
+    ///
+    ///   【为什么平均亮度不可靠】
+    ///     「文字只占一小块，平均亮度≈底色」这句话只在**深字浅底**时成立。
+    ///     一旦是**浅字暗底**，那一小块白字恰恰会把平均值**往上拉**，
+    ///     拉过 110 这条线，深底就被当成了浅底。
+    ///     也就是说：**判据天生只会把「浅字暗底」漏掉，而不会把「深字浅底」弄错**——
+    ///     而 C1（`#1e1e2e` 底 / `#e8e8f0` 字）那个真正需要反色的场景之所以对，
+    ///     是因为它的底本来就特别暗（平均亮度远低于 110），不是判据准。
+    ///
+    ///   【现在怎么判 —— 用图自己的数据，不拍常数】
+    ///     ① 先用 Otsu 算阈值（和二值化那一路用的是同一个 `BestThreshold`）。
+    ///     ② 再看**四边最外一圈**像素落在阈值的哪一侧——
+    ///       一行文字的上下两边几乎一定是底，左右两边最多碰到首尾两个字，
+    ///       所以这一圈是**最可靠的「底在哪一边」证据**。
+    ///     ③ 这一圈里「暗的那一侧」占七成以上 → 底是暗的、字是亮的 → **要反色**。
+    ///
+    ///   【拿四张已知图对一遍，全对】
+    ///     E5  底 155 字 255  阈值≈181  外圈在暗侧 → 反色   ← 原来判「不反色」，错
+    ///     E4  底 185 字 154  阈值≈170  外圈在亮侧 → 不反色（灰底灰字，不能反）
+    ///     白底黑字          阈值≈143  外圈在亮侧 → 不反色
+    ///     C1  底 30  字 232  阈值≈130  外圈在暗侧 → 反色   ← 原来判对，靠的是底够暗
     /// </summary>
-    public static bool NeededInversion(Bitmap source) => MeasureAverageLuminance(source) < 110;
+    public static bool NeededInversion(Bitmap source)
+        => AnalyzeBackground(source, out _, out _, out _);
+
+    /// <summary>
+    /// 判「深底还是浅底」，并且把**算出来的数字一并带出来**。
+    ///
+    /// 【为什么要把数字带出来】
+    ///   「是不是深底」这个判断是整个反色功能的命门，判错一次就等于
+    ///   **把好图喂给引擎一张坏图**，引擎表现再差也是被冤枉的。
+    ///   所以数字必须进日志，一眼就能验——原来只写「已整张反色」，
+    ///   看不出这个判断算得对不对。
+    /// </summary>
+    /// <param name="threshold">灰度这一路算出来的 Otsu 阈值。</param>
+    /// <param name="ringDark">四边最外一圈里，落在暗侧的像素有几个。</param>
+    /// <param name="ringTotal">四边最外一圈一共有几个像素。</param>
+    public static bool AnalyzeBackground(Bitmap source, out int threshold, out int ringDark, out int ringTotal)
+    {
+        threshold = 255;
+        ringDark = 0;
+        ringTotal = 0;
+        if (source is null || source.Width < 3 || source.Height < 3) return false;
+
+        // LockBits 要 32bppArgb，来源图不一定是，所以先转一张。
+        // 图很小（取词框几百×几十），多这一次转换看不出来。
+        using var argb = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(argb)) g.DrawImageUnscaled(source, 0, 0);
+
+        var counts = new int[4][];
+        var sums = new int[4][];
+        var sumSquares = new long[4][];
+        for (int p = 0; p < 4; p++)
+        {
+            counts[p] = new int[256];
+            sums[p] = new int[256];
+            sumSquares[p] = new long[256];
+        }
+        ReadPlanes(argb, counts, sums, sumSquares);
+
+        // 只用灰度这一路（索引 3）和二值化那边完全一致
+        threshold = BestThreshold(counts[3], sums[3], sumSquares[3]);
+
+        for (int y = 0; y < argb.Height; y++)
+        {
+            for (int x = 0; x < argb.Width; x++)
+            {
+                bool onEdge = x == 0 || y == 0 || x == argb.Width - 1 || y == argb.Height - 1;
+                if (!onEdge) continue;
+                Color c = argb.GetPixel(x, y);
+                int v = (c.R * 299 + c.G * 587 + c.B * 114) / 1000;
+                ringTotal++;
+                if (v <= threshold) ringDark++;
+            }
+        }
+
+        // 外圈里「暗的那一侧」占七成以上 → 底是暗的、字是亮的 → 需要反色
+        return ringTotal > 0 && ringDark * 10 >= ringTotal * 7;
+    }
 
     /// <summary>
     /// 这张图的平均亮度（0~255）。
