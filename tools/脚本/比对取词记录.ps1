@@ -59,7 +59,26 @@ param(
     #   用法：上一轮一共 N 条，判新一轮就写 -Skip N
     #   例：powershell -File 比对取词记录.ps1 -Version v0.3.2 -AnswerFile 验收标准答案.txt -Skip 17
     # ==================================================================
-    [int]$Skip = 0
+    [int]$Skip = 0,
+    # ==================================================================
+    # 【2026-10-12 新增 -逐条】稳定性统计
+    # ==================================================================
+    #   **为什么要有这个**：一段只配一条记录的判定，
+    #   **根本看不出「稳不稳」**——
+    #   E5 第一次判 ✅，看着像好的；
+    #   换个人测、再测 16 次，才发现是 8 对 8 错的抛硬币。
+    #
+    #   用户原话：「有些地方我忘了测了几遍，你自己对一下」
+    #   ——**次数不能问用户，要从记录里数出来。**
+    #
+    #   做法：**每条记录各自去找最像它的那一段**
+    #        （不占名额、不排队，所以测 5 遍的段能收下 5 条），
+    #        再按段汇总「测了几次 / 对几次 / 错几次」。
+    #
+    #   评分规则**完全复用下面那几个函数**，不另起一套——
+    #   两处各写一份的话，迟早自己跟自己打架。
+    # ==================================================================
+    [switch]$逐条
 )
 
 $ErrorActionPreference = 'Stop'
@@ -506,6 +525,71 @@ function Match-Records($answers, $records) {
 
 # ---------- 4. 输出 ----------
 $names = @($answers.Keys)
+
+# ======================================================================
+#  【-逐条】稳定性统计
+# ======================================================================
+#  每一段要不要「测几次都全对」，**光看一次的结果根本不知道**。
+#  这一段把每条记录都对回它自己那一段，再按段数次数。
+if ($逐条) {
+    $rowsS = @()
+    foreach ($k in 0..($records.Count - 1)) {
+        $rec = $records[$k]
+        $bestId = $null; $bestSim = 0.0
+        foreach ($id in $answers.Keys) {
+            $s = Get-Overlap $answers[$id] $rec.原文
+            if ($s -gt $bestSim) { $bestSim = $s; $bestId = $id }
+        }
+        if ($null -eq $bestId) { continue }
+        $r = Test-Segment $answers[$bestId] $rec.原文
+        $rowsS += [pscustomobject]@{
+            编号 = $bestId; 相似度 = $bestSim; 全对 = $r.全对
+            错词 = $r.错词; 实际 = $rec.原文; 时间 = $rec.时间
+        }
+    }
+
+    Write-Host ''
+    Write-Host "版本：$Version    记录：$([System.IO.Path]::GetFileName($recordFile))" -ForegroundColor DarkGray
+    Write-Host "稳定性统计：每条记录各自对回最像它的那一段，再按段汇总次数。" -ForegroundColor DarkGray
+    Write-Host ''
+    Write-Host '编号   测了几次   对   错   稳定吗'
+    Write-Host ('-' * 62)
+
+    foreach ($id in $names) {
+        $hits = @($rowsS | Where-Object { $_.编号 -eq $id })
+        if ($hits.Count -eq 0) {
+            Write-Host ("{0,-5} {1}" -f $id, '这轮没测') -ForegroundColor DarkGray
+            continue
+        }
+        $okN = @($hits | Where-Object { $_.全对 }).Count
+        $badN = $hits.Count - $okN
+
+        # 「稳」的判据：5 次里错 1 次，就该当成有问题看，不是「偶尔」
+        if ($okN -eq $hits.Count)      { $tag = '✅ 稳';  $col = 'Green' }
+        elseif ($badN -eq 0)           { $tag = '—';     $col = 'DarkGray' }
+        elseif ($okN -eq 0)            { $tag = '🔴 一次都没对'; $col = 'Red' }
+        elseif ($okN / $hits.Count -ge 0.8) { $tag = '🟡 大致稳'; $col = 'Yellow' }
+        else                           { $tag = '🔴 抛硬币'; $col = 'Red' }
+
+        Write-Host ('{0,-5} {1,6}  {2,4} {3,4}   {4}' -f $id, $hits.Count, $okN, $badN, $tag) `
+            -ForegroundColor $col
+
+        if ($badN -gt 0) {
+            $diffs = @($hits | Where-Object { -not $_.全对 } |
+                      ForEach-Object { ($_.错词 | Select-Object -First 3) -join '；' } |
+                      Select-Object -Unique)
+            foreach ($d in $diffs) { Write-Host ("         └ 错法：{0}" -f $d) -ForegroundColor DarkYellow }
+        }
+    }
+
+    $tot = $rowsS.Count
+    $good = @($rowsS | Where-Object { $_.全对 }).Count
+    Write-Host ''
+    Write-Host ('=' * 62)
+    Write-Host ("共 {0} 条记录：对 {1}，错 {2}" -f $tot, $good, ($tot - $good)) -ForegroundColor $(if ($good -eq $tot) { 'Green' } else { 'Yellow' })
+    exit 0
+}
+
 $match = Match-Records $answers $records
 
 Write-Host ''
