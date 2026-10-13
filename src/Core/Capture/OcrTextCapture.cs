@@ -1913,6 +1913,27 @@ internal sealed class OcrTextCapture : ITextCapture
                                         AppLogger.Info(
                                             $"第三票没有更高（{third.Confidence:F2} ≤ {chiCheck.Confidence:F2}）——" +
                                             "**平手或更差就保持原样**，不动已经对的那些段");
+
+                                        // ==========================================================
+                                        // 【2026-10-13 X2：劈词证据优先】
+                                        //   主票和第三票分数打平时本来是「不动」，
+                                        //   但 X2 就死在这：主票 0.94（拆词的错答案）
+                                        //   比第三票 0.93（对的）还高，两次实测都被这条规矩挡住。
+                                        //   → 分数不可信，但**劈词这个现象是硬的**。
+                                        // ==========================================================
+                                        if (SplitWordEvidenceFavorsCandidate(
+                                                chiText, thirdText, chiCheck.Confidence, third.Confidence))
+                                        {
+                                            AppLogger.Info(
+                                                $"【劈词证据】主票被判定劈错（主票 {chiCheck.Confidence:F2} vs 第三票 " +
+                                                $"{third.Confidence:F2}，字母数字完全一样、只差空格标点，且主票把连着的词拆开了）——" +
+                                                "采用第三票");
+                                            chiText = thirdText;
+                                            chiChars = thirdChars;
+                                            chiCheck = third;
+                                            text = thirdText;
+                                            lineCount = TextNormalizer.CountLines(thirdText);
+                                        }
                                     }
 
                                     // ==========================================================
@@ -1968,6 +1989,21 @@ internal sealed class OcrTextCapture : ITextCapture
                                             AppLogger.Info(
                                                 $"第四票没有更高（{fourth.Confidence:F2} ≤ {chiCheck.Confidence:F2}）——" +
                                                 "**平手或更差就保持原样**，不动已经对的那些段");
+
+                                            // 同上：X2 的劈词证据，第四票也适用
+                                            if (SplitWordEvidenceFavorsCandidate(
+                                                    chiText, fourthText, chiCheck.Confidence, fourth.Confidence))
+                                            {
+                                                AppLogger.Info(
+                                                    $"【劈词证据】主票被判定劈错（主票 {chiCheck.Confidence:F2} vs 第四票 " +
+                                                    $"{fourth.Confidence:F2}，字母数字完全一样、只差空格标点，且主票把连着的词拆开了）——" +
+                                                    "采用第四票");
+                                                chiText = fourthText;
+                                                chiChars = fourthChars;
+                                                chiCheck = fourth;
+                                                text = fourthText;
+                                                lineCount = TextNormalizer.CountLines(fourthText);
+                                            }
                                         }
                                     }
                                     catch (Exception ex)
@@ -2284,4 +2320,87 @@ internal sealed class OcrTextCapture : ITextCapture
             ElapsedMs = Environment.TickCount64 - start,
             Detail = detail
         };
+
+    // ==========================================================
+    // 【2026-10-13 X2 专用】劈词证据优先
+    //
+    //   X2（`版本 2.0 已于 2024 年发布 config.txt` 被读成 `config txt`）
+    //   是 V0.3.3.0 唯一判错段。病根：chi_sim 把 `config.txt` 切成了两个词，
+    //   词级自报 `【config】71.45 ｜【txt】71.45` —— 两词同分，它自己也不知道
+    //   那个点算不算分隔点。Windows 自带 OCR 每一次都读对 → **图够清楚**。
+    //
+    //   「分数更高才换」救不了：主票 0.94（拆词的错答案）比第三/四票 0.93（对的）还高，
+    //   两次实测都被挡住。→ **置信度与对错反相关，不能拿它判对错**。
+    //   但「同一个词被劈成两半」是硬证据，可以据此换票。
+    //
+    //   【四条硬门槛，缺一不换】
+    //     1. 主票必须是中文（英文句子里的 `a`/`I` 不算劈词，绝不能让这条规则碰英文）
+    //     2. 两份去掉空格和标点后，字母数字完全一样（`API` vs `APIl` 这种真差异直接挡住）
+    //     3. 分数差 < 0.02（差得多说明本来就不是同一件事，别插手）
+    //     4. 主票有「孤立短词」而候选票没有（`config txt` 的 `txt` 是，`config.txt` 里的不是）
+    //
+    //   【离线验过】tools\日志\app-20261013.log 里 47 对「主票 vs 第三票」，
+    //   23 对不一致：正向触发 13 条（全是 `config txt`→`config.txt`，全对）、
+    //   反向触发 0 条、不触发 10 条（全是真差异）。
+    //
+    //   ponytail: 只在「两个引擎读出来不一样」这个本来就在犹豫的时刻调用；
+    //   一致时一秒都不多花，识别流程和投票主干一个字没改。
+    // ==========================================================
+    private static bool SplitWordEvidenceFavorsCandidate(
+        string mainText, string candidateText, double mainConfidence, double candidateConfidence)
+    {
+        if (string.IsNullOrWhiteSpace(mainText) || string.IsNullOrWhiteSpace(candidateText)) return false;
+
+        // 门槛 1：只管中文，英文段一个都不碰
+        if (!LanguageDetector.IsMostlyChinese(mainText)) return false;
+
+        // 门槛 2：字母数字必须完全一样（真差异在这里就被挡住了）
+        if (LettersAndDigitsOnly(mainText) != LettersAndDigitsOnly(candidateText)) return false;
+
+        // 门槛 3：分数接近才说明本来就在争同一件事
+        if (Math.Abs(mainConfidence - candidateConfidence) >= 0.02) return false;
+
+        // 门槛 4：主票把连着的词劈开了，候选票没有
+        return HasIsolatedShortWord(mainText) && !HasIsolatedShortWord(candidateText);
+    }
+
+    /// <summary>
+    /// 只保留字母和数字（汉字也算字母）。用来判断两份文本「说的是不是同一堆字」。
+    /// </summary>
+    private static string LettersAndDigitsOnly(string text)
+    {
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (char c in text)
+        {
+            if (char.IsLetterOrDigit(c)) sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// 有没有「孤立单词」：整个词就是 1~3 个拉丁字母。
+    /// `config txt` 里的 `txt` 算，`config.txt` 里的不算（跟 config 连着）。
+    /// 必须先按空白切开再判整词——直接全文匹配会把 `config` 切成 con/fig，
+    /// 两边都命中，这条规则就永远不触发（已踩过）。
+    /// </summary>
+    private static bool HasIsolatedShortWord(string text)
+    {
+        foreach (string raw in text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+        {
+            int start = 0, end = raw.Length;
+            while (start < end && !char.IsLetterOrDigit(raw[start])) start++;
+            while (end > start && !char.IsLetterOrDigit(raw[end - 1])) end--;
+            if (end <= start) continue;
+
+            bool allLatin = true;
+            for (int i = start; i < end; i++)
+            {
+                char c = raw[i];
+                if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) { allLatin = false; break; }
+            }
+            // 长度 1~3 且全是拉丁字母
+            if (allLatin && end - start <= 3) return true;
+        }
+        return false;
+    }
 }
