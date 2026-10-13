@@ -1,0 +1,8 @@
+时间: 14:04:13
+通道: WindowsOcr
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 不是中文，但 Tesseract 没认出内容，保留 Windows 自带
+字数: 124
+原文: ThiS is deliberately IOW contrast text on a grey background, which is one Of the hardest ca ses for a ny recognition engtne.
+##### 记录结束 #####
