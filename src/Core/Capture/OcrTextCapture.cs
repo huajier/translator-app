@@ -310,6 +310,20 @@ internal sealed class OcrTextCapture : ITextCapture
                     var second = await RecognizeOnce(engine, upscaled, cancellationToken).ConfigureAwait(false);
                     int secondChars = TextNormalizer.CountMeaningfulChars(second.Text);
 
+                    // 【2026-10-13 只加日志，不改逻辑】
+                    //   为什么加：复测 7 段（灰底灰字/橙底绿字/英俄混排）21 次全错，
+                    //   日志里却出现矛盾的两行——
+                    //     「两遍比分：原图 0 分（0 字），二值化版 228 分（100 字）」
+                    //     「四路之一「灰度」：置信度 0.00，内容【】」
+                    //   也就是「放大 2 倍 + 二值化」这张图上 **Tesseract 认出过 100 个字**，
+                    //   但最后挑结果用的是六路通道的 best（全 0 字），
+                    //   那 100 个字在 OcrTextCapture.cs:1595 被覆盖丢弃了（`text = cleanedTess`）。
+                    //   **但日志没记第二遍的原文，没法证明那 100 个字是准的还是垃圾**——
+                    //   两套都瞎和「对的结果被丢掉」，改法完全不同。
+                    //   所以先把第二遍原文打出来，重测一次就能定。
+                    AppLogger.Info($"第二遍原文：{Preview(second.Text)}" +
+                                   $"（人话分 {OcrQualityScorer.Score(second.Text)}，置信度 {second.Confidence:F2}，仅记录）");
+
                     // 【2026-10-08 改动：择优判据改了两次，最终结论记在这里】
                     //
                     //   ① 原来判据是「第二遍字多就用第二遍」。

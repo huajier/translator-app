@@ -1,0 +1,11 @@
+# 复测材料 · 标准答案（2026-10-13 WindowsOcr 那 7 段）· 比对时用，请勿修改
+# 每段实测 3 次，共 21 条记录。
+# ⚠️ 已知坑：T7 的原文是 T1 的前缀，脚本贪心配对可能把两者搞混。
+#    跑完比对脚本后，务必人工按时间顺序再核一遍。
+T1|This is deliberately low contrast text on a grey background, which is one of the hardest cases for any recognition engine.
+T2|Ошибка 404 (страница не найдена): файл не найден
+T3|Съешь же ещё этих мягких французских булок да выпей чаю
+T4|Обновите ПО до версии 2.0 и перезапустите config.txt
+T5|Версия 1.2.3, ошибка 500, попробуйте позже
+T6|使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布。
+T7|This is deliberately low contrast text on a grey background.

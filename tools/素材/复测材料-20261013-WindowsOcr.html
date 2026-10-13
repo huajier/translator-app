@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>翻译软件 · 复测材料（2026-10-13 Windows 那 7 段）</title>
+<style>
+body { font-family: "Segoe UI", Arial, sans-serif; background:#f0f0f0; color:#111;
+       margin:0; padding:20px; }
+h1   { font-size:20px; margin:0 0 4px; }
+.note { font-size:13px; color:#555; margin:0 0 10px; max-width:1400px; line-height:1.7; }
+.note b { color:#b00020; }
+.blk { border-radius:6px; padding:14px 16px; margin:0 0 16px; position:relative; }
+.tag { font-size:12px; font-weight:bold; color:#fff; background:#333;
+       display:inline-block; padding:2px 9px; border-radius:4px; margin:0 0 9px; }
+p { font-size:15px; line-height:1.7; margin:0 0 6px; }
+.ar { font-family:Arial,sans-serif; font-size:20px; }
+
+/* 沿用 验收材料2-实战版.html 的底色，一个像素都没改 */
+.g3 { background:#ff8c00; color:#00e676; }   /* 橙底绿字 */
+.g4 { background:#b9b9b9; color:#9a9a9a; }   /* 灰色底 + 低对比度文字（和材料3 的 .g-grey 同值） */
+</style>
+</head>
+<body>
+
+<h1>复测材料 · 这 7 段</h1>
+<p class="note">
+<b>怎么用（一步一步）</b>：双击这个文件用浏览器打开 → 用鼠标框住下面每一段<b>文字</b>（不要框上面的编号标签）
+→ <b>每一段请连着测 3 次</b>，框松一点、离字的边留点空，别正好压在笔画上。<br>
+<b>为什么只有 7 段</b>：上一次测 61 段，有 7 段读错了，错法全是同一个——系统自带的那套 OCR 抢赢了的时候读出来的。
+我们要确认这 7 段到底是「每次都坏」还是「时好时坏」，所以每段测 3 次。测完在
+<b>tools\脚本\比对取词记录.ps1</b> 跑一遍，或者直接告诉我「测完了」。
+</p>
+
+<!-- ============ 7 段 · 底色和原样一模一样 ============ -->
+<div class="blk g4">
+  <span class="tag">T1 · 来自材料2 E4 · 低对比灰底 · 英文长句 · 测 3 次</span>
+  <p>This is deliberately low contrast text on a grey background, which is one of the hardest cases for any recognition engine.</p>
+</div>
+
+<div class="blk g3">
+  <span class="tag">T2 · 来自材料2 R3 · 橙底绿字 · 俄文 · 测 3 次</span>
+  <p>Ошибка 404 (страница не найдена): файл не найден</p>
+</div>
+
+<div class="blk g4">
+  <span class="tag">T3 · 来自材料2 R4 · 低对比灰底 · 俄文 · 测 3 次</span>
+  <p>Съешь же ещё этих мягких французских булок да выпей чаю</p>
+</div>
+
+<div class="blk g4">
+  <span class="tag">T4 · 来自材料2 R8 · 低对比灰底 · 俄文夹版本号 · 测 3 次</span>
+  <p>Обновите ПО до версии 2.0 и перезапустите config.txt</p>
+</div>
+
+<div class="blk g3">
+  <span class="tag">T5 · 来自材料2 R9 · 橙底绿字 · 俄文夹数字 · 测 3 次</span>
+  <p>Версия 1.2.3, ошибка 500, попробуйте позже</p>
+</div>
+
+<div class="blk g4">
+  <span class="tag">T6 · 来自材料2 Z3 · 低对比灰底 · 中文 · 测 3 次</span>
+  <p>使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布。</p>
+</div>
+
+<div class="blk g4">
+  <span class="tag">T7 · 来自材料3 C2 · 低对比灰底 · Arial 20px · 测 3 次</span>
+  <p class="ar">This is deliberately low contrast text on a grey background.</p>
+</div>
+
+</body>
+</html>
