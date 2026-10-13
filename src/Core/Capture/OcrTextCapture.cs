@@ -256,7 +256,16 @@ internal sealed class OcrTextCapture : ITextCapture
                            $"{LanguageDetector.Describe(first.Text)}，" +
                            $"有效字符 {TextNormalizer.CountMeaningfulChars(first.Text)} 个");
             // 把识别到的原文记进日志：不然「读不全」这类问题根本没法定位
-            AppLogger.Info($"第一遍原文：{Preview(first.Text)}");
+            //
+            // 【2026-10-13 加了分数】
+            //   为什么要单独打第一遍的分数：`shouldUpscale = false`（英文段落）时
+            //   根本不会跑第二遍，下面「两遍比分」那行也就不会打，
+            //   于是**英文段落的 Windows 第一遍从来没被记过分**。
+            //   而 V0.3.2.7 那版比的是 `text`，它有可能已经是第二遍了（见一百二十五节），
+            //   分不清是哪一遍，所以这里把**第一遍原样**记一份。
+            //   **只记分，不参与任何选择。**
+            AppLogger.Info($"第一遍原文：{Preview(first.Text)}" +
+                           $"（人话分 {OcrQualityScorer.Score(first.Text)}，仅记录）");
 
             // 5) 要不要再放大重认一遍？两种情况：
             //
@@ -1579,8 +1588,9 @@ internal sealed class OcrTextCapture : ITextCapture
                                 // 【2026-10-13】两个引擎在这一张图上各自的表现。
                                 // 只记下来做对比，**不参与选择**（理由见上面 windowsScoreForCompare 的注释）。
                                 AppLogger.Info($"两个引擎的比分（仅记录，不参与选择）：" +
-                                               $"Windows {windowsScoreForCompare} 分（{windowsCharsForCompare} 字）；" +
-                                               $"Tesseract {OcrQualityScorer.Score(cleanedTess)} 分（{tessChars} 字，置信度 {best.Confidence:F2}）");
+                                               $"Windows 用的是{note}：{windowsScoreForCompare} 分（{windowsCharsForCompare} 字）；" +
+                                               $"Tesseract：{OcrQualityScorer.Score(cleanedTess)} 分（{tessChars} 字，置信度 {best.Confidence:F2}）" +
+                                               $"；Windows 第一遍原始得分 {OcrQualityScorer.Score(first.Text)}（{TextNormalizer.CountMeaningfulChars(first.Text)} 字）");
 
                                 text = cleanedTess;
                                 lineCount = TextNormalizer.CountLines(cleanedTess);
