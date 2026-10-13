@@ -15,6 +15,7 @@
   2. dotnet publish → 输出到 release\v<版本号>\
   3. 检查并去掉新文件可能带上的「强制完整性标签」
   3.5 确保托盘图标 assets\tray.ico 真的在发布目录里（否则退回白图标）
+  3.7 把 x64\ 下的原生库强制换成 Tesseract 5.5.3，并当场核对版本
   4. 确认 exe 存在，并核对编译输出里确实 0 错误 0 警告
 
 【第 3 步为什么重要 —— 阶段 1 踩过的真坑】
@@ -122,6 +123,54 @@ if (-not (Test-Path $icoDst)) {
 }
 $icoSize = (Get-Item $icoDst).Length
 Write-Host "托盘图标已就位：$icoDst （$icoSize 字节）" -ForegroundColor Green
+
+# ---- 第 3.7 步：把原生库换成 Tesseract 5.5.3 ----
+# 【这一段是被一次「假记录」逼出来的，动手前先读完】
+#
+#   NuGet 包 Tesseract 5.2.0 自带的原生库是 **5.0.0**，
+#   每次 dotnet publish 都会把它原样拷进 x64\，**无条件覆盖**。
+#   2026-10-12 我们手工把 5.5.3 拷进过发布目录，那一次日志确实读到
+#   `v5.5.3.20260724`，成绩也确实好过（D1 5/5 全对）。
+#   但从当天 10:38 起，日志里每一行又变回了 `5.0.0`，一直到今天都没恢复 ——
+#   **原因就是下一次构建把它盖回去了**。
+#   我们自己在 progress.md 上写的「引擎升级 Tesseract 5.5.3 ✅ 稳定」是**假的**：
+#   从来没有在正式版本里生效过。
+#
+#   所以：5.5.3 不能再「构建完手工拷」，必须**由构建脚本保证**。
+#   源目录 assets\引擎\tesseract-5.5.3-win\（不入 Git），
+#   拷完当场把 DLL 里的版本字符串读出来核对，对不上直接 exit 1。
+#   ——宁可停下来报错，也不要交一个「文件名写着 5.5.3、里面其实是 5.0.0」的产物。
+$engineSrc = Join-Path $root 'assets\引擎\tesseract-5.5.3-win'
+if (-not (Test-Path $engineSrc)) {
+    Write-Host ""
+    Write-Host "致命：找不到引擎源目录 $engineSrc" -ForegroundColor Red
+    Write-Host "      没有它，构建出来的就是 NuGet 自带的 5.0.0（历史上就是这么悄悄退回去的）。" -ForegroundColor Red
+    exit 1
+}
+
+$engineDst = Join-Path $outDir 'x64'
+Write-Host "第 3.7 步：把原生库换成 Tesseract 5.5.3（来源 $engineSrc）……"
+# 先整个删掉 x64 目录：5.5.3 的依赖集合和 5.0 那套不一样
+# （5.5.3 要的是 libleptonica-6.dll，还带一整排 libgcc/libstdc++ 等），
+# 混着放等于「新 leptonica + 旧 tesseract」拼接，引擎会起不来。
+if (Test-Path $engineDst) {
+    Remove-Item $engineDst -Recurse -Force
+}
+Copy-Item $engineSrc $engineDst -Recurse -Force
+
+# 当场核对引擎真实版本：直接从拷进去的 DLL 字节里找版本串
+$tessDll = Join-Path $engineDst 'tesseract50.dll'
+$bytes = [System.IO.File]::ReadAllBytes($tessDll)
+$text = -join ($bytes | ForEach-Object { if ($_ -ge 32 -and $_ -lt 127) { [char]$_ } else { "`n" } })
+$ver = [regex]::Match($text, "v5\.\d+\.\d+\.\d+").Value
+$lep = Test-Path (Join-Path $engineDst 'libleptonica-6.dll')
+Write-Host "  引擎版本（从 DLL 里读出来的，不是文件名）：$ver"
+Write-Host "  libleptonica-6.dll：$(if ($lep) { '在' } else { '不在 ❌' })"
+if ($ver -notlike 'v5.5.3*' -or -not $lep) {
+    Write-Host ""
+    Write-Host "致命：产物里的引擎不是 5.5.3（读出来是 '$ver'），构建中止。" -ForegroundColor Red
+    exit 1
+}
 
 # ---- 第 4 步：确认 exe 存在 ----
 $exe = Join-Path $outDir 'TranslatorApp.exe'
