@@ -759,13 +759,19 @@ public partial class App : System.Windows.Application
     private static string GetVersion()
     {
         var v = Assembly.GetEntryAssembly()?.GetName().Version;
-        if (v == null) return "v0.3.2";
+        if (v == null) return "v0.3.2.10";
 
         // 【2026-10-10 顺带修的老毛病】
         //   原来只显示 `v{Major}.{Minor}`，也就是 **v0.3.1 和 v0.3.2 显示出来一模一样**。
         //   我们一版一版地改、一版一版地测，结果用户看到的版本号根本分不出来是哪一版——
         //   **测的是哪一版都说不清，出了问题也对不上号。**
         //   修订号（Patch）现在也显示出来。
-        return $"v{v.Major}.{v.Minor}.{v.Build}";
+        //
+        // 【2026-10-13 再修一次：第 4 段从来没显示过】
+        //   上一条只补到了第 3 段（`v.Build`），可我们的版本号有**四段**（第 4 段是「内部小更新号」）。
+        //   结果 V0.3.2.3 ~ V0.3.2.9 的窗口标题、弹窗内容、任务栏标题、小图标标题
+        //   **全都写着 `v0.3.2`，长得一模一样**（用户 2026-10-13 报的）。
+        //   第 4 段在 .NET 里叫 `Revision`，现在一起显示出来。
+        return $"v{v.Major}.{v.Minor}.{v.Build}.{v.Revision}";
     }
 }
