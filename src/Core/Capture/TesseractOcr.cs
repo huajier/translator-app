@@ -101,12 +101,17 @@ internal sealed class TesseractOcr
     /// </summary>
     private const string PageSegModeUniformBlock = "6";
 
-    /// <summary>
-    /// tesseract 的灰度转二值算法：2 = Sauvola（局部自适应阈值）。
-    /// 默认是 0（全局 Otsu）。只有 0/1/2 三个有效值，填别的会被当成 1 处理。
-    /// 详细作用范围见 <see cref="GetEngine"/> 里那段注释。
-    /// </summary>
-    private const string ThresholdMethodSauvola = "2";
+    // ⚠️ 【thresholding_method 不能改成 Sauvola（2）——2026-10-13 实测证伪】
+    //   V0.3.2.11 曾经在这里设过 thresholding_method = 2，想治 E6「末尾少读」。
+    //   结果：E6 修好了（6/6），但**低对比度底色整片报废**——
+    //   灰底灰字（底 185 / 字 154，只差 31）和橙底绿字（灰度上只差 10）
+    //   这类「平坦、起伏极小」的图，Sauvola 会把阈值压到局部均值以下，
+    //   连字带底一起判成白色 → **字直接消失 → Tesseract 0.00 置信度、0 个字**。
+    //   同一张灰底灰字图：V0.3.2.10 Tesseract 置信度 0.96 / 123 字全对，
+    //   V0.3.2.11 八条路全空，成绩单从 55/56 掉到 49/56。
+    //   → 保持 tesseract 的默认值 0（全局 Otsu），谁再动这里先去看这条。
+    //   注：ImagePreprocessor 里第五路「局部阈值」用的是我们自己写的 Sauvola，
+    //   那是另一回事（自己切完再喂给引擎），不受这条影响。
 
     public static bool IsAvailable
     {
@@ -388,43 +393,6 @@ internal sealed class TesseractOcr
                 catch (Exception ex)
                 {
                     AppLogger.Warn($"配置项 tessedit_pageseg_mode 设置失败（模型 {language}）：" +
-                                   $"{ex.GetType().Name} {ex.Message}");
-                }
-
-                // ==========================================================
-                // 【要治的病：E6 有时「末尾少读几个字」，比如 text. 变成 e 或 €】
-                //   本来默认是 0（全局 Otsu），全局阈值遇到背景不均匀就容易把
-                //   局部对比拉低，导致靠边那一小块被判成背景、压根不进识别范围。
-                //   2 = Sauvola 局部自适应，官方 man page 的说明是
-                //   「2 = Sauvola local adaptive thresholding
-                //     (best for heavily degraded documents)」。
-                //
-                // 【效果的范围要说清楚，别指望过头】
-                //   man page 给这行标的适用引擎是 **Both**，所以 LSTM 下也生效。
-                //   但源码里二值图主要是给**版面分析**用的（找行、找词框、
-                //   决定哪块送进识别），而 LSTM 真正吃进去的像素走的是
-                //   Tesseract::BestPix()（灰度/原图），**不是这张二值图**。
-                //   → 它的作用是「别把靠边那块丢掉」，**不是**「让网络看得更清楚」。
-                //   如果这轮 E6 还是老样子，就能确定地排除这条路了。
-                //
-                // 【为什么这次敢单独试】
-                //   一轮只改一条，跟 psm 那次一个规矩；而且日志能逐次看清
-                //   每次识别的结果，真出问题一眼能定位。
-                //
-                // 【为什么不一起调窗口大小和 kfactor】
-                //   官方配套参数 thresholding_window_size / thresholding_kfactor
-                //   有自己的默认值，填错比不填更容易出事，留着以后真需要再单试。
-                //
-                // 【别填 3】
-                //   源码里只有 0/1/2 三个有效值，越界会被当成 1（LeptonicaOtsu）处理。
-                // ==========================================================
-                try
-                {
-                    engine.SetVariable("thresholding_method", ThresholdMethodSauvola);
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.Warn($"配置项 thresholding_method 设置失败（模型 {language}）：" +
                                    $"{ex.GetType().Name} {ex.Message}");
                 }
 
