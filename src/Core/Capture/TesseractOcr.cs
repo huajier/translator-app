@@ -95,6 +95,12 @@ internal sealed class TesseractOcr
     ///   开关语义已改为「强制只用 Windows 自带（用于对照排查）」，
     ///   默认 false，也就是走新的分工。
     /// </summary>
+    /// <summary>
+    /// tesseract 的切行方式：6 = Assume a single uniform block of text（一整块整齐的文字）。
+    /// 为什么不是 7（单独一行）见 <see cref="GetEngine"/> 里那段注释。
+    /// </summary>
+    private const string PageSegModeUniformBlock = "6";
+
     public static bool IsAvailable
     {
         get
@@ -226,40 +232,10 @@ internal sealed class TesseractOcr
             minWordConfidence = LogWordSelfReport(page, language);
             }   // ← page 到这里已经释放，下面才可以再喂图给同一个引擎
 
-            // ==========================================================
-            // 【2026-10-12 第二段诊断：补跑几路，把每一路都打出来】
-            //
-            //   【这一段要回答的问题】
-            //     「认出来有个词分数是 0.00」这件事我们已经知道了（上一段量出来的）。
-            //     **但接下来挑哪一份，还是没答案。**
-            //
-            //     B3 的教训摆在那儿：四路里分数更高的那份**反而是全错的**，
-            //     「分数高就用分数高」会把已经认对的换错。
-            //     → 所以在定「投票怎么投」之前，得先看清楚一件事实：
-            //       **真到了要投票的时候，几路里面到底有没有一份是对的？**
-            //
-            //     · 有一份对的 → 投票有意义，值得继续往下做。
-            //     · 一份对的都没有 → 投票就是白折腾，得换别的思路（比如改预处理）。
-            //
-            //   【所以这次严格只打日志，一个字都不改】
-            //     补跑的几路**只打印**，结果**不用来替换**现有结果，
-            //     选哪一份仍旧走原来那套规则。
-            //     这样测出来的成绩**和现在完全一样**，不会把别的地方弄坏。
-            //
-            //   【什么时候才补跑】
-            //     只在**最低词级分低于 50** 时才花这个时间（约 0.7 秒）。
-            //     E6 全对的 5 次最低分是 95.90~96.07，**一次都不会触发**。
-            //     → 平时不拖慢速度，只有明显不对劲的时候才多看几眼。
-            //
-            //   【必须在 page 释放之后才跑】
-            //     引擎一次只能处理一张图。v0.3.5 把这段写在 page 还没释放的时候，
-            //     **六路全部报「Only one image can be processed at once」、一路没跑成**，
-            //     白费了用户一整轮实测。这个位置是照着那句报错改的。
-            // ==========================================================
-            if (minWordConfidence.HasValue && minWordConfidence.Value < LowWordConfidenceThreshold)
-            {
-                LogChannelVotes(bitmap, language, minWordConfidence.Value);
-            }
+            // 【2026-10-13 撤掉了原来的「补跑几路」诊断】
+            //   那段会在最低词级分低于 50 时**另外多跑 6 次识别**，
+            //   实测让一次取词从 31 毫秒涨到 3797 毫秒，而结果**一律不作数**。
+            //   理由和教训写在文件末尾那段注释里。
 
             return string.IsNullOrWhiteSpace(text)
                 ? new Result(null, 0)
@@ -364,6 +340,47 @@ internal sealed class TesseractOcr
                 catch (Exception ex)
                 {
                     AppLogger.Warn($"配置项 classify_enable_learning 设置失败（模型 {language}）：" +
+                                   $"{ex.GetType().Name} {ex.Message}");
+                }
+
+                // ==========================================================
+                // 【2026-10-13 第一次单独试这个开关：tessedit_pageseg_mode = 6】
+                //
+                //   【它是什么】
+                //     官方参数 `tessedit_pageseg_mode`（简称 psm），决定引擎**怎么切行**。
+                //     我们没设过，走的是默认的 3（PSM_AUTO_FULLPAGE）——
+                //     引擎会把图当成「一整页」，自己去猜版面有几个块。
+                //
+                //   【为什么改成 6】
+                //     我们喂进去的**永远是用户框出来的一块**，不是整页：
+                //       3 = 当成一整页，自己猜版面
+                //       6 = 当成**一整块整齐的文字**（官方对「裁剪出来的一块」的推荐）
+                //       7 = 当成**单独一行**
+                //     选 6 而不是 7：用户经常框两三行（材料1 的长段落就是两行），
+                //     psm 7 遇到多行会**只取一行**，把别的行丢掉。
+                //
+                //   【要治的病：E6 的「editable 被劈成 edi able」】
+                //     劈词是**空格插在哪**的问题，而空格位置正是由切行/分段决定的。
+                //     官方 ImproveQuality 页建议截图类小区域改用 psm 7/13。
+                //     **改 psm 属于「从源头改」**，比事后投票便宜得多。
+                //
+                //   【为什么这次敢单独试】
+                //     v0.3.1 那次一次改了五样（PSM、放大倍数、模型、白边、DPI），
+                //     结果英文模型从 0.95 掉到过不了门槛，**说不清是哪样害的**——
+                //     所以那一版把 PSM 撤了（见上面那段注释）。
+                //     这一轮**只动 psm 这一条**，而且现在日志能逐次看清每次识别的结果，
+                //     真出问题一眼就能定位。
+                //
+                //   【官方文档里 LSTM 引擎是支持的】
+                //     man page 给每个参数标了适用引擎，`tessedit_pageseg_mode` 标的是 **Both**。
+                // ==========================================================
+                try
+                {
+                    engine.SetVariable("tessedit_pageseg_mode", PageSegModeUniformBlock);
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn($"配置项 tessedit_pageseg_mode 设置失败（模型 {language}）：" +
                                    $"{ex.GetType().Name} {ex.Message}");
                 }
 
@@ -555,67 +572,23 @@ internal sealed class TesseractOcr
     }
 
     // ==============================================================
-    // 【2026-10-12 只加日志、不改行为：最低词级分太低时，补跑几路看看】
+    // 【2026-10-13 撤掉「补跑几路」诊断】
     //
-    //   触发门槛：这一句里分数最低的那个词低于 50 分。
-    //   数据依据（用户 2026-10-12 实测 20 次）：
-    //     出现 0.00 的 4 次，全错；
-    //     全对的 E6 五次，最低分 95.90~96.07，**一次都不触发**。
+    //   这段是我为了查「几路里到底有没有一份是对的」临时加的：
+    //   一旦最低词级分低于 50，就**另外多跑 6 次识别**（红/绿/蓝/灰度/局部阈值/红通道不二值化），
+    //   每路一次 200~450 毫秒，**结果只打印、一律不作数**。
     //
-    //   补跑的是四路（红/绿/蓝/灰度/局部阈值）加「红通道不二值化」，
-    //   **每一路的结果只打印，不参与挑选**——
-    //   现在挑哪一份仍旧走原来那套规则，所以成绩和现在完全一样。
-    //   这一步只为了回答一个问题：**几路里到底有没有一份是对的。**
+    //   实测代价（用户 2026-10-13 测三份材料时发现「识别变得好长」）：
+    //     `总耗时=3797 毫秒（识别耗时 31 毫秒）`
+    //   ——真正的识别只用 31 毫秒，**3700 毫秒全花在这次诊断上**。
+    //
+    //   结论已经拿到了：三份材料整体过完（材料1 11/11、材料2 18/20、材料3 25/25），
+    //   而「正确答案一直在候选里、被择优规则丢掉」这件事，
+    //   在 B3、E5 上早就各有一次实例佐证，不需要再靠补跑来发现。
+    //   → **整段删除**。识别速度回到真实耗时。
+    //
+    //   保留的还有 `LogWordSelfReport`（词级自报）——
+    //   它是在原来那一趟遍历里顺手取最低分，**不多跑一次识别**，没有速度代价，
+    //   而且「某个词分数 0.00 → 那次一定错」这条是用户实测出来的硬事实。
     // ==============================================================
-    private const double LowWordConfidenceThreshold = 50.0;
-
-    /// <summary>重入保护：补跑的那几路自己也会调 TryRecognize，不能再往下钻，不然会无限套娃。</summary>
-    private static bool _insideChannelVotes;
-
-    private static void LogChannelVotes(System.Drawing.Bitmap bitmap, string language, double minWordConfidence)
-    {
-        if (_insideChannelVotes) return;
-        _insideChannelVotes = true;
-
-        try
-        {
-            AppLogger.Info(
-                $"═══ 补跑几路（只看不换）：这一句最低词级分只有 {minWordConfidence:F2}，" +
-                $"说明**有字没认出来**。下面每一路认出了什么，**只打印，不影响结果** ═══");
-
-            var names = new[] { "红通道", "绿通道", "蓝通道", "灰度", "局部阈值" };
-            System.Drawing.Bitmap[] planes = ImagePreprocessor.PrepareAllPlanes(bitmap);
-
-            try
-            {
-                for (int i = 0; i < planes.Length; i++)
-                {
-                    var r = TryRecognize(planes[i], language);
-                    AppLogger.Info(
-                        $"  补跑·{names[i]}：分数 {r.Confidence:F2}，最低词级分 {r.MinWordConfidence:F2}，" +
-                        $"内容【{(r.Text ?? "").Replace("\n", " ")}】");
-                }
-
-                using var redGray = ImagePreprocessor.PrepareRedChannelGray(bitmap);
-                var gray = TryRecognize(redGray, language);
-                AppLogger.Info(
-                    $"  补跑·红通道不二值化：分数 {gray.Confidence:F2}，最低词级分 {gray.MinWordConfidence:F2}，" +
-                    $"内容【{(gray.Text ?? "").Replace("\n", " ")}】");
-            }
-            finally
-            {
-                foreach (var p in planes) p?.Dispose();
-            }
-
-            AppLogger.Info("═══ 补跑结束：以上各路**一律不作数**，选哪一份仍旧按原来的规矩 ═══");
-        }
-        catch (Exception ex)
-        {
-            AppLogger.Warn($"补跑几路没跑成（不影响识别）：{ex.GetType().Name} {ex.Message}");
-        }
-        finally
-        {
-            _insideChannelVotes = false;
-        }
-    }
 }
