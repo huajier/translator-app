@@ -17,6 +17,8 @@ internal static class Program
 
         Console.WriteLine($"原图 {src.Width}×{src.Height}，平均亮度 {ImagePreprocessor.MeasureAverageLuminance(src):F1}，" +
                           $"要不要整张反色 = {ImagePreprocessor.NeededInversion(src)}");
+        ReportRing("原图", src);
+        ReportRowProfile("原图", src);
 
         // 跟识别流程一致：放大 2 倍并转灰度
         using var big = (Bitmap)ImagePreprocessor.UpscaleForForeign(src);
@@ -107,5 +109,33 @@ internal static class Program
         }
         Console.WriteLine($"  {name,-14} {bmp.Width}×{bmp.Height}  黑 {(100.0 * black / count):F2}%  " +
                           $"白 {(100.0 * white / count):F2}%  平均亮度 {sum / (double)count:F1}");
+    }
+
+    /// <summary>用主项目真正那个判据算一遍：阈值是多少、四边最外一圈有多少落在暗侧。</summary>
+    private static void ReportRing(string name, Bitmap bmp)
+    {
+        bool need = ImagePreprocessor.AnalyzeBackground(bmp, out int threshold, out int ringDark, out int ringTotal);
+        Console.WriteLine($"  [{name}] 反色判据：阈值 {threshold}，四边最外一圈暗侧 {ringDark}/{ringTotal}" +
+                          $"（{100.0 * ringDark / Math.Max(1, ringTotal):F1}%）→ {(need ? "反色" : "不反色")}");
+    }
+
+    /// <summary>横向亮度剖面：每 1/10 宽度取一列的平均亮度，看背景是不是渐变。</summary>
+    private static void ReportRowProfile(string name, Bitmap bmp)
+    {
+        var parts = new System.Collections.Generic.List<string>();
+        for (int k = 0; k < 10; k++)
+        {
+            int x0 = bmp.Width * k / 10, x1 = Math.Max(x0 + 1, bmp.Width * (k + 1) / 10);
+            long sum = 0, n = 0;
+            for (int x = x0; x < x1; x++)
+                for (int y = 0; y < bmp.Height; y++)
+                {
+                    Color c = bmp.GetPixel(x, y);
+                    sum += (c.R * 299 + c.G * 587 + c.B * 114) / 1000;
+                    n++;
+                }
+            parts.Add($"{(sum / (double)n):F0}");
+        }
+        Console.WriteLine($"  [{name}] 从左到右十段的平均亮度：{string.Join("  ", parts)}");
     }
 }
