@@ -162,7 +162,7 @@ Copy-Item $engineSrc $engineDst -Recurse -Force
 $tessDll = Join-Path $engineDst 'tesseract50.dll'
 $bytes = [System.IO.File]::ReadAllBytes($tessDll)
 $text = -join ($bytes | ForEach-Object { if ($_ -ge 32 -and $_ -lt 127) { [char]$_ } else { "`n" } })
-$ver = [regex]::Match($text, "v5\.\d+\.\d+\.\d+").Value
+$ver = [regex]::Match($text, "v5\.5\.3\.\d{8}").Value
 $lep = Test-Path (Join-Path $engineDst 'libleptonica-6.dll')
 Write-Host "  引擎版本（从 DLL 里读出来的，不是文件名）：$ver"
 Write-Host "  libleptonica-6.dll：$(if ($lep) { '在' } else { '不在 ❌' })"
