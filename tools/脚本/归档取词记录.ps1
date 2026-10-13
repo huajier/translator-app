@@ -40,13 +40,14 @@ foreach ($f in $existing) {
 $moved = 0
 foreach ($f in @(Get-ChildItem $logDir -Filter '取词记录-*.txt' -EA SilentlyContinue)) {
 
-    # 指纹 = 这份记录前 20 行的内容。
-    # 同一份记录已经归档过就跳过，避免每发布一次就多出一份重复文件。
-    $newPrint = ((Get-Content $f.FullName -Encoding UTF8 -TotalCount 20) -join '|')
+    # 指纹 = 整份内容的哈希。
+    # ponytail: 原来只比前 20 行，同一天的记录文件后面追加了新记录也算「一样」，
+    # 结果 2026-10-13 那 24 条从没被归档过。整份比才靠得住（32KB 的文件算哈希不费时间）。
+    $newPrint = (Get-FileHash $f.FullName -Algorithm SHA256).Hash
 
     $already = $false
     foreach ($e in $existing) {
-        $oldPrint = ((Get-Content $e.FullName -Encoding UTF8 -TotalCount 20) -join '|')
+        $oldPrint = (Get-FileHash $e.FullName -Algorithm SHA256).Hash
         if ($oldPrint -eq $newPrint) { $already = $true; break }
     }
     if ($already) { continue }
