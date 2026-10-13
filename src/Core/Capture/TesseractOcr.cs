@@ -275,6 +275,16 @@ internal sealed class TesseractOcr
         public const string English = "eng";
         public const string Chinese = "chi_sim";
 
+        /// <summary>
+        /// 中文里夹拉丁文件名/数字时用（用户 2026-10-13 要求修的场景）。
+        /// **跟 <see cref="RussianPlusEnglish"/> 是同一个道理**：chi_sim 把
+        /// `版本 2.0 已于 2024 年发布 config.txt` 里的 `config.txt` 拆成
+        /// `config` + `txt` 两个词（两个词分数一模一样 71.45，等于它自己
+        /// 也不知道那点算不算）；挂上英文表之后这一段才有机会当成一个整词。
+        /// 中文仍由 chi_sim 负责，所以中文能力不受影响。
+        /// </summary>
+        public const string ChinesePlusEnglish = "chi_sim+eng";
+
         /// <summary>三种一起挂。只在「不知道是什么语种」时才用。</summary>
         public const string All = "chi_sim+eng+rus";
     }

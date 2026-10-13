@@ -1914,6 +1914,67 @@ internal sealed class OcrTextCapture : ITextCapture
                                             $"第三票没有更高（{third.Confidence:F2} ≤ {chiCheck.Confidence:F2}）——" +
                                             "**平手或更差就保持原样**，不动已经对的那些段");
                                     }
+
+                                    // ==========================================================
+                                    // 【2026-10-13 材料 3 的 X2：第四证人——chi_sim+eng】
+                                    //
+                                    //   X2（`版本 2.0 已于 2024 年发布 config.txt`）撤回 Sauvola 后
+                                    //   实测 8 次错 6 次，错法一模一样：chi_sim 把 `config.txt`
+                                    //   拆成 `config` + `txt` 两个词，**两个词分数一模一样（71.45）**，
+                                    //   等于它自己也不知道那个点算不算分隔点。
+                                    //   红通道第三票救回过 4 次，剩下那几次红通道也拆开了、
+                                    //   两票平手，救不回来——**候选里根本没有全对的那一份**。
+                                    //
+                                    //   【为什么该挂英文表，而不是改别的】
+                                    //     Windows 自带 OCR **每一次都把 `config.txt` 读对**，
+                                    //     它只是把中文的 `2.0` 读成 `2 ℃` 才被整份丢掉。
+                                    //     → 图本身够清楚，任何「以拉丁为主」的引擎都读得对，
+                                    //       只有 chi_sim 这一个在那一点上骑墙。
+                                    //     rus+eng 早就是干这个的（俄文夹 `config.txt`），
+                                    //     这里只是把同一招用到 chi_sim 上，不新造机制。
+                                    //
+                                    //   【规矩不变】同一张图（红通道），只换模型，**分数更高才换**。
+                                    //   没把握就不换——宁可不动，也不要把已经对的弄坏。
+                                    //
+                                    //   ponytail: 只在「两个引擎读出来不一样」这个本来就在犹豫的
+                                    //   时刻跑这一票，一致时一秒都不多花；引擎没起来就跳过，
+                                    //   不影响用户取词。
+                                    // ==========================================================
+                                    try
+                                    {
+                                        var fourth = TesseractOcr.TryRecognize(thirdImage, TesseractOcr.Languages.ChinesePlusEnglish);
+                                        string fourthText = TextNormalizer.Normalize(fourth.Text ?? "");
+                                        int fourthChars = TextNormalizer.CountMeaningfulChars(fourthText);
+                                        bool fourthLooksChinese =
+                                            LanguageDetector.IsMostlyChinese(fourthText) && fourthChars >= 2;
+
+                                        AppLogger.Info(
+                                            $"【第四证人】红通道 chi_sim+eng：置信度 {fourth.Confidence:F2}，" +
+                                            $"内容【{Preview(fourthText)}】");
+
+                                        if (fourthLooksChinese && fourth.Confidence > chiCheck.Confidence)
+                                        {
+                                            AppLogger.Info(
+                                                $"第四票的分数更高（{fourth.Confidence:F2} > {chiCheck.Confidence:F2}）——" +
+                                                "**多一个证人，高的那个说了算**，采用第四票");
+                                            chiText = fourthText;
+                                            chiChars = fourthChars;
+                                            chiCheck = fourth;
+                                            text = fourthText;
+                                            lineCount = TextNormalizer.CountLines(fourthText);
+                                        }
+                                        else
+                                        {
+                                            AppLogger.Info(
+                                                $"第四票没有更高（{fourth.Confidence:F2} ≤ {chiCheck.Confidence:F2}）——" +
+                                                "**平手或更差就保持原样**，不动已经对的那些段");
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        // 第四证人失败绝不能影响用户取词
+                                        AppLogger.Warn($"第四证人失败（已忽略）：{ex.Message}");
+                                    }
                                 }
                                 catch (Exception ex)
                                 {
