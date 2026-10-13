@@ -428,6 +428,25 @@ internal sealed class OcrTextCapture : ITextCapture
                 bool colorful = ImagePreprocessor.IsColorfulBackground(raw);
 
                 // ==========================================================
+                // 【2026-10-13 只记不改 —— 攒数据用】
+                //
+                //   背景（tools\日志\阶段3-验收.md 一百二十四节）：
+                //   规则是「英文一律信 Tesseract」，依据是对照实验
+                //   （Tess 94.7 分 vs Windows 63.3 分），所以下面 :506
+                //   `var best = engResult;` 无条件丢掉了 Windows 那份。
+                //   但 E6 实测里出现过反过来的情况：同一张图上
+                //   Windows 读全了 `editable text.`，Tesseract 读成
+                //   `editak le`，最后交付了更差的那份。
+                //
+                //   问题是「像不像人话」这个评分器过去栽过好几次
+                //   （乱码的分数反而更高），**不能拿它当判据**。
+                //   所以这一轮**只把两边的分数都记进日志，不改任何选择**，
+                //   先攒够数据，看清楚「Windows 是不是经常更好」再决定。
+                // ==========================================================
+                int windowsCharsForCompare = TextNormalizer.CountMeaningfulChars(text);
+                int windowsScoreForCompare = OcrQualityScorer.Score(text);
+
+                // ==========================================================
                 // 【2026-10-10】这次是不是「认出来了但太像乱码」？
                 //   是的话，**返回「未识别到文字」，不要退回 Windows 的结果**。
                 //
@@ -1556,6 +1575,12 @@ internal sealed class OcrTextCapture : ITextCapture
                                         }
                                     }
                                 }
+
+                                // 【2026-10-13】两个引擎在这一张图上各自的表现。
+                                // 只记下来做对比，**不参与选择**（理由见上面 windowsScoreForCompare 的注释）。
+                                AppLogger.Info($"两个引擎的比分（仅记录，不参与选择）：" +
+                                               $"Windows {windowsScoreForCompare} 分（{windowsCharsForCompare} 字）；" +
+                                               $"Tesseract {OcrQualityScorer.Score(cleanedTess)} 分（{tessChars} 字，置信度 {best.Confidence:F2}）");
 
                                 text = cleanedTess;
                                 lineCount = TextNormalizer.CountLines(cleanedTess);
