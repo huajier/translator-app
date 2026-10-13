@@ -322,7 +322,7 @@ internal sealed class OcrTextCapture : ITextCapture
                     //   两套都瞎和「对的结果被丢掉」，改法完全不同。
                     //   所以先把第二遍原文打出来，重测一次就能定。
                     AppLogger.Info($"第二遍原文：{Preview(second.Text)}" +
-                                   $"（人话分 {OcrQualityScorer.Score(second.Text)}，置信度 {second.Confidence:F2}，仅记录）");
+                                   $"（人话分 {OcrQualityScorer.Score(second.Text)}，{TextNormalizer.CountMeaningfulChars(second.Text)} 个有效字符，仅记录）");
 
                     // 【2026-10-08 改动：择优判据改了两次，最终结论记在这里】
                     //
