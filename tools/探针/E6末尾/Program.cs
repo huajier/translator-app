@@ -79,6 +79,19 @@ int fail = 0;
         // 路子③不看长短，唯一要防的是「第二票把对的字母改错、又刚好同长度」。
         // 钉一条：字母被改掉（长度可能还一样）时不许换。
         ("The quick brown fox", "The quuck brown fox", false, "第二票把字母改错（quick→quuck）→ 字母数字不同 → 不换"),
+        // ↓ 下面是 2026-10-14 傍晚新增的路子④（A 系列压力材料 24 次里错了 2 次那类）：
+        //   第一票**末尾凭空多吐一个字母**（`text.` → `te ext` / `text a`），第二票干净，
+        //   但因为多吐的那个字母，第二票**比第一票短一个**。前面三句都要求第二票不短于第一票，
+        //   一条都不放行。这条路方向跟前三句**相反**，必须单独钉住。
+        ("Optical character recognition converts images of text into editable te ext",
+         "Optical character recognition converts images of text into editable text.", true, "A 系列真错例①：第一票末尾多吐一个 e，第二票干净但短一个 → 路子④换"),
+        ("Optical character recognition converts images of text into editable text a",
+         "Optical character recognition converts images of text into editable text.", true, "A 系列真错例②：第一票末尾多吐一个 a → 路子④换"),
+        // 路子④要的正是「第二票更短」，唯一要防的是「第一票读对了、第二票反而少认一个字母」。
+        // 离线 240 个能对上标准答案的样本里，它出手 2 次全救回、反例 0；但方向相反就是有这个代价，
+        // 按项目惯例如实钉住（跟上面「结尾多出数字也会触发」一样）。
+        ("The quick brown fox jumps over the lazy dog",
+         "The quick brown fox jumps over the lazy do", true, "路子④已知天花板：第一票对、第二票反而少一个字母 → 仍会换（如实记录）"),
         ("abc", "abcd", true, "第一票漏了尾字、第二票读全 → 采用第二票"),
         ("abc", "xabcx", true, "第二票多读了东西但第一票的字按序都在（顺序关系允许长了）"),
         (null, "abc", false, "第一票没结果 → 不动"),

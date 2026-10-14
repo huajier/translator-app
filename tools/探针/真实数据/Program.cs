@@ -251,6 +251,35 @@ var rules = new (string name, Func<string, string, bool> decide)[]
                  || Edit(Alnum(f), Alnum(s)) <= Math.Min(4, Math.Max(1, Alnum(f).Length / 4))))
                || (Alnum(f).Length > 0 && Alnum(f) == Alnum(s) && f != s
                    && f.Count(c => c == '|') > s.Count(c => c == '|'))),
+    // ★ 候选 R20：**第二票更短**、且两份只差 1 个字 → 采第二票。
+    // 来由（2026-10-14 15:44/15:45，A 系列压力材料）：第一票末尾凭空多吐一个字
+    // （`…editable text.` → `…editable te ext` / `…editable text a`，字母数字 64 个字），
+    // 第二票干净（63 个字）。现行三条路都要求「第二票更长或一样长」，全部不放行。
+    // 注意：这条**方向相反**——它承认「第二票少一个字也可能是更对的」。风险明摆着：
+    // 「第一票对、第二票把尾巴咬掉一个字」时会被换错，必须量清楚有多少这种仗。
+    ("R20 第二票更短但只差 1 个字（治「第一票末尾多吐一个字」）",
+        (f, s) => Alnum(s).Length > 0 && Alnum(s).Length < Alnum(f).Length
+               && Edit(Alnum(f), Alnum(s)) <= 1),
+    // R21：现行 R15 并上 R20（拟上线版 3）。
+    ("R21 R15 并 R20（拟上线版 3）",
+        (f, s) => (Alnum(s).Length > Alnum(f).Length && Alnum(f) != Alnum(s)
+                && (IsSubseq(Alnum(f), Alnum(s))
+                 || Edit(Alnum(f), Alnum(s)) <= Math.Min(4, Math.Max(1, Alnum(f).Length / 4))))
+               || (Alnum(f).Length > 0 && Alnum(f) == Alnum(s) && f != s)
+               || (Alnum(s).Length > 0 && Alnum(s).Length < Alnum(f).Length
+                   && Edit(Alnum(f), Alnum(s)) <= 1)),
+    // ★ 候选 R22：R20 再加一道护栏——第一票末尾那个「词」只剩 1 个字母（孤零零的单字，
+    // 典型的「引擎把标点认成了一个字母」）。比 R20 保守，看它能不能只捞该捞的。
+    ("R22 第二票更短、只差 1 个字，且第一票末尾是个孤零零的单字母",
+        (f, s) =>
+        {
+            string a1 = Alnum(f), a2 = Alnum(s);
+            if (a2.Length == 0 || a2.Length + 1 != a1.Length) return false;
+            if (Edit(a1, a2) > 1) return false;
+            var w = f.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (w.Length == 0) return false;
+            return w[^1].Count(char.IsLetterOrDigit) == 1;
+        }),
 };
 Console.WriteLine("================ 规矩对拍（真机实测样本） ================");
 foreach (var (name, decide) in rules)
@@ -361,6 +390,40 @@ foreach (var (b, truth, _, _, _) in graded)
 }
 Console.WriteLine($"R16 带标点核对：换了对 {r16Better}，换错 {r16Worse}，一样远 {r16Same}");
 Console.WriteLine($"R18（再看竖线少不少）出手里：换了对 {r18Better}，换错 {r18Worse}");
+Console.WriteLine();
+
+// ── R20 / R22 专项：**方向相反**的规矩（第二票更短）。这是本轮新缺口的治法，风险最高，
+// 所以不但要数「救回/弄坏」，还要把每一个出手样本连原文带答案摆出来人工看：
+// 判对错只看字母数字，看不出「丢的是不是标点」。
+Console.WriteLine("================ R20 / R22 出手样本全清单（第二票更短） ================");
+int r20All = 0, r22All = 0;
+foreach (var b in twoVote)
+{
+    if (b.Eng[0].Words.Count == 0 || b.Eng[1].Words.Count == 0) continue;
+    string t1 = string.Join(" ", b.Eng[0].Words.Select(x => x.w));
+    string t2 = string.Join(" ", b.Eng[1].Words.Select(x => x.w));
+    string a1 = Alnum(t1), a2 = Alnum(t2);
+    if (!(a2.Length > 0 && a2.Length < a1.Length && Edit(a1, a2) <= 1)) continue;
+    r20All++;
+    var w1 = t1.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    bool r22 = w1.Length > 0 && w1[^1].Count(char.IsLetterOrDigit) == 1;
+    if (r22) r22All++;
+    Console.WriteLine($"── {b.File}:{b.Line} {b.Ts} 框 {b.W}×{b.H}  [{(gradedSet.Contains(b.Line) ? "能对答案" : "量不了")}]  R22{(r22 ? "命中" : "不命中")}");
+    if (gradedSet.Contains(b.Line))
+    {
+        var g = graded.First(x => x.b.Line == b.Line);
+        Console.WriteLine($"   答案[{Trunc(g.truth, 90)}]");
+        Console.WriteLine($"   一[{t1}]  距答案 {Edit(t1.Trim(), g.truth.Trim())}");
+        Console.WriteLine($"   二[{t2}]  距答案 {Edit(t2.Trim(), g.truth.Trim())}");
+    }
+    else
+    {
+        Console.WriteLine($"   一[{t1}]");
+        Console.WriteLine($"   二[{t2}]");
+    }
+    Console.WriteLine($"   最终原文[{b.Final}]");
+}
+Console.WriteLine($"R20 出手 {r20All} 次；其中 R22 也会出手的 {r22All} 次");
 Console.WriteLine();
 Console.WriteLine("================ 出手范围体检（含量不了的块） ================");
 Console.WriteLine($"两票齐全的块共 {twoVote.Count(b => b.Eng[0].Words.Count > 0 && b.Eng[1].Words.Count > 0)} 个；其中能对答案的 {graded.Count} 个，量不了的 {twoVote.Count(b => b.Eng[0].Words.Count > 0 && b.Eng[1].Words.Count > 0) - graded.Count} 个");
