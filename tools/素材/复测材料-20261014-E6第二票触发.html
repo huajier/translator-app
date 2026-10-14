@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>E6 结尾专项 · 第二票触发压力测试</title>
+<style>
+/* 样式照搬 tools\素材\验收材料2-实战版.html，底色 .g6 一个像素没改，
+   因为病根就是这张渐变底 + 「只放大+变灰」那张图的配合。 */
+body { font-family:"Segoe UI",Arial,sans-serif; background:#f0f0f0; color:#111; margin:0; padding:20px; }
+h1 { font-size:18px; margin:0 0 6px; }
+.note { font-size:13px; color:#444; background:#fff; border:1px solid #ddd; border-radius:6px; padding:10px 12px; margin:0 0 18px; line-height:1.7; }
+.note b { color:#b00020; }
+.blk { border-radius:6px; padding:14px 16px; margin:0 0 16px; position:relative; }
+.tag { font-size:12px; font-weight:bold; color:#fff; background:#333; display:inline-block; padding:2px 9px; border-radius:4px; margin:0 0 9px; }
+.g6 { background:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,.55), transparent 55%),
+        radial-gradient(circle at 75% 65%, rgba(255,120,0,.45), transparent 50%),
+        linear-gradient(120deg,#e8f0fe,#d0e0f8);
+      color:#14213d; }
+/* 这一句的行高锁成 29 像素：探针实测，只有「框出来刚好 29 像素高」时第一票才会咬尾巴。 */
+.sent { font-size:15px; line-height:29px; margin:0; }
+</style>
+</head>
+<body>
+
+<h1>E6 结尾专项 · 第二票触发压力测试</h1>
+<div class="note">
+  <b>怎么框：</b>把每一段那句话单独框起来，<b>框紧一点</b>——上边和下边只留一丝白，不要多留空，也不要切到字。<br>
+  <b>为什么：</b>这一版修的东西（英文第二票）上一轮一次都没派上用场，这轮要专门造出能让它派上用场的情况。<br>
+  <b>顺手做一件事：</b>框 <b>A1、A2、A3、A12</b> 这四段的时候，每框完一次按一下 <b>Ctrl+Alt+D</b> 存图，我要看你的框到底多高。
+</div>
+
+<div class="blk g6"><span class="tag">A1</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A2</span><p class="sent" style="padding-left:1px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A3</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A4</span><p class="sent" style="padding-left:2px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A5</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A6</span><p class="sent" style="padding-left:3px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A7</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A8</span><p class="sent" style="padding-left:1px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A9</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A10</span><p class="sent" style="padding-left:2px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A11</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A12</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A13</span><p class="sent" style="padding-left:1px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A14</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A15</span><p class="sent" style="padding-left:3px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A16</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A17</span><p class="sent" style="padding-left:2px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A18</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A19</span><p class="sent" style="padding-left:1px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A20</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A21</span><p class="sent" style="padding-left:2px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A22</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A23</span><p class="sent" style="padding-left:3px">Optical character recognition converts images of text into editable text.</p></div>
+<div class="blk g6"><span class="tag">A24</span><p class="sent" style="padding-left:0px">Optical character recognition converts images of text into editable text.</p></div>
+
+</body>
+</html>

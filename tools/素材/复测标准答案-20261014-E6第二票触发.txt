@@ -1,0 +1,26 @@
+# E6 结尾专项 · 第二票触发压力测试 · 标准答案
+# 左边是编号，右边是那段文字「本来就该长什么样」。
+A1|Optical character recognition converts images of text into editable text.
+A2|Optical character recognition converts images of text into editable text.
+A3|Optical character recognition converts images of text into editable text.
+A4|Optical character recognition converts images of text into editable text.
+A5|Optical character recognition converts images of text into editable text.
+A6|Optical character recognition converts images of text into editable text.
+A7|Optical character recognition converts images of text into editable text.
+A8|Optical character recognition converts images of text into editable text.
+A9|Optical character recognition converts images of text into editable text.
+A10|Optical character recognition converts images of text into editable text.
+A11|Optical character recognition converts images of text into editable text.
+A12|Optical character recognition converts images of text into editable text.
+A13|Optical character recognition converts images of text into editable text.
+A14|Optical character recognition converts images of text into editable text.
+A15|Optical character recognition converts images of text into editable text.
+A16|Optical character recognition converts images of text into editable text.
+A17|Optical character recognition converts images of text into editable text.
+A18|Optical character recognition converts images of text into editable text.
+A19|Optical character recognition converts images of text into editable text.
+A20|Optical character recognition converts images of text into editable text.
+A21|Optical character recognition converts images of text into editable text.
+A22|Optical character recognition converts images of text into editable text.
+A23|Optical character recognition converts images of text into editable text.
+A24|Optical character recognition converts images of text into editable text.
