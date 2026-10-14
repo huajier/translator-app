@@ -568,10 +568,11 @@ internal sealed class OcrTextCapture : ITextCapture
                         //   拿 1 张图去换掉 56 段的饭，赔面太大。
                         //   加一票则相反：**老的那一票一个字没改**，它认对就还是它说了算。
                         //
-                        //   【规矩：只有严丝合缝的开头关系才换】
-                        //   短的字母数字串必须一字不差是长的开头 —— 只治「尾巴被吃掉」，
-                        //   不治「多读了别的东西」（那种情况两边开头对不上，直接不动手）。
-                        //   对不上 = 这次当没发生，走老路。
+                        //   【规矩：只有「第一票的字全都在第二票里、顺序也对」才换】
+                        //   治的是「第一票读坏」——尾巴被吃掉（`editable te`）、
+                        //   或者句中打磕巴（`editab e te`），两种情况第二票都读对了。
+                        //   第一票只要有一个字不在第二票里（第二票读糊了/交白卷/少读一截），
+                        //   规矩就不动手。对不上 = 这次当没发生，走老路。
                         //
                         //   ponytail: 英文取词会多花约 0.1 秒（实测 Tesseract 单次 ~110 毫秒）；
                         //   这是买「看不准就不动手」那份保险的钱。
@@ -585,10 +586,12 @@ internal sealed class OcrTextCapture : ITextCapture
 
                                 if (SecondVoteRecoversTail(engResult.Text, secondVote.Text))
                                 {
+                                    string gain = DescribeTailGain(engResult.Text!, secondVote.Text!);
                                     AppLogger.Info(
-                                        $"【英文第二票】第一票把结尾咬掉了（{engResult.Confidence:0.00}），" +
+                                        $"【英文第二票】第一票读坏了（{engResult.Confidence:0.00}），" +
                                         $"第二票（放大+变灰+二值化，{secondVote.Confidence:0.00}）" +
-                                        $"在它后面补上了「{DescribeTailGain(engResult.Text!, secondVote.Text!)}」——采用第二票");
+                                        $"把第一票读出来的字全认对了——采用第二票" +
+                                        (gain.Length > 0 ? $"（第二票比第一票多认了「{gain}」）" : ""));
 
                                     engResult = secondVote;
                                 }
@@ -2459,21 +2462,33 @@ internal sealed class OcrTextCapture : ITextCapture
     }
 
     /// <summary>
-    /// 英文第二票能不能救回第一票被咬掉的结尾（2026-10-14，甲方案）。
+    /// 英文第二票能不能救回第一票读坏的结果（2026-10-14，先叫「甲方案」，后放宽为「顺序关系」）。
     ///
-    /// <para>唯一的规矩：两份结果的「字母数字串」必须构成严格的**开头关系**——
-    /// 短的**一字不差**是长的开头，且长的更长。</para>
+    /// <para>唯一的规矩：两份结果的「字母数字串」必须构成**顺序关系**——
+    /// 第一票读出来的每一个字，在第二票那份里都能**按原来的先后顺序**找着
+    /// （术语叫子序列），并且两份不能一模一样。</para>
     ///
-    /// <para>为什么只认这一种形状：E6 的 4 次错全是**结尾被咬掉**
-    /// （`editable text.` → `editable te` / `editable €`）。
-    /// 开头对得上，就说明第二票认出的东西**完全就是第一票认的那句话，只多出尾巴**，
-    /// 多出来的才是被漏掉的字。
-    /// 反过来「第一票多读了别的东西」（比如把旁边段落的编号 `8935` 读进来），
-    /// 两边开头就对不上，这里直接返回 false，**一点都动不了**。</para>
+    /// <para>为什么是「顺序」而不是「开头」（2026-10-14 放宽）：
+    /// 老规矩要求第二票**一字不差以第一票开头**，能治「尾巴被咬掉」
+    /// （`editable text.` → `editable te`），但治不了**第一票在句中打磕巴**——
+    /// A16 实测那次第一票读成 `…into editab e te`（`editable` 中间凭空多空一格、又漏了 `xt`），
+    /// 第二票明明读全了，却因为开头两个字之后就对不上，被老规矩挡在门外。
+    /// 换成顺序关系后，第一票那些字在第二票里照样按顺序找得着，就能换。</para>
     ///
-    /// <para>【这条规矩挡不住的一种情况，明说】
-    /// 万一引擎多读出的东西**偏偏长在结尾**（`text.` 读成 `text.1`），
-    /// 开头照样对得上，这道门拦不住。实测没遇到过，遇到了靠三份材料重测发现。</para>
+    /// <para>为什么这样不容易出事：要求「第一票的字**全部**都在第二票里按序出现」，
+    /// 等于第一票一个错字都不能有。第二票要是把词读糊了（`trips` → `tnps`）、
+    /// 交白卷、或者少读一截，第一票里对应那几个字在第二票里就找不着，规矩不动手。</para>
+    ///
+    /// <para>数据（2026-10-14 两套离线体检）：
+    /// 真机日志 71 个「两票齐全 + 能对上标准答案」的块——老规矩出手 8 次救 8 次、弄坏 0；
+    /// 新规矩出手 12 次救 12 次、弄坏 0（多救的 4 次里就有 A16）。
+    /// 合成 255 张图（15 句 × 17 种底子）——新规矩出手 1 次救 1 次、弄坏 0。
+    /// 另有 48 个「对不上标准答案、判不了对错」的块，新规矩出手 0 次。</para>
+    ///
+    /// <para>【这条规矩挡不住的情况，明说】
+    /// ①第二票自己把词读糊了、而第一票是对的 —— 要求「第一票的字全在」挡不住，
+    /// 只有靠「两份一模一样」那句反过来兜底（一模一样时不换）。
+    /// ②第一票「字全对、只有末尾符号读错」（`text.` → `text |`）—— 按设计不动手。</para>
     /// </summary>
     private static bool SecondVoteRecoversTail(string? firstText, string? secondText)
     {
@@ -2482,11 +2497,20 @@ internal sealed class OcrTextCapture : ITextCapture
         string first = LettersAndDigitsOnly(firstText);
         string second = LettersAndDigitsOnly(secondText);
 
-        return second.Length > first.Length && second.StartsWith(first, StringComparison.Ordinal);
+        if (first.Length == 0 || first == second) return false;
+
+        // 第一票的每个字，按原顺序在第二票里找一遍
+        int i = 0;
+        foreach (char c in second)
+        {
+            if (i < first.Length && first[i] == c) i++;
+        }
+        return i == first.Length;
     }
 
     /// <summary>
     /// 第二票比第一票多认出来的部分（去掉空白），只给日志看。
+    /// 两份一样长（或多认的都在前半截）时返回空串。
     /// </summary>
     private static string DescribeTailGain(string firstText, string secondText)
     {

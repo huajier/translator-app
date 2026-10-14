@@ -42,14 +42,25 @@ int fail = 0;
     {
         ("Optical character recognition converts images of text into editable te",
          "Optical character recognition converts images of text into editable text.", true,  "E6 真错例：第一票咬掉尾巴，第二票补上"),
+        // ↓ A16 真实病例（2026-10-14 09:16:12）：第一票句中打磕巴多空一格又漏 xt，第二票全对。
+        //   老规矩（严丝合缝的开头关系）在这里返回 false，放宽成顺序关系后才救得回来。
+        ("Optical character recognition converts images of text into editab e te",
+         "Optical character recognition converts images of text into editable text.", true,  "A16 真错例：第一票句中打磕巴，第二票全对"),
+        // ↓ 下面两条是这次放宽**新增**的风险面，必须钉死：第二票自己读糊了时不能换。
+        ("Small printed text on a paper-like background is the case that trips up",
+         "Small printed text on a paper-like background is the case that tnps up", false, "第二票自己读糊了（trips→tnps）→ 第一票的字找不齐 → 不动"),
+        ("Optical character recognition converts images of text into editable text.",
+         "", false, "第二票交白卷 → 不动"),
         ("Optical character recognition converts images of text into editable text.",
          "Optical character recognition converts images of text into editable te", false, "反过来：短的不能当长的用"),
         ("The quick brown fox jumps over the lazy dog",
          "The quick brown fox jumps over the lazy dog 89", true, "结尾多出数字也会触发（已知挡不住，如实记录）"),
         ("Optical character recognition converts images of text into editable text.",
-         "Optical character recognition converts images of text into editak le.", false, "中间不一样 → 开头对不上 → 不动"),
+         "Optical character recognition converts images of text into editak le.", false, "中间不一样且少字 → 找不齐 → 不动"),
         ("abc def", "xyz def", false, "完全不同 → 不动"),
-        ("abc", "abc", false, "一样长 → 不动"),
+        ("abc", "abc", false, "一模一样 → 不动"),
+        ("abc", "abcd", true, "第一票漏了尾字、第二票读全 → 采用第二票"),
+        ("abc", "xabcx", true, "第二票多读了东西但第一票的字按序都在（顺序关系允许长了）"),
         (null, "abc", false, "第一票没结果 → 不动"),
         ("abc", "   ", false, "第二票空 → 不动"),
     };
@@ -118,6 +129,8 @@ Bitmap PadRight(int w, int extra)
 
 int total = 0, caught = 0, secondOk = 0, both = 0;
 var rows = new List<string>();
+// 每一票都记下来，后面拿不同的「换票规矩」去比，看谁更靠谱。
+var samples = new List<(string label, string t1, string t2)>();
 
 void Trial(string label, Bitmap img)
 {
@@ -129,6 +142,7 @@ void Trial(string label, Bitmap img)
     if (firstBad) caught++;
     if (secondGood) secondOk++;
     if (firstBad && secondGood) both++;
+    samples.Add((label, t1, t2));
     rows.Add($"{label,-34} 第一票{l1,3}{(firstBad ? "❌" : "✅")}  第二票{l2,3}{(secondGood ? "✅" : "❌")}   [{Trunc(t1, 46)}] | [{Trunc(t2, 46)}]");
 }
 
@@ -189,3 +203,266 @@ foreach (var r in rows) Console.WriteLine(r);
 Console.WriteLine();
 Console.WriteLine($"一共试了 {total} 个选区：第一票咬尾巴 {caught} 个（{caught * 100.0 / total:0.0}%），第二票能救回来 {secondOk} 个（{secondOk * 100.0 / total:0.0}%）");
 Console.WriteLine($"触发条件同时成立的（第一票错 + 第二票对）：{both} 个");
+
+// ── 规矩体检：拿一堆真正不同的英文句子，合成为图片，跑两票，看各条规矩的本事 ──
+Console.WriteLine();
+Console.WriteLine("================ 规矩体检（合成多句） ================");
+string AlnumOnly(string s) => new string(s.Where(char.IsLetterOrDigit).ToArray());
+string NoSpace(string s) => new string(s.Where(c => !char.IsWhiteSpace(c)).ToArray());
+bool IsSubseq(string small, string big)
+{
+    int i = 0;
+    foreach (char c in big) { if (i < small.Length && small[i] == c) i++; }
+    return i == small.Length;
+}
+// R4＝拟议的新规矩：两份的字母数字一模一样就算平手，平手取第二票（更长那份）。
+var rules = new (string name, Func<string, string, bool> decide)[]
+{
+    ("R0 现行：第二票更长且第一票是它的前缀（严格）",
+        (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length && AlnumOnly(s).StartsWith(AlnumOnly(f), StringComparison.Ordinal)),
+    ("R1 去掉空格后比前缀",
+        (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length && NoSpace(s).StartsWith(NoSpace(f), StringComparison.Ordinal)),
+    ("R2 第二票更长，且第一票是第二票的子序列",
+        (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length && IsSubseq(AlnumOnly(f), AlnumOnly(s))),
+    ("R3 只要第二票更长就换（无脑）",
+        (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length),
+    ("R4 拟议：字母数字一模一样就取第二票",
+        (f, s) => AlnumOnly(f) == AlnumOnly(s)),
+    // R5＝只治「第一票自己看着就不对」：第一票是第二票的子序列，且第一票里的短碎词比第二票多。
+    // 专治 E6 那种「第一票句中插空格 / 咬尾巴」，第二票读垃圾时第一票是干净的、不会命中。
+    ("R5 子序列 + 第一票短碎词更多",
+        (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length
+                  && IsSubseq(AlnumOnly(f), AlnumOnly(s))
+                  && ShortWordCount(f) > ShortWordCount(s)),
+    // ↓ 下面是 A16 真实病例逼出来的候选：第一票多吐了一个字（editab e te），第二票反而更短但还是全对。
+    ("R6 子序列（不要「第二票更长」这条）",
+        (f, s) => AlnumOnly(f) != AlnumOnly(s) && IsSubseq(AlnumOnly(f), AlnumOnly(s))),
+    ("R7 子序列 + 第一票短碎词更多（不要长度）",
+        (f, s) => AlnumOnly(f) != AlnumOnly(s)
+                  && IsSubseq(AlnumOnly(f), AlnumOnly(s))
+                  && ShortWordCount(f) > ShortWordCount(s)),
+    ("R8 子序列 + 第一票短碎词更多 + 第二票不短太多（-3 以内）",
+        (f, s) => AlnumOnly(f) != AlnumOnly(s)
+                  && IsSubseq(AlnumOnly(f), AlnumOnly(s))
+                  && ShortWordCount(f) > ShortWordCount(s)
+                  && AlnumOnly(s).Length >= AlnumOnly(f).Length - 3),
+    // ↓ 换一把更讲究的尺子：不再问「是不是子序列」，直接量「两份差几个字符」。
+    // 咬尾巴、插空格都只差零星几个字；认成垃圾则差几十个字，一眼分开。
+    ("R9 第二票更长 + 两份只差 4 个字符以内（编辑距离）",
+        (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length
+                  && EditDistance(AlnumOnly(f), AlnumOnly(s)) <= 4),
+    ("R10 第二票更长 + 只差 4 个字符 + 第一票短碎词更多",
+        (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length
+                  && EditDistance(AlnumOnly(f), AlnumOnly(s)) <= 4
+                  && ShortWordCount(f) > ShortWordCount(s)),
+};
+int EditDistance(string a, string b)
+{
+    var prev = new int[b.Length + 1];
+    var cur = new int[b.Length + 1];
+    for (int j = 0; j <= b.Length; j++) prev[j] = j;
+    for (int i = 1; i <= a.Length; i++)
+    {
+        cur[0] = i;
+        for (int j = 1; j <= b.Length; j++)
+            cur[j] = Math.Min(Math.Min(prev[j] + 1, cur[j - 1] + 1),
+                              prev[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1));
+        (prev, cur) = (cur, prev);
+    }
+    return prev[b.Length];
+}
+int ShortWordCount(string text)
+{
+    int n = 0;
+    foreach (var raw in text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+    {
+        var w = raw.Trim('.', ',', ';', ':', '!', '?', '"', '\'', '(', ')', '[', ']', '-', '/', '\\', '|', '~', '`', '“', '”');
+        if (w.Length is >= 1 and <= 3 && w.All(char.IsLetter)) n++;
+    }
+    return n;
+}
+int r3Fix = 0, r3Break = 0, r3Sane = 0, r3Junk = 0, r3SwapOk = 0, r3SwapBad = 0;
+
+string[] sentences =
+{
+    "Optical character recognition converts images of text into editable text.",
+    "The quick brown fox jumps over the lazy dog.",
+    "Learning a language takes practice every single day.",
+    "Small printed text is hard to read on a bright screen.",
+    "Please restart the application and try again later.",
+    "Version 2.0 was released in 2024 for all customers.",
+    "Contact support at dev@corp.io for more information.",
+    "HTTP/2.0 requires RAM 16GB, see page 42 for details.",
+    "Machine translation is not always accurate.",
+    "Error 404 (Not Found): the file was not found on disk.",
+    "Windows 11 runs smoothly on modern hardware.",
+    "The service started successfully on port 8080.",
+    "Download speed reached 120 Mbps at midnight today.",
+    "Remember to update the client software before use.",
+    "This paragraph has several lines of ordinary English text that should be easy for the engine to read correctly without any special tricks at all.",
+};
+(string font, float size, Color bg, Color fg)[] looks =
+{
+    ("Segoe UI", 15f, Color.White, Color.FromArgb(17, 17, 17)),
+    ("Arial", 15f, Color.White, Color.Black),
+    ("Consolas", 14f, Color.White, Color.FromArgb(20, 20, 20)),
+    ("Segoe UI", 18f, Color.White, Color.Black),
+    ("Arial", 13f, Color.White, Color.FromArgb(30, 30, 30)),
+    ("Segoe UI", 15f, Color.FromArgb(232, 240, 254), Color.FromArgb(20, 33, 61)),
+    ("Arial", 16f, Color.FromArgb(240, 240, 240), Color.FromArgb(40, 40, 40)),
+    ("Times New Roman", 15f, Color.White, Color.Black),
+    // ↓ 难看的底子：专门用来压「第二票会不会读出更多垃圾」这种风险
+    ("Segoe UI", 15f, Color.FromArgb(185, 185, 185), Color.FromArgb(154, 154, 154)),
+    ("Arial", 16f, Color.FromArgb(255, 140, 0), Color.FromArgb(0, 230, 118)),
+    ("Segoe UI", 14f, Color.FromArgb(200, 200, 210), Color.FromArgb(120, 120, 200)),
+    ("Consolas", 15f, Color.FromArgb(240, 240, 200), Color.FromArgb(160, 160, 90)),
+    ("Arial", 20f, Color.FromArgb(210, 225, 210), Color.FromArgb(90, 110, 90)),
+    ("Segoe UI", 15f, Color.FromArgb(255, 250, 235), Color.FromArgb(190, 170, 120)),
+    // ↓ 深底浅字：二值化在这种图上会不会掉笔画？必须压一压
+    ("Segoe UI", 15f, Color.FromArgb(20, 20, 25), Color.White),
+    ("Arial", 15f, Color.Black, Color.FromArgb(240, 240, 240)),
+    ("Consolas", 14f, Color.FromArgb(30, 30, 60), Color.FromArgb(200, 220, 255)),
+};
+
+Bitmap Render(string text, string font, float size, Color bg, Color fg)
+{
+    using var probe = new Bitmap(8, 8);
+    using (var pg = Graphics.FromImage(probe))
+    {
+        pg.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+        var sz = pg.MeasureString(text, new Font(font, size));
+        int w = (int)Math.Ceiling(sz.Width) + 8, h = (int)Math.Ceiling(sz.Height) + 4;
+        var bmp = new Bitmap(Math.Max(w, 20), Math.Max(h, 12), System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using var g = Graphics.FromImage(bmp);
+        g.Clear(bg);
+        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+        g.DrawString(text, new Font(font, size), new SolidBrush(fg), 2, 2);
+        return bmp;
+    }
+}
+
+var sentSamples = new List<(string label, string t1, string t2, string truth)>();
+for (int si = 0; si < sentences.Length; si++)
+{
+    for (int li = 0; li < looks.Length; li++)
+    {
+        var (font, size, bg, fg) = looks[li];
+        using var bmp = Render(sentences[si], font, size, bg, fg);
+        // 模拟用户框：上下各留 1 像素白边
+        int pad = 1;
+        using var framed = new Bitmap(bmp.Width + pad * 2, bmp.Height + pad * 2, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(framed))
+        {
+            g.Clear(Color.White);
+            g.DrawImage(bmp, pad, pad);
+        }
+        var (l1, t1) = First(framed);
+        var (l2, t2) = Second(framed);
+        sentSamples.Add(($"句{si + 1} {font} {size}px", t1, t2, AlnumOnly(sentences[si])));
+    }
+}
+Console.WriteLine($"合成样本 {sentSamples.Count} 个（{sentences.Length} 句 × {looks.Length} 种外观）");
+
+// ★ 关键体检：第二票有没有「比第一票更差」的时候？
+// 换票规矩再漂亮，只要第二票会在某些底子上交白卷/读垃圾，放宽它就是往枪口上撞。
+int bothOk = 0, onlyFirst = 0, onlySecond = 0, neither = 0;
+var dangerous = new List<(string label, string t1, string t2)>();
+foreach (var (label, t1, t2, truth) in sentSamples)
+{
+    string a1 = AlnumOnly(t1), a2 = AlnumOnly(t2);
+    bool ok1 = a1 == truth, ok2 = a2 == truth;
+    if (ok1 && ok2) bothOk++;
+    else if (ok1) { onlyFirst++; dangerous.Add((label, t1, t2)); }
+    else if (ok2) onlySecond++;
+    else neither++;
+}
+Console.WriteLine($"第一票对+第二票也对 {bothOk}；【第一票对、第二票错】{onlyFirst}；第一票错+第二票对 {onlySecond}；两边都错 {neither}");
+if (dangerous.Count > 0)
+{
+    Console.WriteLine("  ⚠️ 以下是「第二票更差」的底子——换票规矩一旦在这里出手就是弄坏：");
+    foreach (var (label, t1, t2) in dangerous.Take(12))
+        Console.WriteLine($"     {label,-26} 第一票[{Trunc(t1, 40)}] 第二票[{Trunc(t2, 40)}]");
+    if (dangerous.Count > 12) Console.WriteLine($"     （还有 {dangerous.Count - 12} 个）");
+}
+
+// 注意：比「对不对」更重要的是「别把对的换坏」——第一票本来就对的时候换票有没有风险。
+foreach (var (label, t1, t2, truth) in sentSamples)
+{
+    string a1 = AlnumOnly(t1), a2 = AlnumOnly(t2);
+    if (a2 == truth && a1 != truth) r3Fix++;
+    if (a1 == truth && a2 != truth) r3Break++;
+    if (a1 == truth) r3Sane++;
+    if (a2.Length > a1.Length && a2 != truth) r3Junk++;
+    if (a2.Length > a1.Length && a2 == truth) r3SwapOk++;
+    if (a2.Length > a1.Length && a1 == truth) r3SwapBad++;
+}
+Console.WriteLine($"第一票本来就对 {r3Sane} 个；第二票更长但读的是垃圾 {r3Junk} 个；第二票更长且读对 {r3SwapOk} 个；第二票更长却把对的换坏 {r3SwapBad} 个");
+
+foreach (var (name, decide) in rules)
+{
+    int fire = 0, fix = 0, brk = 0;
+    foreach (var (label, t1, t2, truth) in sentSamples)
+    {
+        if (!decide(t1, t2)) continue;
+        fire++;
+        string a1 = AlnumOnly(t1), a2 = AlnumOnly(t2);
+        if (a2 == truth && a1 != truth) fix++;
+        else if (a1 == truth && a2 != truth) brk++;
+    }
+    Console.WriteLine($"{name}");
+    Console.WriteLine($"    出手 {fire}/{sentSamples.Count}：救回 {fix}，把对的换坏 {brk}");
+}
+
+// ── 真实病例台：直接喂日志里两份原文，看每条规矩认不认 ──
+Console.WriteLine();
+Console.WriteLine("================ 真实病例（日志原文，不经合成） ================");
+// (第一票, 第二票, 正确答案, 说明)
+var realCases = new (string f, string s, string truth, string note)[]
+{
+    ("Optical character recognition converts images of text into editab e te",
+     "Optical character recognition converts images of text into editable text.",
+     "Opticalcharacterrecognitionconvertsimagesoftextintoeditabletext",
+     "A16 实测失败（09:16:12）第一票句中插空格，第二票全对"),
+    ("Optical character recognition converts images of text into editable €",
+     "Optical character recognition converts images of text into editable text.",
+     "Opticalcharacterrecognitionconvertsimagesoftextintoeditabletext",
+     "E6 历史失败：末尾咬成 €"),
+    ("Optical character recognition converts images of text into editable te",
+     "Optical character recognition converts images of text into editable text.",
+     "Opticalcharacterrecognitionconvertsimagesoftextintoeditabletext",
+     "E6 历史失败：末尾咬成 te（现行规矩能救）"),
+    ("Optical character recognition converts images of text into editable text",
+     "Optical character recognition converts images of text into editable text.",
+     "Opticalcharacterrecognitionconvertsimagesoftextintoeditabletext",
+     "两份都对，只是第二票多个句点：不该动手"),
+    ("The quick brown fox jumps over the lazy dog.",
+     "The quuck brown fox jumps over the lazy dog.",
+     "Thequickbrownfoxjumpsoverthelazydog",
+     "第二票更差（quuck）：第一票全对，任何规矩都不许换"),
+    ("Version 2.0 was released in 2024 for all customers.",
+     "Version 2.9 was released in 2024 for all customers.",
+     "Version2.0wasreleasedin2024forallcustomers",
+     "第二票更差（2.9）：第一票全对，不许换"),
+    ("票据录入",
+     "票据录人",
+     "票据录入",
+     "纯中文：这道门根本不该被走到"),
+};
+int cHit = 0, cBad = 0;
+foreach (var ru in rules)
+{
+    var fired = new List<string>();
+    foreach (var (f, s, truth, note) in realCases)
+    {
+        if (!ru.decide(f, s)) continue;
+        string a1 = AlnumOnly(f), a2 = AlnumOnly(s);
+        bool ok = a2 == truth, wasOk = a1 == truth;
+        fired.Add($"{(ok && !wasOk ? "✅救回" : wasOk && !ok ? "❌弄坏" : "⚪无变化")}({note.Split('：')[0]})");
+        if (ok && !wasOk) cHit++;
+        if (wasOk && !ok) cBad++;
+    }
+    Console.WriteLine($"{ru.name}");
+    Console.WriteLine($"    {fired.Count} 例出手：{(fired.Count == 0 ? "一次没动" : string.Join(" ｜ ", fired))}");
+}
+Console.WriteLine();
+Console.WriteLine($"【真实病例总计】五条规矩加起来：救回 {cHit} 次，弄坏 {cBad} 次");
