@@ -205,6 +205,26 @@ var rules = new (string name, Func<string, string, bool> decide)[]
         (f, s) => Alnum(s).Length > Alnum(f).Length && Edit(Alnum(f), Alnum(s)) <= 4),
     ("R11 第一票的字符按原顺序都在第二票里（去掉「更长」这条）",
         (f, s) => Alnum(f) != Alnum(s) && IsSubseq(Alnum(f), Alnum(s))),
+    // R9 不是 R6 的超集：子序列能容许「第二票多一大截」，编辑距离≤4 反而会漏掉那种。
+    // 所以真正要上线的是并集，必须单独量一遍，确认它不会把 R6 已经能救的丢掉。
+    ("R12 并集 = R6 或 R9 任一成立（拟上线版）",
+        (f, s) => (Alnum(s).Length > Alnum(f).Length && IsSubseq(Alnum(f), Alnum(s)))
+               || (Alnum(s).Length > Alnum(f).Length && Edit(Alnum(f), Alnum(s)) <= 4)),
+    // 固定「≤4」在**短串**上等于没门槛：第一票只有 3 个字母时，4 个字符的差别已经超过它本身的长度，
+    // 那就是「只要第二票更长就换」（R3，已证会弄坏）。这条按第一票长度的比例卡。
+    ("R13 第二票更长 + 编辑距离 ≤ max(1, 第一票长度/4)",
+        (f, s) => Alnum(s).Length > Alnum(f).Length && Edit(Alnum(f), Alnum(s)) <= Math.Max(1, Alnum(f).Length / 4)),
+    // 真正的候选：固定 4 与比例 1/4 取小。长串（本次全是 59~61）上跟 R9 一模一样，
+    // 短串上自动收紧——3 个字母的短词要求差 ≤1，而不是宽容到 4（那等于「随便换」）。
+    ("R14 第二票更长 + 编辑距离 ≤ min(4, max(1, 第一票长度/4))（拟上线）",
+        (f, s) => Alnum(s).Length > Alnum(f).Length
+               && Edit(Alnum(f), Alnum(s)) <= Math.Min(4, Math.Max(1, Alnum(f).Length / 4))),
+    // ★ 最终上线版：并集。子序列救「第二票多认一大截」，比例编辑距离救「零星几个字对不上」。
+    // 「多认一大截」在历史数据里 0 例，所以不能只靠它；「零星差几个字」不能只靠子序列（A5 就是）。
+    ("R15 并集 = 子序列 或 比例编辑距离（最终上线版）",
+        (f, s) => Alnum(s).Length > Alnum(f).Length && Alnum(f) != Alnum(s)
+               && (IsSubseq(Alnum(f), Alnum(s))
+                || Edit(Alnum(f), Alnum(s)) <= Math.Min(4, Math.Max(1, Alnum(f).Length / 4)))),
 };
 Console.WriteLine("================ 规矩对拍（真机实测样本） ================");
 foreach (var (name, decide) in rules)
@@ -226,7 +246,44 @@ foreach (var (name, decide) in rules)
     foreach (var d in details) Console.WriteLine(d);
 }
 Console.WriteLine();
-// ── 放宽门槛最怕的：跑到「量不了」的样本上去乱改 ──
+// ── R6 与 R9 的包含关系体检：决定上线版到底要一个条件还是两个 ──
+// 子序列成立时，编辑距离恰好 = 第二票多认的字母数。所以「多认得少」的那种 R9 已经覆盖，
+// R6 只在「第二票多认一大截（>4）」时才有额外价值。这里数一遍到底有没有这种仗。
+int onlyR6 = 0, onlyR9 = 0, both = 0;
+var onlyR6Samples = new List<string>();
+foreach (var (b, truth, fOk, sOk, _) in graded)
+{
+    string a1 = Alnum(string.Join(" ", b.Eng[0].Words.Select(x => x.w)));
+    string a2 = Alnum(string.Join(" ", b.Eng[1].Words.Select(x => x.w)));
+    if (a2.Length <= a1.Length) continue;
+    bool sub = IsSubseq(a1, a2);
+    bool ed = Edit(a1, a2) <= 4;
+    if (sub && ed) both++;
+    else if (sub) { onlyR6++; if (onlyR6Samples.Count < 5) onlyR6Samples.Add($"       多认 {a2.Length - a1.Length} 字：[{Trunc(string.Join(" ", b.Eng[0].Words.Select(x => x.w)), 50)}] → [{Trunc(string.Join(" ", b.Eng[1].Words.Select(x => x.w)), 50)}]"); }
+    else if (ed) onlyR9++;
+}
+Console.WriteLine("================ R6 / R9 包含关系体检 ================");
+Console.WriteLine($"  两条都成立 {both} 个；只有子序列成立（多认 >4 字）{onlyR6} 个；只有编辑距离成立 {onlyR9} 个");
+foreach (var s in onlyR6Samples) Console.WriteLine(s);
+Console.WriteLine(onlyR6 == 0
+    ? "  → 没有任何一仗需要「子序列」这条：单用编辑距离就够，代码可以只留一个条件。"
+    : "  → 有仗只能靠子序列救：上线版必须保留并集（两个条件）。");
+Console.WriteLine();
+
+// ── 「固定 ≤4」在短串上会不会等于没门槛 ──
+// 第一票只有 3 个字母时，≤4 已经超过它本身的长度 = 只要第二票更长就换（R3，已证会弄坏）。
+// 数一遍 R9 出手的那些仗里，第一票到底有多长。
+var r9Lens = graded
+    .Where(g => { string a1 = Alnum(string.Join(" ", g.b.Eng[0].Words.Select(x => x.w)));
+                  string a2 = Alnum(string.Join(" ", g.b.Eng[1].Words.Select(x => x.w)));
+                  return a2.Length > a1.Length && Edit(a1, a2) <= 4; })
+    .Select(g => Alnum(string.Join(" ", g.b.Eng[0].Words.Select(x => x.w))).Length)
+    .OrderBy(x => x).ToList();
+Console.WriteLine("================ R9 出手样本的第一票长度分布 ================");
+Console.WriteLine($"  {r9Lens.Count} 次出手，第一票长度：{string.Join("、", r9Lens)}");
+Console.WriteLine($"  最短 {r9Lens.Min()}，最长 {r9Lens.Max()}");
+Console.WriteLine();
+
 // graded 只覆盖了能对上标准答案的一部分。真上线时规矩会在**全部**两票块上出手，
 // 所以必须单独数一遍：在量不了的块里它会不会动手。
 var gradedSet = new HashSet<int>(graded.Select(g => g.b.Line));
