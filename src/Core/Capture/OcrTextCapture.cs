@@ -568,11 +568,14 @@ internal sealed class OcrTextCapture : ITextCapture
                         //   拿 1 张图去换掉 56 段的饭，赔面太大。
                         //   加一票则相反：**老的那一票一个字没改**，它认对就还是它说了算。
                         //
-                        //   【规矩：只有「第一票的字全都在第二票里、顺序也对」才换】
+                        //   【规矩：第二票更长，并且两份「对得上」才换】
+                        //   「对得上」有两条路：①第一票的字按原顺序在第二票里都找得着；
+                        //   ②两份只差零星几个字（不超过 min(4, 第一票长度/4)）。
                         //   治的是「第一票读坏」——尾巴被吃掉（`editable te`）、
-                        //   或者句中打磕巴（`editab e te`），两种情况第二票都读对了。
-                        //   第一票只要有一个字不在第二票里（第二票读糊了/交白卷/少读一截），
-                        //   规矩就不动手。对不上 = 这次当没发生，走老路。
+                        //   句中打磕巴（`editab e te`）、把词读错几个字（A5 的 `edital le`），
+                        //   三种情况第二票都读对了。
+                        //   第二票读糊了/交白卷/少读一截时，两条路都不成立，规矩不动手。
+                        //   对不上 = 这次当没发生，走老路。
                         //
                         //   ponytail: 英文取词会多花约 0.1 秒（实测 Tesseract 单次 ~110 毫秒）；
                         //   这是买「看不准就不动手」那份保险的钱。
@@ -587,10 +590,13 @@ internal sealed class OcrTextCapture : ITextCapture
                                 if (SecondVoteRecoversTail(engResult.Text, secondVote.Text))
                                 {
                                     string gain = DescribeTailGain(engResult.Text!, secondVote.Text!);
+                                    // 文案对两条路都成立，所以不写「把第一票的字全认对了」
+                                    // （路子②允许第一票多几个字）。走的是哪条路没记——两条路的结果一样，
+                                    // 真要看区别，日志里的「多认了」配合两票置信度够判断。
                                     AppLogger.Info(
                                         $"【英文第二票】第一票读坏了（{engResult.Confidence:0.00}），" +
                                         $"第二票（放大+变灰+二值化，{secondVote.Confidence:0.00}）" +
-                                        $"把第一票读出来的字全认对了——采用第二票" +
+                                        $"读得更全、且跟第一票对得上——采用第二票" +
                                         (gain.Length > 0 ? $"（第二票比第一票多认了「{gain}」）" : ""));
 
                                     engResult = secondVote;
@@ -2462,33 +2468,40 @@ internal sealed class OcrTextCapture : ITextCapture
     }
 
     /// <summary>
-    /// 英文第二票能不能救回第一票读坏的结果（2026-10-14，先叫「甲方案」，后放宽为「顺序关系」）。
+    /// 英文第二票能不能救回第一票读坏的结果（2026-10-14，先叫「甲方案」，后放宽为「顺序关系」，
+    /// 再放宽为「顺序关系或只差几个字」）。
     ///
-    /// <para>唯一的规矩：两份结果的「字母数字串」必须构成**顺序关系**——
-    /// 第一票读出来的每一个字，在第二票那份里都能**按原来的先后顺序**找着
-    /// （术语叫子序列），并且两份不能一模一样。</para>
+    /// <para>规矩一共两句：<b>第二票得更长</b>，并且<b>两份对得上</b>。
+    /// 「对得上」有两条路，任一条成立就算对得上：</para>
+    /// <para>　①<b>顺序关系</b>：第一票读出来的每一个字，在第二票那份里都能
+    /// **按原来的先后顺序**找着（术语叫子序列）。</para>
+    /// <para>　②<b>只差零星几个字</b>：两份的编辑距离不超过 <see cref="AllowedSecondVoteDistance"/>。</para>
     ///
-    /// <para>为什么是「顺序」而不是「开头」（2026-10-14 放宽）：
-    /// 老规矩要求第二票**一字不差以第一票开头**，能治「尾巴被咬掉」
-    /// （`editable text.` → `editable te`），但治不了**第一票在句中打磕巴**——
+    /// <para>【路子①的来历】（2026-10-14 上午）老规矩要求第二票**一字不差以第一票开头**，
+    /// 能治「尾巴被咬掉」（`editable text.` → `editable te`），但治不了**第一票在句中打磕巴**——
     /// A16 实测那次第一票读成 `…into editab e te`（`editable` 中间凭空多空一格、又漏了 `xt`），
     /// 第二票明明读全了，却因为开头两个字之后就对不上，被老规矩挡在门外。
     /// 换成顺序关系后，第一票那些字在第二票里照样按顺序找得着，就能换。</para>
     ///
-    /// <para>为什么这样不容易出事：要求「第一票的字**全部**都在第二票里按序出现」，
-    /// 等于第一票一个错字都不能有。第二票要是把词读糊了（`trips` → `tnps`）、
-    /// 交白卷、或者少读一截，第一票里对应那几个字在第二票里就找不着，规矩不动手。</para>
+    /// <para>【路子②的来历】（2026-10-14 下午，A5 实测）顺序关系要求第一票**一个错字都不能有**，
+    /// 于是又漏掉一类：第一票把 `editable` 读成 `edital le`——**少一个 `b`、多一个 `l`**。
+    /// 这种改动是「替换 + 插入」，第一票多出来的那个 `l` 在第二票里没有，
+    /// 顺序关系当场不成立（A5 那次第二票读得又全又准、置信度还更高，照样被挡在门外）。
+    /// 补一条「只差零星几个字」把这类捞回来。</para>
     ///
-    /// <para>数据（2026-10-14 两套离线体检）：
-    /// 真机日志 71 个「两票齐全 + 能对上标准答案」的块——老规矩出手 8 次救 8 次、弄坏 0；
-    /// 新规矩出手 12 次救 12 次、弄坏 0（多救的 4 次里就有 A16）。
-    /// 合成 255 张图（15 句 × 17 种底子）——新规矩出手 1 次救 1 次、弄坏 0。
-    /// 另有 48 个「对不上标准答案、判不了对错」的块，新规矩出手 0 次。</para>
+    /// <para>数据（2026-10-14 两套离线体检，规矩①②并集）：
+    /// 真机日志 128 个「两票齐全 + 能对上标准答案」的块——出手 19 次、救回 18 次、弄坏 0；
+    /// 另 70 个「对不上标准答案、判不了对错」的块出手 0 次。
+    /// 合成 255 张图（15 句 × 17 种底子）——出手 1 次、救回 1 次、弄坏 0。
+    /// 单独用路子①是 17 次出手救 16 次，A5 那类一次都救不了。</para>
     ///
     /// <para>【这条规矩挡不住的情况，明说】
-    /// ①第二票自己把词读糊了、而第一票是对的 —— 要求「第一票的字全在」挡不住，
-    /// 只有靠「两份一模一样」那句反过来兜底（一模一样时不换）。
-    /// ②第一票「字全对、只有末尾符号读错」（`text.` → `text |`）—— 按设计不动手。</para>
+    /// ①两份**都不全**时救不了：实测 12:39:59 那次第一票 `…editable ex`、第二票 `…editable tex`，
+    /// 第二票只多认一个 `t`，还是错的。
+    /// ②第一票「字全对、只有末尾符号读错」（`text.` → `text |`）—— 按设计不动手。
+    /// ③第二票自己读得更差、但**更长且改几个字就凑得上**时会被换错。
+    /// 历史数据里没出现过（那 2 个「第二票更差」的样本是同长度，被「更长」挡在外面），
+    /// 但这是这条规矩明摆着的天花板，放宽门槛时要知道。</para>
     /// </summary>
     private static bool SecondVoteRecoversTail(string? firstText, string? secondText)
     {
@@ -2497,15 +2510,66 @@ internal sealed class OcrTextCapture : ITextCapture
         string first = LettersAndDigitsOnly(firstText);
         string second = LettersAndDigitsOnly(secondText);
 
-        if (first.Length == 0 || first == second) return false;
+        // 第二票不比第一票长就不用看：换过去只会丢字。
+        // （这条同时保证了两份不会一模一样，不用再单独比一次。）
+        if (first.Length == 0 || second.Length <= first.Length) return false;
 
-        // 第一票的每个字，按原顺序在第二票里找一遍
+        // 路子①：第一票的字按原顺序在第二票里都找得着
+        if (IsSubsequence(first, second)) return true;
+
+        // 路子②：两份只差零星几个字
+        return EditDistance(first, second) <= AllowedSecondVoteDistance(first.Length);
+    }
+
+    /// <summary>
+    /// `small` 的字是不是按原顺序都出现在 `big` 里（子序列）。
+    /// </summary>
+    private static bool IsSubsequence(string small, string big)
+    {
         int i = 0;
-        foreach (char c in second)
+        foreach (char c in big)
         {
-            if (i < first.Length && first[i] == c) i++;
+            if (i < small.Length && small[i] == c) i++;
         }
-        return i == first.Length;
+        return i == small.Length;
+    }
+
+    /// <summary>
+    /// 「只差零星几个字」这条路允许多少个字符的差别。
+    ///
+    /// <para>固定 4 个字符，同时不超过第一票长度的四分之一（至少 1 个）。
+    /// 为什么按长度收：固定 4 在**短串**上等于没有门槛——第一票只读出 3 个字母时，
+    /// 差 4 个字符已经超过它本身的长度，那就是「只要第二票更长就换」，
+    /// 这条无脑规矩早就被实测否掉过（会把对的换成错的）。</para>
+    /// <para>60 字上下的长句：`min(4, 15)` = 4，与不带比例的版本完全同分。</para>
+    /// </summary>
+    private static int AllowedSecondVoteDistance(int firstLength)
+        => Math.Min(4, Math.Max(1, firstLength / 4));
+
+    /// <summary>
+    /// 两份文本要改几个字符才能变成对方（编辑距离，Levenshtein，滚动数组）。
+    /// 只给 <see cref="SecondVoteRecoversTail"/> 和日志用。
+    /// </summary>
+    private static int EditDistance(string a, string b)
+    {
+        if (a.Length == 0) return b.Length;
+        if (b.Length == 0) return a.Length;
+
+        var prev = new int[b.Length + 1];
+        var cur = new int[b.Length + 1];
+        for (int j = 0; j <= b.Length; j++) prev[j] = j;
+
+        for (int i = 1; i <= a.Length; i++)
+        {
+            cur[0] = i;
+            for (int j = 1; j <= b.Length; j++)
+            {
+                int cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                cur[j] = Math.Min(Math.Min(cur[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+            }
+            (prev, cur) = (cur, prev);
+        }
+        return prev[b.Length];
     }
 
     /// <summary>

@@ -46,6 +46,15 @@ int fail = 0;
         //   老规矩（严丝合缝的开头关系）在这里返回 false，放宽成顺序关系后才救得回来。
         ("Optical character recognition converts images of text into editab e te",
          "Optical character recognition converts images of text into editable text.", true,  "A16 真错例：第一票句中打磕巴，第二票全对"),
+        // ↓ A5 真实病例（2026-10-14 12:41:00 框 494×35）：第一票把 editable 读成 edital le
+        //   （少 b、多 l），**不是**第二票的子序列，光靠「顺序关系」救不回来。
+        //   放宽出「只差零星几个字」这条路之后才救得回来。
+        ("Optical character recognition converts images of text into edital le te",
+         "Optical character recognition converts images of text into editable text.", true,  "A5 真错例：第一票词里错几个字，第二票全对"),
+        // ↓ 短串上必须收窄：第一票只读出 3 个字母时，「差 4 个字符也算对得上」等于没门槛，
+        //   那就是「只要第二票更长就换」（已实测会弄坏）。这条钉子锁住按长度收窄这件事。
+        ("cat", "dogs", false, "短串：差太远不许换（固定 4 会放行，按长度收窄后挡住）"),
+        ("abcd", "abxcd", true, "短串：只差 1 个字且在限额内 → 换"),
         // ↓ 下面两条是这次放宽**新增**的风险面，必须钉死：第二票自己读糊了时不能换。
         ("Small printed text on a paper-like background is the case that trips up",
          "Small printed text on a paper-like background is the case that tnps up", false, "第二票自己读糊了（trips→tnps）→ 第一票的字找不齐 → 不动"),
@@ -255,6 +264,12 @@ var rules = new (string name, Func<string, string, bool> decide)[]
         (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length
                   && EditDistance(AlnumOnly(f), AlnumOnly(s)) <= 4
                   && ShortWordCount(f) > ShortWordCount(s)),
+    // R14 是 R9 的收紧版：固定「≤4」在短串上等于没门槛（3 个字母的词宽容到差 4 个 = 随便换）。
+    // 长串上跟 R9 完全一样，短串上按比例收紧。真实日志上两者成绩完全相同。
+    ("R14 第二票更长 + 编辑距离 ≤ min(4, max(1, 第一票长度/4))（拟上线）",
+        (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length
+                  && EditDistance(AlnumOnly(f), AlnumOnly(s))
+                     <= Math.Min(4, Math.Max(1, AlnumOnly(f).Length / 4))),
 };
 int EditDistance(string a, string b)
 {
