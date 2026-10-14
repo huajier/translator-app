@@ -1,0 +1,14 @@
+E6-1|Optical character recognition converts images of text into editable text.
+E6-2|Optical character recognition converts images of text into editable text.
+E6-3|Optical character recognition converts images of text into editable text
+E6-4|Optical character recognition converts images of text into editable text!
+E6-5|Optical character recognition converts images of text into editable text?
+E6-6|Optical character recognition converts images of text into editable text.
+E6-7|Optical character recognition converts images of text into editable text.
+E6-8|Optical character recognition converts images of text into editable text. It is used to read scanned documents automatically.
+E6-9|Optical character recognition converts images of text into editable text.
+E6-10|Optical character recognition converts images of text into editable text.
+E6-11|Optical character recognition converts images of text into editable text (see Fig. 1).
+E6-12|Optical character recognition converts images of text into editable text.
+E6-13|Optical character recognition converts images of text into editable text.
+E6-14|Optical character recognition converts images of text into editable text.

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>翻译软件 · E6 末尾专项复测（2026-10-14）</title>
+<style>
+body { font-family: "Segoe UI", Arial, sans-serif; background:#f0f0f0; color:#111;
+       margin:0; padding:20px; }
+h1   { font-size:20px; margin:0 0 4px; }
+.note { font-size:13px; color:#555; margin:0 0 18px; max-width:1400px; }
+.blk { border-radius:6px; padding:14px 16px; margin:0 0 16px; position:relative; }
+.tag { font-size:12px; font-weight:bold; color:#fff; background:#333;
+       display:inline-block; padding:2px 9px; border-radius:4px; margin:0 0 9px; }
+p { font-size:15px; line-height:1.7; margin:0 0 6px; }
+.big { font-size:18px; line-height:1.7; margin:0 0 6px; }
+.small { font-size:13px; line-height:1.7; margin:0 0 6px; }
+
+/* W1 纯白底 */
+.w1 { background:#ffffff; color:#111111; }
+
+/* W2 灰底灰字（材料2 的 E4 那种） */
+.w4 { background:#b9b9b9; color:#9a9a9a; }
+
+/* W3 纯线性渐变（去掉两个半透明光斑） */
+.w3 { background:linear-gradient(120deg,#e8f0fe,#d0e0f8); color:#14213d; }
+
+/* W5 材料2 里 E6 的原样背景：两层半透明彩色块叠在渐变上 */
+.w5 { background:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,.55), transparent 55%),
+        radial-gradient(circle at 75% 65%, rgba(255,120,0,.45), transparent 50%),
+        linear-gradient(120deg,#e8f0fe,#d0e0f8);
+      color:#14213d; }
+</style>
+</head>
+<body>
+<h1>E6 末尾专项复测（材料2 E6 原句）</h1>
+<p class="note">
+原句：Optical character recognition converts images of text into editable text.<br>
+这一页只做一件事：搞清楚<b>末尾那个符号为什么有时候认错</b>。所以同一句话换了好几种背景、换了好几种末尾符号、换了好几种字号。<br>
+<b>框法：每段只框住下面那一行句子</b>，上面那行灰底编号（E6-1、E6-2 …）<b>不要框进去</b>。<br>
+每段框一次就行，框完往下走，一共 14 段。顺序照着从上到下，别跳着测（我靠时间顺序认段落）。
+</p>
+
+<div class="blk w5">
+  <span class="tag">E6-1 · 原样背景 · 原句带句号 · 最上面</span>
+  <p>Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk w1">
+  <span class="tag">E6-2 · 纯白底 · 原句带句号</span>
+  <p>Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-3 · 原样背景 · 末尾没有标点</span>
+  <p>Optical character recognition converts images of text into editable text</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-4 · 原样背景 · 末尾换成感叹号</span>
+  <p>Optical character recognition converts images of text into editable text!</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-5 · 原样背景 · 末尾换成问号</span>
+  <p>Optical character recognition converts images of text into editable text?</p>
+</div>
+
+<div class="blk w3">
+  <span class="tag">E6-6 · 纯线性渐变（没有那两个半透明光斑）· 原句带句号</span>
+  <p>Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-7 · 原样背景 · 原句带句号 · 重复第 1 次（页面中部）</span>
+  <p>Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-8 · 原样背景 · 句号后面同一段还接着别的内容</span>
+  <p>Optical character recognition converts images of text into editable text. It is used to read scanned documents automatically.</p>
+</div>
+
+<div class="blk w4">
+  <span class="tag">E6-9 · 灰底灰字 · 原句带句号</span>
+  <p>Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-10 · 原样背景 · 原句带句号 · 重复第 2 次（页面下部）</span>
+  <p>Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-11 · 原样背景 · 末尾是右括号（括号和句点挨着，最容易混）</span>
+  <p>Optical character recognition converts images of text into editable text (see Fig. 1).</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-12 · 原样背景 · 大一号字（18px）· 原句带句号</span>
+  <p class="big">Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-13 · 原样背景 · 小一号字（13px）· 原句带句号</span>
+  <p class="small">Optical character recognition converts images of text into editable text.</p>
+</div>
+
+<div class="blk w5">
+  <span class="tag">E6-14 · 原样背景 · 句号后面换行再接一行</span>
+  <p>Optical character recognition converts images of text into editable text.<br>It is used to read scanned documents automatically.</p>
+</div>
+
+</body>
+</html>
