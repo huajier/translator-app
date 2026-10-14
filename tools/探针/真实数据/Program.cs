@@ -225,6 +225,32 @@ var rules = new (string name, Func<string, string, bool> decide)[]
         (f, s) => Alnum(s).Length > Alnum(f).Length && Alnum(f) != Alnum(s)
                && (IsSubseq(Alnum(f), Alnum(s))
                 || Edit(Alnum(f), Alnum(s)) <= Math.Min(4, Math.Max(1, Alnum(f).Length / 4)))),
+    // ★ 候选 R16：两份的字母数字**完全一样**、只有标点/空格不同就取第二票。
+    // 来由：A 系列 14:14:56 与 14:15:49 两次，第一票 `…editable text. |`、第二票 `…editable text.`，
+    // 字母数字完全相同（竖线不是字母数字），「第二票更长」这条闸门不放行 → 换不过去。
+    // 注意这条**必须去掉「第二票更长」**，因为正是「一样长」的时候才需要它。
+    ("R16 两份字母数字完全一样就取第二票（候选，治「末尾多根竖线」）",
+        (f, s) => Alnum(f).Length > 0 && Alnum(f) == Alnum(s) && f != s),
+    // R17：R15 再并上 R16，看会不会把前面已经能救的丢掉。
+    ("R17 并集 + R16（拟上线版 2）",
+        (f, s) => (Alnum(s).Length > Alnum(f).Length && Alnum(f) != Alnum(s)
+                && (IsSubseq(Alnum(f), Alnum(s))
+                 || Edit(Alnum(f), Alnum(s)) <= Math.Min(4, Math.Max(1, Alnum(f).Length / 4))))
+               || (Alnum(f).Length > 0 && Alnum(f) == Alnum(s) && f != s)),
+    // R18：R16 加一条更紧的护栏——不只要求「字母数字一样」，还要求**第二票确实把竖线类噪声清掉了**
+    // （第一票里的 `|` 比第二票多）。来由：R16 全清单里 `app-20261012.log:24913` 那种
+    // 「第一票 `p.42.`、第二票 `p42.`」第二票会丢点，光看「字母数字一样」分不出好坏。
+    // 竖线是 OCR 从低对比度竖带里读出来的垃圾，第一票有、第二票没有 = 第二票确实更干净。
+    ("R18 字母数字一样 且 第二票的竖线噪声比第一票少（更保守的候选）",
+        (f, s) => Alnum(f).Length > 0 && Alnum(f) == Alnum(s) && f != s
+               && f.Count(c => c == '|') > s.Count(c => c == '|')),
+    // R19：并集 + R18（最保守的上线组合）。
+    ("R19 并集 + R18（保守上线版）",
+        (f, s) => (Alnum(s).Length > Alnum(f).Length && Alnum(f) != Alnum(s)
+                && (IsSubseq(Alnum(f), Alnum(s))
+                 || Edit(Alnum(f), Alnum(s)) <= Math.Min(4, Math.Max(1, Alnum(f).Length / 4))))
+               || (Alnum(f).Length > 0 && Alnum(f) == Alnum(s) && f != s
+                   && f.Count(c => c == '|') > s.Count(c => c == '|'))),
 };
 Console.WriteLine("================ 规矩对拍（真机实测样本） ================");
 foreach (var (name, decide) in rules)
@@ -287,6 +313,55 @@ Console.WriteLine();
 // graded 只覆盖了能对上标准答案的一部分。真上线时规矩会在**全部**两票块上出手，
 // 所以必须单独数一遍：在量不了的块里它会不会动手。
 var gradedSet = new HashSet<int>(graded.Select(g => g.b.Line));
+
+// ── R16 专项：把「两份字母数字完全一样、只有标点/空格不同」的块全部打出来人工看 ──
+// 为什么必须人工看：本探针判对错只比**字母数字**（竖线 `|`、引号这类不算），
+// 所以「末尾多根竖线」这种错在探针眼里两边都是「对」→ R16 永远显示「救回 0」。
+// 那是量具盲区，不是 R16 没用。要看真假，只能把两边原文摆出来人眼判。
+Console.WriteLine("================ R16 出手样本全清单（字母数字一样、标点/空格不同） ================");
+int r16All = 0;
+foreach (var b in twoVote)
+{
+    if (b.Eng[0].Words.Count == 0 || b.Eng[1].Words.Count == 0) continue;
+    string t1 = string.Join(" ", b.Eng[0].Words.Select(x => x.w));
+    string t2 = string.Join(" ", b.Eng[1].Words.Select(x => x.w));
+    if (!(Alnum(t1).Length > 0 && Alnum(t1) == Alnum(t2) && t1 != t2)) continue;
+    r16All++;
+    bool canGrade = gradedSet.Contains(b.Line);
+    bool r18 = t1.Count(c => c == '|') > t2.Count(c => c == '|');
+    Console.WriteLine($"── {b.File}:{b.Line} {b.Ts} 框 {b.W}×{b.H}  [{(canGrade ? "能对答案" : "量不了")}]  R18{(r18 ? "命中" : "不命中")}");    Console.WriteLine($"   一[{t1}]");
+    Console.WriteLine($"   二[{t2}]");
+    Console.WriteLine($"   最终原文[{b.Final}]");
+}
+Console.WriteLine($"R16 一共出手 {r16All} 次（含量不了的）");
+Console.WriteLine();
+
+// ── R16 的「带标点」量化：探针的判对错只看字母数字，看不见竖线，所以单靠它永远得「救回 0」。
+// 这里改用**含标点的编辑距离**对着标准答案算一遍：换成第二票之后离答案更近还是更远。
+// 这才是 R16 到底救没救回来的真凭据。
+Console.WriteLine("================ R16 带标点核对（对得上答案的块） ================");
+int r16Better = 0, r16Worse = 0, r16Same = 0;
+int r18Better = 0, r18Worse = 0;
+foreach (var (b, truth, _, _, _) in graded)
+{
+    if (b.Eng[0].Words.Count == 0 || b.Eng[1].Words.Count == 0) continue;
+    string t1 = string.Join(" ", b.Eng[0].Words.Select(x => x.w));
+    string t2 = string.Join(" ", b.Eng[1].Words.Select(x => x.w));
+    if (!(Alnum(t1).Length > 0 && Alnum(t1) == Alnum(t2) && t1 != t2)) continue;
+    int d1 = Edit(t1.Trim(), truth.Trim()), d2 = Edit(t2.Trim(), truth.Trim());
+    string verdict = d2 < d1 ? "✅换了对" : d2 > d1 ? "❌换错" : "⚪一样远";
+    if (d2 < d1) r16Better++; else if (d2 > d1) r16Worse++; else r16Same++;
+    // R18 那条更保守的护栏（要求第二票的竖线噪声比第一票少）单独记一笔。
+    bool r18 = t1.Count(c => c == '|') > t2.Count(c => c == '|');
+    if (r18) { if (d2 < d1) r18Better++; else if (d2 > d1) r18Worse++; }
+    Console.WriteLine($"── {b.File}:{b.Line} {b.Ts} 框 {b.W}×{b.H}  R18{(r18 ? "命中" : "不命中")}");
+    Console.WriteLine($"   答案[{truth}]");
+    Console.WriteLine($"   一[{t1}]  距答案 {d1}");
+    Console.WriteLine($"   二[{t2}]  距答案 {d2}   {verdict}   最终[{b.Final}]");
+}
+Console.WriteLine($"R16 带标点核对：换了对 {r16Better}，换错 {r16Worse}，一样远 {r16Same}");
+Console.WriteLine($"R18（再看竖线少不少）出手里：换了对 {r18Better}，换错 {r18Worse}");
+Console.WriteLine();
 Console.WriteLine("================ 出手范围体检（含量不了的块） ================");
 Console.WriteLine($"两票齐全的块共 {twoVote.Count(b => b.Eng[0].Words.Count > 0 && b.Eng[1].Words.Count > 0)} 个；其中能对答案的 {graded.Count} 个，量不了的 {twoVote.Count(b => b.Eng[0].Words.Count > 0 && b.Eng[1].Words.Count > 0) - graded.Count} 个");
 foreach (var (name, decide) in rules)

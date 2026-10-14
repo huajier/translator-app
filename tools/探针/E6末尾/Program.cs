@@ -270,6 +270,11 @@ var rules = new (string name, Func<string, string, bool> decide)[]
         (f, s) => AlnumOnly(s).Length > AlnumOnly(f).Length
                   && EditDistance(AlnumOnly(f), AlnumOnly(s))
                      <= Math.Min(4, Math.Max(1, AlnumOnly(f).Length / 4))),
+    // ★ R16（候选，治「字母全对、只有末尾符号读错」）：两份字母数字完全相同、只有标点/空格不同就取第二票。
+    // 现实例（2026-10-14 14:14:56 / 14:15:49）：第一票 `…editable text. |`、第二票 `…editable text.`。
+    // 这条**故意不要求「第二票更长」**——正是「一样长」的时候才需要它，加上「更长」等于自我否决。
+    ("R16 字母数字一模一样就取第二票（候选）",
+        (f, s) => AlnumOnly(f).Length > 0 && AlnumOnly(f) == AlnumOnly(s) && f != s),
 };
 int EditDistance(string a, string b)
 {
