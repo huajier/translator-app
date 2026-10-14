@@ -545,6 +545,60 @@ internal sealed class OcrTextCapture : ITextCapture
                         var engResult = tryForeignModels
                             ? TesseractOcr.TryRecognize(foreignImage, TesseractOcr.Languages.English)
                             : new TesseractOcr.Result(null, 0);
+
+                        // ==========================================================
+                        // 【2026-10-14 用户拍板「甲方案」：英文加第二票，只治「结尾被咬掉」】
+                        //
+                        //   【E6 那个老毛病的病根，是这张图本身】
+                        //   `foreignImage` = 放大 4 倍 + 变灰，**不二值化**。
+                        //   它被喂给 6 次识别（eng/rus/rus+eng/四路/红通道/chi_sim），
+                        //   俄文段和中文兜底全靠它，所以**不能直接换掉这张图**
+                        //   （V0.3.1 就是为治一个特例去动全局机制，三语全崩）。
+                        //
+                        //   【离线复现，不是猜】
+                        //   拿用户 10-14 08:40:08 存的那张框图（493×29，E6-1 咬成 `editable te`），
+                        //   tools\探针\E6末尾 跑 12 种预处理：
+                        //     只放大+变灰（= foreignImage）→ ❌ `editable te`（61 个字母数字，和软件错的 4 次一模一样）
+                        //     放大+变灰**+再二值化**        → ✅ `editable text.`（63）
+                        //     其余 10 种（含原图、只灰度、只二值化、红通道…）→ ✅ 全读全
+                        //   **12 种里只有放大+变灰这一种会咬尾巴**，加一道二值化就好。
+                        //
+                        //   【为什么是「加一票」而不是「换图」】
+                        //   那张坏图只有 1 张，好图一张都没存（存的截图会被重建发布目录冲掉）。
+                        //   拿 1 张图去换掉 56 段的饭，赔面太大。
+                        //   加一票则相反：**老的那一票一个字没改**，它认对就还是它说了算。
+                        //
+                        //   【规矩：只有严丝合缝的开头关系才换】
+                        //   短的字母数字串必须一字不差是长的开头 —— 只治「尾巴被吃掉」，
+                        //   不治「多读了别的东西」（那种情况两边开头对不上，直接不动手）。
+                        //   对不上 = 这次当没发生，走老路。
+                        //
+                        //   ponytail: 英文取词会多花约 0.1 秒（实测 Tesseract 单次 ~110 毫秒）；
+                        //   这是买「看不准就不动手」那份保险的钱。
+                        // ==========================================================
+                        if (tryForeignModels && !string.IsNullOrWhiteSpace(engResult.Text))
+                        {
+                            try
+                            {
+                                using Bitmap sharpImage = ImagePreprocessor.PreprocessAndBinarize(foreignImage);
+                                var secondVote = TesseractOcr.TryRecognize(sharpImage, TesseractOcr.Languages.English);
+
+                                if (SecondVoteRecoversTail(engResult.Text, secondVote.Text))
+                                {
+                                    AppLogger.Info(
+                                        $"【英文第二票】第一票把结尾咬掉了（{engResult.Confidence:0.00}），" +
+                                        $"第二票（放大+变灰+二值化，{secondVote.Confidence:0.00}）" +
+                                        $"在它后面补上了「{DescribeTailGain(engResult.Text!, secondVote.Text!)}」——采用第二票");
+
+                                    engResult = secondVote;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                AppLogger.Warn($"英文第二票失败（已忽略，仍用第一票）：{ex.GetType().Name} {ex.Message}");
+                            }
+                        }
+
                         var best = engResult;
                         string modelUsed = TesseractOcr.Languages.English;
 
@@ -2402,5 +2456,43 @@ internal sealed class OcrTextCapture : ITextCapture
             if (allLatin && end - start <= 3) return true;
         }
         return false;
+    }
+
+    /// <summary>
+    /// 英文第二票能不能救回第一票被咬掉的结尾（2026-10-14，甲方案）。
+    ///
+    /// <para>唯一的规矩：两份结果的「字母数字串」必须构成严格的**开头关系**——
+    /// 短的**一字不差**是长的开头，且长的更长。</para>
+    ///
+    /// <para>为什么只认这一种形状：E6 的 4 次错全是**结尾被咬掉**
+    /// （`editable text.` → `editable te` / `editable €`）。
+    /// 开头对得上，就说明第二票认出的东西**完全就是第一票认的那句话，只多出尾巴**，
+    /// 多出来的才是被漏掉的字。
+    /// 反过来「第一票多读了别的东西」（比如把旁边段落的编号 `8935` 读进来），
+    /// 两边开头就对不上，这里直接返回 false，**一点都动不了**。</para>
+    ///
+    /// <para>【这条规矩挡不住的一种情况，明说】
+    /// 万一引擎多读出的东西**偏偏长在结尾**（`text.` 读成 `text.1`），
+    /// 开头照样对得上，这道门拦不住。实测没遇到过，遇到了靠三份材料重测发现。</para>
+    /// </summary>
+    private static bool SecondVoteRecoversTail(string? firstText, string? secondText)
+    {
+        if (string.IsNullOrWhiteSpace(firstText) || string.IsNullOrWhiteSpace(secondText)) return false;
+
+        string first = LettersAndDigitsOnly(firstText);
+        string second = LettersAndDigitsOnly(secondText);
+
+        return second.Length > first.Length && second.StartsWith(first, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// 第二票比第一票多认出来的部分（去掉空白），只给日志看。
+    /// </summary>
+    private static string DescribeTailGain(string firstText, string secondText)
+    {
+        string first = LettersAndDigitsOnly(firstText);
+        string second = LettersAndDigitsOnly(secondText);
+        if (second.Length <= first.Length) return "";
+        return second[first.Length..];
     }
 }
