@@ -67,7 +67,18 @@ int fail = 0;
         ("Optical character recognition converts images of text into editable text.",
          "Optical character recognition converts images of text into editak le.", false, "中间不一样且少字 → 找不齐 → 不动"),
         ("abc def", "xyz def", false, "完全不同 → 不动"),
-        ("abc", "abc", false, "一模一样 → 不动"),
+        // ↓ 这三条是 2026-10-14 下午新增的路子③（用户补测 10 次里错了 5 次那类）：
+        //   字母数字一模一样、差别只在标点/空格怎么摆 → 采第二票。它**不看长短**。
+        ("Optical character recognition converts images of text into editable text",
+         "Optical character recognition converts images of text into editable text.", true, "补测真错例：第一票末尾句号丢了，第二票有 → 路子③换"),
+        ("Optical character recognition converts images of text into editable text. |",
+         "Optical character recognition converts images of text into editable text.", true, "补测真错例：第一票末尾句号变竖线 → 字母数字一样 → 换"),
+        ("Optical character recognition converts images of text into editable t ext",
+         "Optical character recognition converts images of text into editable text.", true, "补测真错例：第一票把 text 掰成 t ext → 字母数字一样 → 换"),
+        ("abc", "abc", true, "字母数字一模一样 → 路子③换第二票（两份连标点都一样时换了也一样）"),
+        // 路子③不看长短，唯一要防的是「第二票把对的字母改错、又刚好同长度」。
+        // 钉一条：字母被改掉（长度可能还一样）时不许换。
+        ("The quick brown fox", "The quuck brown fox", false, "第二票把字母改错（quick→quuck）→ 字母数字不同 → 不换"),
         ("abc", "abcd", true, "第一票漏了尾字、第二票读全 → 采用第二票"),
         ("abc", "xabcx", true, "第二票多读了东西但第一票的字按序都在（顺序关系允许长了）"),
         (null, "abc", false, "第一票没结果 → 不动"),
