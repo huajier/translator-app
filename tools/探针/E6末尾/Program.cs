@@ -28,6 +28,44 @@ while (progress && pending.Count > 0)
 }
 Console.WriteLine($"预加载原生库：成功 {loaded} 个，装不上 {pending.Count} 个（{x64}）");
 
+// ── 断言：直接反射调用真程序集里那条规矩本身，不复制逻辑 ──
+//   甲方案唯一的非平凡逻辑就是 SecondVoteRecoversTail（严格前缀关系）。
+//   这里用真实字符串跑一遍，正反两面都断掉，才算有检查。
+int fail = 0;
+{
+    var asm = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var type = asm.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
+    var m = type!.GetMethod("SecondVoteRecoversTail", BindingFlags.NonPublic | BindingFlags.Static)
+            ?? throw new InvalidOperationException("找不到 SecondVoteRecoversTail");
+    bool Check(string? a, string? b) => (bool)m.Invoke(null, new object?[] { a, b })!;
+
+    (string? a, string? b, bool want, string why)[] cases =
+    {
+        ("Optical character recognition converts images of text into editable te",
+         "Optical character recognition converts images of text into editable text.", true,  "E6 真错例：第一票咬掉尾巴，第二票补上"),
+        ("Optical character recognition converts images of text into editable text.",
+         "Optical character recognition converts images of text into editable te", false, "反过来：短的不能当长的用"),
+        ("The quick brown fox jumps over the lazy dog",
+         "The quick brown fox jumps over the lazy dog 89", true, "结尾多出数字也会触发（已知挡不住，如实记录）"),
+        ("Optical character recognition converts images of text into editable text.",
+         "Optical character recognition converts images of text into editak le.", false, "中间不一样 → 开头对不上 → 不动"),
+        ("abc def", "xyz def", false, "完全不同 → 不动"),
+        ("abc", "abc", false, "一样长 → 不动"),
+        (null, "abc", false, "第一票没结果 → 不动"),
+        ("abc", "   ", false, "第二票空 → 不动"),
+    };
+    foreach (var (a, b, want, why) in cases)
+    {
+        bool got = Check(a, b);
+        bool ok = got == want;
+        if (!ok) fail++;
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")}  期望{want} 实得{got}  {why}");
+    }
+}
+Console.WriteLine(fail == 0 ? "断言全部通过" : $"断言失败 {fail} 条");
+if (fail > 0) Environment.Exit(1);
+Console.WriteLine();
+
 [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
 static extern bool SetDllDirectory(string path);
 
