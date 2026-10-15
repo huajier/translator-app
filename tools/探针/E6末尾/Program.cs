@@ -207,6 +207,36 @@ Console.WriteLine();
     Console.WriteLine();
 }
 
+// ── 断言：弹框拖动的位置夹取（2026-10-15，用户要求「弹框可以拖动」）──
+{
+    var asm4 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var type4 = asm4.GetType("TranslatorApp.UI.Shared.DebugToastWindow")
+                ?? throw new InvalidOperationException("找不到 DebugToastWindow");
+    var m4 = type4.GetMethod("ClampAxis", BindingFlags.NonPublic | BindingFlags.Static)
+             ?? throw new InvalidOperationException("找不到 ClampAxis");
+    double Clamp(double v, double lo, double hi) => (double)m4.Invoke(null, new object?[] { v, lo, hi })!;
+
+    int fail4 = 0;
+    (double v, double lo, double hi, double want, string why)[] clamp =
+    {
+        (100, 0, 1920, 100, "屏幕内 → 原样"),
+        (-50, 0, 1920, 0, "拖出左边界 → 拉回 0"),
+        (2000, 0, 1920, 1920, "拖出右边界 → 拉回上界"),
+        (-500, -1920, -100, -500, "副屏在左边（负坐标是合法的）→ 不许当成越界拉回 0"),
+        (100, 0, -300, 0, "显示器比卡片还窄（上界 < 下界）→ 待在 lo，不许算出屏幕外"),
+    };
+    foreach (var (v, lo, hi, want, why) in clamp)
+    {
+        double got = Clamp(v, lo, hi);
+        bool ok = Math.Abs(got - want) < 0.001;
+        if (!ok) fail4++;
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")}  期望[{want}] 实得[{got}]  {why}");
+    }
+    Console.WriteLine(fail4 == 0 ? "弹框拖动断言全部通过" : $"弹框拖动断言失败 {fail4} 条");
+    if (fail4 > 0) Environment.Exit(1);
+    Console.WriteLine();
+}
+
 [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
 static extern bool SetDllDirectory(string path);
 

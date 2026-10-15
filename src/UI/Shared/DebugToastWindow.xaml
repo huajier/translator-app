@@ -39,6 +39,16 @@
              → 去掉了 MainText 上限 120 字的截断，改为原文全文照登；
              → 外面套 ScrollViewer，卡片再长也不会跑出屏幕。
     -->
+    <!--
+        【2026-10-15 用户反馈，两条都改在这里】
+          ③ 「弹框可以拖动」→ 整张卡片左键按住就能挪走；
+             处理在窗口自己的 MouseLeftButtonDown/Move/Up 上（见 .xaml.cs）。
+             踩点：**点在文字上不算拖动**，要让位给选字。
+          ④ 「弹框里的文字可以用鼠标选中」→ MainText 从 TextBlock 换成 TextBox。
+             WPF 的 TextBlock 压根不支持选字（那是 WinUI 才有的 IsTextSelectionEnabled），
+             只读 TextBox 是原生做法：无边框、透明底、只读，外观和 TextBlock 一致，
+             但能拖选 + Ctrl+C。**不引第三方控件。**
+    -->
     <Border Background="#F20F172A" CornerRadius="6" Padding="10,7"
             BorderBrush="#FF38BDF8" BorderThickness="1">
         <Grid>
@@ -51,9 +61,13 @@
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               MaxHeight="300">
-                    <TextBlock x:Name="MainText" Foreground="#FF38BDF8"
-                               FontSize="13" FontWeight="Bold"
-                               TextWrapping="Wrap" MaxWidth="420" />
+                    <TextBox x:Name="MainText" Foreground="#FF38BDF8"
+                             FontSize="13" FontWeight="Bold"
+                             TextWrapping="Wrap" MaxWidth="420"
+                             IsReadOnly="True"
+                             Background="Transparent" BorderThickness="0" Padding="0"
+                             VerticalScrollBarVisibility="Disabled"
+                             HorizontalScrollBarVisibility="Disabled" />
                 </ScrollViewer>
 
                 <TextBlock x:Name="DetailText" Foreground="#FFCBD5E1"

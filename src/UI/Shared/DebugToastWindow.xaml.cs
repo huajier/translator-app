@@ -75,8 +75,34 @@ public partial class DebugToastWindow : Window
     ///   轮询就没这个问题：卡片照样正常显示（不设穿透），
     ///   但我们只是**读**鼠标位置，不靠它接收任何输入。
     ///   代价是每 100 毫秒读一次光标位置，开销可以忽略。
+    ///
+    /// 【2026-10-15 用户反馈后：上面这条取舍被推翻了】
+    ///   用户要求「弹框可以拖动」+「弹框里的文字可以选中」。
+    ///   这两件事**都要求卡片能收到鼠标事件**，不然拖动和选字根本无从谈起。
+    ///   所以卡片现在会吃掉落在它身上的点击，**不再穿透到下面的软件**。
+    ///   这是需求本身要求的代价，如实记在这里。
     /// </summary>
     private readonly DispatcherTimer _hoverTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+
+    /// <summary>
+    /// 用户有没有**手动拖过**这张卡片。
+    ///
+    /// 【为什么要有这个标志】
+    ///   识别结果出来时 `UpdateWith()` 会重新摆一次位置（贴到选区旁边）。
+    ///   而用户拖走卡片，往往正是因为**卡片挡住了他要看的东西**——
+    ///   这时若还把他拖走的位置拉回去，等于白拖。
+    ///   所以：**一旦用户拖过，程序就再也不自动摆位置了。**
+    /// </summary>
+    private bool _userMoved;
+
+    /// <summary>正在拖（左键按在卡片上、还没松开）。</summary>
+    private bool _dragging;
+
+    /// <summary>拖动起点：窗口位置（DIP）与光标位置（物理像素）。</summary>
+    private double _dragStartLeft;
+    private double _dragStartTop;
+    private int _dragStartCursorX;
+    private int _dragStartCursorY;
 
     /// <summary>记住摆放位置所需的显示器信息，换文字后要重新摆一次避免跑出屏幕。</summary>
     private RECT _monitorRect;
@@ -101,12 +127,105 @@ public partial class DebugToastWindow : Window
         _hoverTimer.Tick += (_, _) => UpdateHoverState();
         _hoverTimer.Start();
 
+        // 【2026-10-15 用户要求「弹框可以拖动」】
+        //   按下在卡片上（但不在要选字的那块文字上）→ 开始拖；
+        //   移动 → 跟着光标挪；松开 → 收工并重新计 3 秒。
+        MouseLeftButtonDown += OnCardMouseLeftButtonDown;
+        MouseMove += OnCardMouseMove;
+        MouseLeftButtonUp += OnCardMouseLeftButtonUp;
+
         // 卡片一关就把轮询停掉，别让一个看不见的定时器一直跑
         Closed += (_, _) =>
         {
             _hoverTimer.Stop();
             _closeTimer.Stop();
         };
+    }
+
+    /// <summary>
+    /// 【2026-10-15 用户要求「弹框可以拖动」】
+    /// 左键按在卡片上 → 记下起点，开始拖。
+    ///
+    /// 按在**那段可以选中的文字上**（含它的滚动条）时不拖：
+    /// 那一下是留给用户拖选文字的，抢过来就选不成了。
+    /// </summary>
+    private void OnCardMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (IsInsideTextArea(e.OriginalSource)) return;
+        if (!NativeMethods.GetCursorPos(out NativeMethods.POINT p)) return;
+
+        _dragging = true;
+        _dragStartLeft = Left;
+        _dragStartTop = Top;
+        _dragStartCursorX = p.X;
+        _dragStartCursorY = p.Y;
+
+        // 拖着的时候不许自动关（复用「鼠标停在卡片上就不关」那套逻辑）
+        _closeTimer.Stop();
+
+        try { CaptureMouse(); }
+        catch (Exception ex) { Core.Logging.AppLogger.Warn($"提示框捕获鼠标失败（不影响拖动）：{ex.Message}"); }
+
+        e.Handled = true;
+    }
+
+    /// <summary>拖动中：窗口跟着光标走，并夹在虚拟屏幕内。</summary>
+    private void OnCardMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_dragging) return;
+        if (!NativeMethods.GetCursorPos(out NativeMethods.POINT p)) return;
+
+        double scale = _monitorDpi / DpiHelper.DefaultDpi;
+        if (scale <= 0) scale = 1;
+
+        double left = _dragStartLeft + (p.X - _dragStartCursorX) / scale;
+        double top = _dragStartTop + (p.Y - _dragStartCursorY) / scale;
+
+        // 不许拖出屏幕（拖丢了就找不回来了）
+        Left = ClampAxis(left, SystemParameters.VirtualScreenLeft,
+                         SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - Width);
+        Top = ClampAxis(top, SystemParameters.VirtualScreenTop,
+                        SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Height);
+
+        _userMoved = true;
+    }
+
+    /// <summary>
+    /// 把一个坐标夹在 [lo, hi] 里。
+    ///
+    /// 【为什么 hi 可能比 lo 还小】显示器比卡片还窄/还矮的时候，
+    /// `hi = 屏幕原点 + 屏幕尺寸 - 卡片尺寸` 会小于 `lo`。
+    /// 这时夹回 `lo`，卡片老老实实待在屏幕左上角，
+    /// 而不是因为 `Math.Min/Max` 的先后顺序被推到屏幕外。
+    /// </summary>
+    internal static double ClampAxis(double value, double lo, double hi)
+        => Math.Min(Math.Max(value, lo), Math.Max(lo, hi));
+
+    /// <summary>松开左键：结束拖动，重新计 3 秒自动关闭。</summary>
+    private void OnCardMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_dragging) return;
+
+        _dragging = false;
+        try { ReleaseMouseCapture(); }
+        catch (Exception ex) { Core.Logging.AppLogger.Warn($"提示框释放鼠标失败（不影响使用）：{ex.Message}"); }
+
+        _closeTimer.Stop();
+        _closeTimer.Interval = TimeSpan.FromSeconds(CloseDelaySeconds);
+        _closeTimer.Start();
+    }
+
+    /// <summary>这次点击是不是落在「要选字的那块文字」里（含它的滚动条）。</summary>
+    private bool IsInsideTextArea(object? source)
+    {
+        var d = source as DependencyObject;
+        while (d is Visual && !ReferenceEquals(d, this))
+        {
+            if (ReferenceEquals(d, TextScroll)) return true;
+            d = VisualTreeHelper.GetParent(d);
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -168,6 +287,7 @@ public partial class DebugToastWindow : Window
     internal void ShowFor(SelectionSession session)
     {
         TitleText.Text = "框选完成";
+        MainText.Visibility = Visibility.Visible;
         MainText.Text = $"({session.PhysicalRect.Left}, {session.PhysicalRect.Top})  {session.PhysicalWidth} × {session.PhysicalHeight}";
         DetailText.Text = "正在识别，请稍候…";
 
@@ -228,6 +348,10 @@ public partial class DebugToastWindow : Window
         TitleText.Text = title;
         MainText.Text = "";
         DetailText.Text = detail;
+
+        // 【2026-10-15】MainText 换成了 TextBox（为了能选字），而 TextBox 即使文本为空
+        //   也占着一行高度，短提示卡片底下会多出一块空白。所以这里直接收起来。
+        MainText.Visibility = Visibility.Collapsed;
         TextScroll.MaxHeight = 80;   // 短提示不需要很高
 
         Left = 0;
@@ -348,6 +472,11 @@ public partial class DebugToastWindow : Window
     /// </summary>
     private void PlaceBesideSelection()
     {
+        // 【2026-10-15】用户手动拖过卡片 → 位置由他做主，程序不再自动挪。
+        //   识别结果出来时卡片会变长、变宽，但用户拖它往往就是为了不挡住某块内容，
+        //   把他拖走的位置拉回去等于白拖一次。
+        if (_userMoved) return;
+
         double scale = _monitorDpi / DpiHelper.DefaultDpi;
         double screenWidthDip = (_monitorRect.Right - _monitorRect.Left) / scale;
         double screenHeightDip = (_monitorRect.Bottom - _monitorRect.Top) / scale;
