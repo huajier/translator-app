@@ -210,6 +210,18 @@ function Find-Group([string]$got, [bool]$onlyOpen) {
     foreach ($g in $cands) { if ($g.N -eq $got) { return @{ G = $g; D = 0; Case = $false } } }
     # 2) 只差大小写 → 按 RULE 1 判过
     foreach ($g in $cands) { if ($g.N.ToLower() -eq $got.ToLower()) { return @{ G = $g; D = 0; Case = $true } } }
+
+    # ⚠️ 第 15 次量具事故（2026-10-15）：材料1 的 D1「…API 版本 v2.0 已于 2024 年发布」与
+    #    材料2 的 Z3 是同一句、只多一个句号。用户对 D1 连框 10 次时，第 1 条把 D1 占满，
+    #    第 2 条起在"还有空位"的组里只剩 Z3，编辑距离 1 → 十次全对的重测被谎报成「Z3 判错」。
+    #    病根：近似匹配抢在"同一句的重测"之前认领。只要这句话已经有一个组持有（哪怕占满），
+    #    这条记录就不该被别的组用近似匹配领走 —— 交给第二轮当重测。
+    if ($onlyOpen) {
+        foreach ($g in $groups) {
+            if ($g.N -eq $got -or $g.N.ToLower() -eq $got.ToLower()) { return $null }
+        }
+    }
+
     # 3) 编辑距离，先按长度差筛
     $tol = [Math]::Max(4, [int][Math]::Floor($got.Length / 12))
     $rank = New-Object System.Collections.ArrayList
