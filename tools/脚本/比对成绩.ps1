@@ -220,7 +220,15 @@ function Find-Group([string]$got, [bool]$onlyOpen) {
     if ($rank.Count -eq 0) { return $null }
     $rank = @($rank | Sort-Object D)
     $best = $rank[0]
-    $second = if ($rank.Count -gt 1) { $rank[1].D } else { [int]::MaxValue }
+    # 同文的组（N 完全相同）不算"并列竞争对手"——它们是同一句话、同一个答案，
+    # 分到哪一组都只是标签不同。
+    # ⚠️ 踩过：1-C1 与 2-Z1 都是「今天天气不错适合出门」，读错一个字后两组距离并列，
+    #    旧版按"并列就不认领"处理 → 判错的那条记录变成孤儿，成绩单谎报「Z1 这次没测」。
+    $second = [int]::MaxValue
+    foreach ($x in $rank) {
+        if ($x.G.N -eq $best.G.N) { continue }
+        $second = $x.D; break
+    }
     if ($best.D -le $tol -and (($second - $best.D) -ge 2 -or $second -ge $best.D * 2)) {
         return @{ G = $best.G; D = $best.D; Case = $false }
     }
