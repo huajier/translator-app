@@ -109,6 +109,42 @@ Console.WriteLine(fail == 0 ? "断言全部通过" : $"断言失败 {fail} 条")
 if (fail > 0) Environment.Exit(1);
 Console.WriteLine();
 
+// ── 断言：路二「点号回填」（2026-10-15）──
+{
+    var asm2 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var type2 = asm2.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
+    var m2 = type2!.GetMethod("MergeSplitDottedTokensFrom", BindingFlags.NonPublic | BindingFlags.Static)
+             ?? throw new InvalidOperationException("找不到 MergeSplitDottedTokensFrom");
+    string Call(string text, string win) => (string)m2.Invoke(null, new object?[] { text, win })!;
+
+    int fail2 = 0;
+    (string text, string win, string want, string why)[] dot =
+    {
+        ("版本 2.0 已于 2024 年发布 config txt", "版本 2 ℃ 已于 2024 年发布 config.txt",
+         "版本 2.0 已于 2024 年发布 config.txt", "X2 真错例：Windows 有 config.txt，最终结果被拆成 config txt → 合回来"),
+        ("config txt", "config.txt", "config.txt", "最小例"),
+        ("config txt", "config txt", "config txt", "Windows 自己也是拆开的 → 没票可回填，不动"),
+        ("config txt", "2 ℃ 已于 2024 年发布", "config txt", "Windows 里没有这个带点词 → 一个字都不许造"),
+        ("版本 2.0 已发布 config txt", "版本 2 ℃ 已发布 config txt", "版本 2.0 已发布 config txt", "Windows 没有完整写法 → 不动（不许凭 2.0 自己猜）"),
+        ("a b", "a.b", "a.b", "短词也照合（凭 Windows 那张票说话，不看长短）"),
+        ("foo bar config txt", "foo.bar config.txt", "foo.bar config.txt", "一处不够两处都合"),
+        ("see config.txt", "see config.txt", "see config.txt", "本来就带点 → 原样不动"),
+        ("", "config.txt", "", "空串 → 不动（不炸）"),
+        ("config txt", "", "config txt", "Windows 空 → 不动（不炸）"),
+        ("版本 2 · 0 config txt", "版本 2 ℃ config.txt", "版本 2 · 0 config.txt", "只动点号那一处，`2 · 0` 原样保留"),
+    };
+    foreach (var (text, win, want, why) in dot)
+    {
+        string got = Call(text, win);
+        bool ok = got == want;
+        if (!ok) fail2++;
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")}  期望[{want}] 实得[{got}]  {why}");
+    }
+    Console.WriteLine(fail2 == 0 ? "点号回填断言全部通过" : $"点号回填断言失败 {fail2} 条");
+    if (fail2 > 0) Environment.Exit(1);
+    Console.WriteLine();
+}
+
 [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
 static extern bool SetDllDirectory(string path);
 

@@ -2083,6 +2083,18 @@ internal sealed class OcrTextCapture : ITextCapture
                                     AppLogger.Warn($"第三证人失败（已忽略）：{ex.Message}");
                                 }
 
+                                // 【2026-10-15 路二 · 点号回填】
+                                // 第三/第四证人都试过之后才跑：它们是「换票」，这一步只是「回填」。
+                                string restoredDots = MergeSplitDottedTokensFrom(text, windowsText);
+                                if (!string.Equals(restoredDots, text, StringComparison.Ordinal))
+                                {
+                                    AppLogger.Info(
+                                        $"【点号回填】最终结果把 Windows 读出来的词拆开了：" +
+                                        $"{Preview(text)} → {Preview(restoredDots)}，按 Windows 的写法合并");
+                                    text = restoredDots;
+                                    lineCount = TextNormalizer.CountLines(text);
+                                }
+
                                 scoreNote = "⚠️ 两个引擎读出来不一样，已采用 Tesseract" +
                                             $"（置信度 {chiCheck.Confidence:F2}，{chiChars} 个有效字符）；" +
                                             $"Windows 读出来的是【{Preview(windowsText)}】，请核对";
@@ -2427,6 +2439,110 @@ internal sealed class OcrTextCapture : ITextCapture
 
         // 门槛 4：主票把连着的词劈开了，候选票没有
         return HasIsolatedShortWord(mainText) && !HasIsolatedShortWord(candidateText);
+    }
+
+    /// <summary>
+    /// 【2026-10-15 路二 · 点号回填】把最终结果里被拆成两个词的 `x` `y`，
+    /// 按 Windows 那份里存在的 `x.y` 写法合回去。
+    /// </summary>
+    /// <remarks>
+    /// 治的是 X2 那一处：Windows 读对了 `config.txt`，但它把 `2.0` 读成 `2 ℃`，
+    /// 整份 Windows 结果被丢掉；Tesseract 三张票（0.94 / 0.92 / 0.92）**全都把点吞了**，
+    /// 劈词证据规则只能从候选里挑，挑不出没有的东西。
+    /// 结果是两边各错一半 —— 这一条只做「把点补回来」，不重选任何一张票。
+    ///
+    /// 【三条硬条件，缺一不回填】
+    ///   1. 只在「两个引擎读出来不一样」这个分支里调用（本来就是犹豫的时刻）
+    ///   2. 合并出来的样子必须**原样存在于 Windows 那份里**，一个字都不许自己造
+    ///   3. 这个点两边都必须是字母或数字，且只有这一个点
+    ///      （`2 ℃`、`2 · 0`、中文标点一律够不到，只认 `config.txt` 这种）
+    ///
+    /// 【离线验过】tools\_中文对拍.csv 里 245 段「两个引擎读出来不一样」，
+    /// 能对上标准答案的 219 段上出手 24 次、救回 24 次、**弄坏 0 次**；
+    /// 「分不清对错」的样本上出手 0 次。24 次全是 X2 那一句
+    /// （该句历史上被框 106 次、点丢 26 次，其中 24 次落在这一条上）。
+    /// 更保守的「去掉点号后整句与 Windows 一字不差」版出手 0 次，等于白加，未采用。
+    ///
+    /// 【天花板，明知故犯】Windows 自己凭空多读出一个点时，这一条会跟着错。
+    ///   245 段里一次没出现过，样本就这么大，已用探针断言如实钉住。
+    ///
+    /// ponytail: 纯字符串处理，不碰识别、不碰投票主干；只在中文不一致那一支里多跑一次。
+    /// </remarks>
+    private static string MergeSplitDottedTokensFrom(string text, string windowsText)
+    {
+        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(windowsText)) return text;
+
+        // Windows 那份里所有「字母数字.字母数字」的写法（只收这一种形状）
+        var dotted = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+        foreach (string raw in windowsText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (IsDottedToken(raw)) dotted.Add(raw);
+        }
+        if (dotted.Count == 0) return text;
+
+        // 把「两个相邻的字母数字词、中间只隔着空白」的地方合起来（空白连着换行也照合）。
+        // ⚠️ 必须自己按词走，不能用 Regex.Replace 那种「边扫边替换」——
+        //    匹配是不重叠的：`0 config txt` 里 `0 config` 先被吃掉，
+        //    剩下的扫描位置已经越过 `config`，轮不到 `config txt`（探针逮到过）。
+        var words = new List<(int Start, int End)>();
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (!IsAsciiAlnum(text[i])) continue;
+            int start = i;
+            while (i < text.Length && IsAsciiAlnum(text[i])) i++;
+            words.Add((start, i));
+        }
+
+        var sb = new System.Text.StringBuilder(text.Length);
+        int copied = 0;
+        for (int i = 0; i < words.Count; i++)
+        {
+            if (i + 1 < words.Count)
+            {
+                string joined = text[words[i].Start..words[i].End] + "." + text[words[i + 1].Start..words[i + 1].End];
+                if (dotted.Contains(joined) && OnlyWhitespace(text, words[i].End, words[i + 1].Start))
+                {
+                    sb.Append(text, copied, words[i].Start - copied);
+                    sb.Append(joined);
+                    copied = words[i + 1].End;
+                    i++;   // 两个词一起用掉了
+                    continue;
+                }
+            }
+        }
+        sb.Append(text, copied, text.Length - copied);
+        return sb.ToString();
+    }
+
+    private static bool IsAsciiAlnum(char c) =>
+        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
+
+    private static bool OnlyWhitespace(string text, int from, int to)
+    {
+        for (int i = from; i < to; i++)
+        {
+            if (!char.IsWhiteSpace(text[i])) return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// 是不是 `config.txt` 这种「字母数字.字母数字」，且**只有这一个点**。
+    /// `2.0` 也算（X2 里 Windows 自己有 `2.0`，但那份的点读错成 `2 ℃`，
+    /// 合并时按 Windows 的写法走，不改动数字）。
+    /// </summary>
+    private static bool IsDottedToken(string token)
+    {
+        int dot = token.IndexOf('.');
+        if (dot <= 0 || dot != token.LastIndexOf('.') || dot == token.Length - 1) return false;
+
+        for (int i = 0; i < token.Length; i++)
+        {
+            if (i == dot) continue;
+            char c = token[i];
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))) return false;
+        }
+        return true;
     }
 
     /// <summary>
