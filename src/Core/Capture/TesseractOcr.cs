@@ -164,7 +164,35 @@ internal sealed class TesseractOcr
     ///
     ///   没取到词时给 100（意思是「没发现不稳的词」），避免误触发。
     /// </param>
-    public readonly record struct Result(string? Text, double Confidence, double MinWordConfidence = 100.0);
+    /// <param name="MinWordText">
+    ///   **上面那个最低分「是哪个词」**（原样，没做任何改写）。
+    ///
+    ///   【为什么加，2026-10-15 路二第二步（Z1）】
+    ///     光知道「垫底分是多少」不够用——Z1 那一处垫底分 63.37 是
+    ///     chi_sim **凭空多吐出来的一个「和」**，
+    ///     但同一个句子里别的字也可以只有 63 分。
+    ///     **要动手删，就得知道删的是哪个字。**
+    ///     词表本身早就打出来了，这里只是把那个词一起带回来。
+    ///
+    ///   没取到词时给 null（配合 100 分的默认值，永远不触发）。
+    /// </param>
+    /// <param name="SecondMinWordConfidence">
+    ///   **倒数第二低**的那个词的分数（0~100）。
+    ///
+    ///   【为什么加】
+    ///     Z1 的判断是「垫底分不光低，还得**跟别的字拉开一大截**」——
+    ///     实测 12 次的垫底字是 63~66.84 分，次低是 88.51~92.48，
+    ///     中间隔着 20 多分的空档。只看「< 70」看不出这个空档，
+    ///     得把次低分一起带回来才能比。
+    ///
+    ///   只有一个词时它等于那一个词的分数；没取到词时给 100。
+    /// </param>
+    public readonly record struct Result(
+        string? Text,
+        double Confidence,
+        double MinWordConfidence = 100.0,
+        string? MinWordText = null,
+        double SecondMinWordConfidence = 100.0);
 
     /// <summary>认一段图，返回文字和置信度；失败返回空结果（不抛异常）。</summary>
     public static Result TryRecognize(System.Drawing.Bitmap bitmap, string language)
@@ -192,7 +220,7 @@ internal sealed class TesseractOcr
             using var pix = Pix.LoadFromMemory(png);
             string text;
             double confidence;
-            float? minWordConfidence;
+            (float Lowest, string? LowestWord, float SecondLowest)? wordReport;
 
             // 【2026-10-12 修一个自己挖的坑：必须用大括号把 page 的范围关住】
             //   引擎是**一次只能处理一张图**的（Only one image can be processed at once）。
@@ -241,7 +269,7 @@ internal sealed class TesseractOcr
             //     诊断代码一旦出错，**会把好好的识别结果弄丢**。
             //     所以这里自己兜住，坏了就当没打日志，**绝不影响识别**。
             // ==========================================================
-            minWordConfidence = LogWordSelfReport(page, language);
+            wordReport = LogWordSelfReport(page, language);
             }   // ← page 到这里已经释放，下面才可以再喂图给同一个引擎
 
             // 【2026-10-13 撤掉了原来的「补跑几路」诊断】
@@ -251,7 +279,12 @@ internal sealed class TesseractOcr
 
             return string.IsNullOrWhiteSpace(text)
                 ? new Result(null, 0)
-                : new Result(text, confidence, minWordConfidence ?? 100.0);
+                : new Result(
+                    text,
+                    confidence,
+                    wordReport?.Lowest ?? 100.0,
+                    wordReport?.LowestWord,
+                    wordReport?.SecondLowest ?? 100.0);
         }
         catch (Exception ex)
         {
@@ -544,16 +577,18 @@ internal sealed class TesseractOcr
     ///   **以后也一律加在最后。**
     /// </summary>
     /// <returns>
-    ///   这一句里**分数最低的那个词**的分数（0~100）；
+    ///   这一句里**分数最低的那个词**是哪个词、多少分、**次低**的多少分（0~100）；
     ///   一个词都没取到、或者中途出错，返回 null（调用方按「没发现问题」处理）。
     /// </returns>
-    private static float? LogWordSelfReport(Page page, string language)
+    private static (float Lowest, string? LowestWord, float SecondLowest)? LogWordSelfReport(Page page, string language)
     {
         try
         {
             var report = new System.Text.StringBuilder();
             int count = 0;
             float lowest = 100f;
+            float secondLowest = 100f;
+            string? lowestWord = null;
 
             using var it = page.GetIterator();
             it.Begin();
@@ -564,7 +599,16 @@ internal sealed class TesseractOcr
 
                 float wordConf = it.GetConfidence(PageIteratorLevel.Word);
                 bool inDict = it.GetWordIsFromDictionary();
-                if (wordConf < lowest) lowest = wordConf;
+                if (wordConf < lowest)
+                {
+                    secondLowest = lowest;
+                    lowest = wordConf;
+                    lowestWord = word.Trim();
+                }
+                else if (wordConf < secondLowest)
+                {
+                    secondLowest = wordConf;
+                }
 
                 if (count > 0) report.Append(" ｜ ");
                 report.Append('【').Append(word.Trim())
@@ -583,7 +627,7 @@ internal sealed class TesseractOcr
                 AppLogger.Info($"  词级自报（{language}）：**一个词都没取到**（这条诊断本身可能失效了）");
             }
 
-            return count > 0 ? lowest : (float?)null;
+            return count > 0 ? (lowest, lowestWord, secondLowest) : ((float, string?, float)?)null;
         }
         catch (Exception ex)
         {

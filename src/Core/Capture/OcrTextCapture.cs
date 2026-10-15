@@ -59,6 +59,29 @@ internal sealed class OcrTextCapture : ITextCapture
     private const double GoodConfidenceForRescue = 0.90;
 
     /// <summary>
+    /// 【2026-10-15 路二第二步（Z1）】「垫底分低到这个数以下」才算可疑。
+    ///
+    /// 【为什么是 70】
+    ///   Z1（`今天天气不错适合出门`）那条路实测 12 次，
+    ///   多出来的那个「和」自报 **63 ~ 66.84**，
+    ///   而同句第二低的字是 **88.51 ~ 92.48**——
+    ///   中间隔着 20 多分的空档，70 落在空档正中，两头都留了余量。
+    ///   离线对拍：60 一次都不出手（捞不着），65 只捞回一半，70 起满额。
+    ///
+    /// ponytail: 阈值是「实测空档」定的，不是拍脑袋；样本多了要重看。
+    /// </summary>
+    private const double LowWordScoreCeiling = 70.0;
+
+    /// <summary>
+    /// 【2026-10-15 路二第二步（Z1）】垫底分还得**比第二低拉开 15%** 才算可疑。
+    ///
+    ///   只看「低于 70」不行：一句话里所有字都只有 60 分时，
+    ///   最低的那个并不特别，删了就是瞎猜。实测 Z1 的比例是
+    ///   63.37 / 89.05 ≈ 0.71，离 0.85 很远；设 0.85 是留足余量。
+    /// </summary>
+    private const double LowWordScoreRatio = 0.85;
+
+    /// <summary>
     /// 「这段文字算不算俄文」的门槛：**西里尔字母至少要占 50%**。
     ///
     /// 【为什么不是 0.10（用户实测数据定出来的）】
@@ -1196,6 +1219,51 @@ internal sealed class OcrTextCapture : ITextCapture
 
                                         if (chiOnPlane.Confidence > best.Confidence && chiResultIsChinese)
                                         {
+                                            // ==========================================================
+                                            // 【2026-10-15 路二第二步（Z1）：垫底的那个字先删掉再用】
+                                            //
+                                            //   【现场】Z1（`今天天气不错适合出门`）反复出成
+                                            //   `今天天和气不错适合出门`，全部归档命中 12 次。
+                                            //     Windows 第一遍读空 0 字 → 只剩 chi_sim 一张票
+                                            //     chi_sim 自报【和】63.37，是 9 个词里最低的，
+                                            //     第二低的【气】89.05 ——**中间隔着 20 多分**。
+                                            //
+                                            //   【为什么敢删】离线拿 245 段中文块（2245 个可判定块）逐块对拍：
+                                            //     限定在「中文兜底」这条路时 **出手 12、救回 12、弄坏 0**；
+                                            //     一放开到全部块就多出 2 次弄坏（把 Z2 的「图」删了）
+                                            //     → **所以这个规矩只能长在这一个分支里。**
+                                            //
+                                            //   【为什么删字而不是换票】同一次识别里其他 8 个字都是对的，
+                                            //     整体换回 Windows 那份没有票（Windows 读空）。
+                                            //
+                                            //   【天花板，明知故犯】引擎把一个**读对了但没把握**的字
+                                            //     报成垫底时，这一条会把它删掉。2245 块里 0 次，
+                                            //     样本就这么大，已用探针断言如实钉住。
+                                            // ==========================================================
+                                            //   两个坑都记在这：
+                                            //     ① 一开始拿 `chiOnPlaneText`（已归一化）当入参、
+                                            //        又拿没归一化的返回值去比 → 两边不同源；
+                                            //     ② 改完是拿**原始**文本当入参 —— 原文其实是
+                                            //        `今天天 和 气不错适合出门`（字两边各有一个空格，
+                                            //        归一化时才被吞掉），把「和」一删就剩**两个挨着的空格**，
+                                            //        而 `FixSpuriousSpaces` 只看紧挨着的那一个字符，
+                                            //        `天␣␣气` 里第二个空格的左边是空格、不是汉字 → **吞不掉**，
+                                            //        最后用户就看到 `今天天  气不错适合出门`。
+                                            //   现在的规矩：**改就改归一化后的文本**（下游本来也都会
+                                            //   再过一次 Normalize，同一件事只做一遍）。
+                                            // ==========================================================
+                                            string withoutLowWord = DropLowScoreSingleChar(chiOnPlaneText, chiOnPlane);
+                                            if (!string.Equals(withoutLowWord, chiOnPlaneText, StringComparison.Ordinal))
+                                            {
+                                                AppLogger.Info(
+                                                    $"【路二·低分单字】垫底字【{chiOnPlane.MinWordText}】只有 " +
+                                                    $"{chiOnPlane.MinWordConfidence:F2} 分（第二低 " +
+                                                    $"{chiOnPlane.SecondMinWordConfidence:F2} 分），先删掉再采用：" +
+                                                    $"{Preview(chiOnPlaneText)} → " +
+                                                    $"{Preview(withoutLowWord)}");
+                                                chiOnPlane = chiOnPlane with { Text = withoutLowWord };
+                                            }
+
                                             best = chiOnPlane;
                                             modelUsed = TesseractOcr.Languages.Chinese;
                                             AppLogger.Info(
@@ -2720,6 +2788,45 @@ internal sealed class OcrTextCapture : ITextCapture
         }
         return prev[b.Length];
     }
+
+    /// <summary>
+    /// 【2026-10-15 路二第二步（Z1）】引擎自己都嫌没把握的那个「单个汉字」，
+    /// 如果整句只出现一次、又跟别的字拉开一大截，就把它删掉。
+    ///
+    /// <para>四条门槛，缺一不可：</para>
+    /// <para>　①垫底分 &lt; <see cref="LowWordScoreCeiling"/>（70）；</para>
+    /// <para>　②垫底分 &lt; 第二低分 × <see cref="LowWordScoreRatio"/>（0.85）；</para>
+    /// <para>　③那个词正好是**一个汉字**（拉丁字母、数字、标点都不算）；</para>
+    /// <para>　④那个字在整句里**只出现一次**（出现两次就不知道该删哪个）。</para>
+    ///
+    /// <para>【只能长在「中文兜底」那一个分支里】离线对拍实证：限定在那一条路上
+    /// 出手 12、救回 12、弄坏 0；放开到全部块就多 2 次弄坏（把 Z2 的「图」删了）。</para>
+    ///
+    /// <para>【天花板，明知故犯】引擎把一个读对了但没把握的字报成垫底时，会跟着删错。
+    /// 2245 块里 0 次，样本有限，已用探针断言如实钉住。</para>
+    ///
+    /// ponytail: 纯字符串处理 + 复用引擎已经报回来的分数，不碰识别、不碰投票主干。
+    /// </summary>
+    private static string DropLowScoreSingleChar(string text, TesseractOcr.Result result)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+
+        string? word = result.MinWordText;
+        if (string.IsNullOrEmpty(word) || word.Length != 1) return text;
+        if (!IsCjk(word[0])) return text;
+
+        if (result.MinWordConfidence >= LowWordScoreCeiling) return text;
+        if (result.MinWordConfidence >= result.SecondMinWordConfidence * LowWordScoreRatio) return text;
+
+        int at = text.IndexOf(word[0]);
+        if (at < 0) return text;
+        if (at != text.LastIndexOf(word[0])) return text;   // 出现两次以上，不知道该删哪个
+
+        return text.Remove(at, 1);
+    }
+
+    /// <summary>是不是一个汉字（CJK 统一表意文字基本区，和 LanguageDetector 同一口径）。</summary>
+    private static bool IsCjk(char c) => c >= 0x4E00 && c <= 0x9FFF;
 
     /// <summary>
     /// 第二票比第一票多认出来的部分（去掉空白），只给日志看。

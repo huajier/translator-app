@@ -145,6 +145,68 @@ Console.WriteLine();
     Console.WriteLine();
 }
 
+// ── 断言：路二第二步「删掉垫底的低分单字」（2026-10-15，Z1）──
+{
+    var asm3 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var type3 = asm3.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
+    var m3 = type3!.GetMethod("DropLowScoreSingleChar", BindingFlags.NonPublic | BindingFlags.Static)
+             ?? throw new InvalidOperationException("找不到 DropLowScoreSingleChar");
+    var resultType = asm3.GetType("TranslatorApp.Core.Capture.TesseractOcr+Result")
+                     ?? throw new InvalidOperationException("找不到 TesseractOcr.Result");
+
+    string Call(string text, double minConf, string? minWord, double secondMin)
+    {
+        object boxed = Activator.CreateInstance(resultType, new object?[]
+        {
+            text, 0.89, minConf, minWord, secondMin
+        })!;
+        return (string)m3.Invoke(null, new object?[] { text, boxed })!;
+    }
+
+    int fail3 = 0;
+    (string text, double minConf, string? minWord, double secondMin, string want, string why)[] low =
+    {
+        ("今天天和气不错适合出门", 63.37, "和", 89.05,
+         "今天天气不错适合出门", "Z1 真错例：垫底的「和」63.37 对第二低 89.05 → 删掉"),
+        ("今天天和气不错适合出门", 66.84, "和", 92.48,
+         "今天天气不错适合出门", "Z1 上界那次（66.84 / 92.48）也照删"),
+        ("今天天和气不错适合出门", 70.00, "和", 89.05,
+         "今天天和气不错适合出门", "正好 70 分不删（门槛是「低于 70」）"),
+        ("今天天和气不错适合出门", 63.37, "和", 70.00,
+         "今天天和气不错适合出门", "拉不开差距（63.37 ≥ 70×0.85）→ 不删"),
+        ("今天天气abc不错适合出门", 63.37, "a", 89.05,
+         "今天天气abc不错适合出门", "垫底的不是汉字 → 不删"),
+        ("今天天气不错适合出门", 63.37, "天", 89.05,
+         "今天天气不错适合出门", "那个字出现两次 → 不知道该删哪个 → 不删"),
+        ("今天天气不错适合出门", 63.37, null, 100.0,
+         "今天天气不错适合出门", "没取到垫底词 → 不删"),
+        ("", 63.37, "和", 89.05, "", "空串 → 不动（不炸）"),
+        // ↓ 2026-10-15 用户实测逮到的坑：这个函数**只管删字，不管收拾删完留下的空格**。
+        //   chi_sim 原始文本其实是 `今天天 和 气不错适合出门`（字两边各有一个空格，
+        //   归一化时才被吞掉）；直接拿原始文本进来删，就剩两个挨着的空格，
+        //   而 FixSpuriousSpaces 只看紧挨着的那一个字符，`天␣␣气` 里第二个空格的
+        //   左边是空格不是汉字 → 吞不掉，用户就看到 `今天天  气不错适合出门`。
+        //   → **调用方必须传归一化之后的文本**（现场就是这么改的）。
+        ("今天天 和 气不错适合出门", 63.37, "和", 89.05,
+         "今天天  气不错适合出门", "已知陷阱：传原始文本会留下两个空格 → 调用方必须先 Normalize"),
+        // ↓ 已知天花板：规矩本身认不出「这个字其实是对的」。真正的护栏是**作用范围**
+        //   （只长在「中文兜底」这一个分支里），离线对拍 2245 块里它因此 0 次误伤。
+        //   这条断言如实钉住「光看分数分不出对错」这件事。
+        ("光学字符识别是指计算机识别图像中的文字", 57.95, "图", 90.85,
+         "光学字符识别是指计算机识别像中的文字", "天花板：离线里 Z2 那种「图」垫底时会被删——靠作用范围挡住，规矩本身挡不住"),
+    };
+    foreach (var (text, minConf, minWord, secondMin, want, why) in low)
+    {
+        string got = Call(text, minConf, minWord, secondMin);
+        bool ok = got == want;
+        if (!ok) fail3++;
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")}  期望[{want}] 实得[{got}]  {why}");
+    }
+    Console.WriteLine(fail3 == 0 ? "低分单字断言全部通过" : $"低分单字断言失败 {fail3} 条");
+    if (fail3 > 0) Environment.Exit(1);
+    Console.WriteLine();
+}
+
 [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
 static extern bool SetDllDirectory(string path);
 
