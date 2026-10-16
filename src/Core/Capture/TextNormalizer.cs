@@ -14,8 +14,8 @@ internal static class TextNormalizer
     ///   1. 去掉首尾空白；
     ///   2. **去掉汉字之间的多余空格**（见 <see cref="RemoveSpacesBetweenChinese"/>）；
     ///   3. 行尾多余空格；
-    ///   4. 合并纯空行（最多保留一个空行当段落分隔）；
-    ///   5. **只在明显是断行时才合并两行**（见 <see cref="ShouldJoinLines"/>）。
+    ///   4. **只在明显是断行时才合并两行**（见 <see cref="ShouldJoinLines"/>）。
+    ///      空行**不再是**「一定是段落分隔」的证据——见下面 2026-10-16 的折行修复。
     ///
     /// 规格第 22 条明确要求：**不许无脑合并所有行**，
     /// 否则中文段落的结构会被压成一坨。
@@ -26,17 +26,12 @@ internal static class TextNormalizer
 
         string[] lines = raw.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
         var sb = new StringBuilder();
-        int blankRun = 0;
 
         for (int i = 0; i < lines.Length; i++)
         {
             string line = TrimLeadingStrayQuotes(FixUnmatchedQuotes(FixSpuriousSpaces(lines[i].Trim())));
 
-            if (line.Length == 0)
-            {
-                blankRun++;
-                continue;
-            }
+            if (line.Length == 0) continue;
 
             if (sb.Length > 0)
             {
@@ -46,13 +41,33 @@ internal static class TextNormalizer
                 //   句子都黏住了，送去翻译肯定翻错。
                 //   现在的规矩：空行当段落分隔；否则判断是不是明显断行，
                 //   是就接成一句，不是就老老实实换行。
-                if (blankRun >= 1) sb.Append('\n');
-                else if (ShouldJoinLines(LastLine(sb), line)) sb.Append(' ');
+                //
+                // ==========================================================
+                // 【2026-10-16 折行修复：空行也要过一遍判官】
+                //
+                //   病根（探针实测，不是猜）：
+                //     喂 `large\nneural`   → 合成一句 ✅
+                //     喂 `large\n\nneural` → 仍然断开 ❌ ← 引擎给的是这种
+                //   原来的写法是 `blankRun >= 1` 就无条件 `Append('\n')`，
+                //   **连问都不问 ShouldJoinLines**。而 Tesseract 认长段落时
+                //   习惯在行之间塞空行，于是折行一路留到用户手里。
+                //
+                //   实测面（全部 774 处换行）：该合却没合 160 处，
+                //   其中 148 处是同一句长英文被折成两种样子——
+                //     `…rely on large⏎neural networks…` 70 次
+                //     `…any recognition⏎engine.…`     77 次
+                //   真段落 409 处（上一行以句末标点结尾），
+                //   判官自己就会拦下来，一个字都不会被黏。
+                //
+                //   所以：空行只说明「这里空了一行」，**不能证明这是两段**。
+                //   是不是两段，交给 ShouldJoinLines 按内容判——
+                //   它本来就在判这件事，空行没理由比它更权威。
+                // ==========================================================
+                if (ShouldJoinLines(LastLine(sb), line)) sb.Append(' ');
                 else sb.Append('\n');
             }
 
             sb.Append(line);
-            blankRun = 0;
         }
 
         return sb.ToString().Trim();

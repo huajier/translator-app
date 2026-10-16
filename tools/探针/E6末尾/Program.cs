@@ -291,6 +291,64 @@ Console.WriteLine();
     Console.WriteLine();
 }
 
+// ── 断言：折行修复——空行也要过一遍 ShouldJoinLines（2026-10-16）──
+// 为什么要有这一段：`TextNormalizer.Normalize` 原来碰到空行就无条件补换行，
+// 连问都不问判官；而 Tesseract 认长段落时常塞空行，于是
+// `large⏎neural networks` 这种词中被劈开的折行一路留到用户手里。
+// 离线全量 774 处换行里，该合却没合 160 处（其中 148 处是同一句长英文）。
+{
+    var asm6 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var type6 = asm6.GetType("TranslatorApp.Core.Capture.TextNormalizer")
+                ?? throw new InvalidOperationException("找不到 TextNormalizer");
+    var m6 = type6.GetMethod("Normalize", BindingFlags.Public | BindingFlags.Static)
+             ?? throw new InvalidOperationException("找不到 Normalize");
+
+    string Fold(string raw) => (string)m6.Invoke(null, new object?[] { raw })!;
+
+    int fail6 = 0;
+    (string got, string want, string why)[] foldCases =
+    {
+        // 这次要治的：空行不该挡住「该接就接」
+        (Fold("Modern systems rely on large\n\nneural networks"), "Modern systems rely on large neural networks",
+         "病根：空行隔开的两行也该问判官（以前直接保留换行）"),
+        (Fold("It usually struggles the\n\nmost."), "It usually struggles the most.",
+         "现场第二种：the / most."),
+        (Fold("for any recognition\n\nengine."), "for any recognition engine.",
+         "现场第三种：recognition / engine."),
+        // 单换行本来就会合，不能因为这次改动反而不合了
+        (Fold("Modern systems rely on large\nneural networks"), "Modern systems rely on large neural networks",
+         "单换行照旧要合（回归保护）"),
+        // 真段落：上一行以句末标点结尾，空行隔开也不许合
+        (Fold("Server started on port 8080.\n\nDatabase connection failed."),
+         "Server started on port 8080.\nDatabase connection failed.",
+         "句末标点结尾 = 真段落，判官自己拦住，只把多余空行收掉"),
+        (Fold("服务已启动，端口 8080。\n\n数据库连接失败。"), "服务已启动，端口 8080。\n数据库连接失败。",
+         "中文句号结尾同样不许合"),
+        // 汉字跟汉字之间那道门这一次一个都不动
+        (Fold("票据录\n\n入等场景"), "票据录\n入等场景",
+         "汉字+汉字仍然不合并（那一道门这次不动，要单独立单）"),
+        (Fold("识别图像中的文字\n\n并转换为可编辑文本"), "识别图像中的文字\n并转换为可编辑文本",
+         "中文词中被折开：这次明确不治"),
+        // 边界：纯空行、首尾空行、只有空行
+        (Fold("\n\nModern systems rely on large neural networks\n\n"),
+         "Modern systems rely on large neural networks", "首尾空行照旧去掉"),
+        (Fold("\n\n\n"), "", "只有空行 → 空串，不炸"),
+        (Fold(""), "", "空串 → 空串，不炸"),
+    };
+    foreach (var (got, want, why) in foldCases)
+    {
+        bool ok = got == want;
+        if (!ok) fail6++;
+        string G = got.Replace("\n", "<NL>");
+        string W = want.Replace("\n", "<NL>");
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")}  期望[{W}] 实得[{G}]  {why}");
+    }
+
+    Console.WriteLine(fail6 == 0 ? "折行断言全部通过" : $"折行断言失败 {fail6} 条");
+    if (fail6 > 0) Environment.Exit(1);
+    Console.WriteLine();
+}
+
 [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
 static extern bool SetDllDirectory(string path);
 
