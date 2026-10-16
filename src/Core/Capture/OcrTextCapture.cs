@@ -23,6 +23,40 @@ namespace TranslatorApp.Core.Capture;
 /// 【Windows OCR 只认拉丁文字？】
 ///   Windows 自带 OCR 支持中文，但**对中文的识别质量依赖清晰度**，
 ///   所以前面的放大 + 灰度预处理很关键。
+///
+/// 【文件地图（2026-10-16 拆分，只是把文件切开，行为一个字没改）】
+///   这个类是 `partial` 的，一共 7 个文件。找东西按下表去对应的文件：
+///
+///   `OcrTextCapture.cs`          主调度：截图 → 深底判断和反色 → 转灰度 → 第一遍
+///                                → 分岔（外文 / 中文）→ 收尾（清理、切边、判乱码、写记录、返回）
+///   `OcrTextCapture.FirstPass.cs` 第一遍识别，以及「要不要放大 2 倍再认一遍」的决策
+///   `OcrTextCapture.Foreign.cs`   外文方向：Tesseract 的 eng / rus 多路、英文第二票、俄文判断
+///   `OcrTextCapture.Chinese.cs`   中文方向：chi_sim 交叉验证、红通道补试、紧行距补救、
+///                                 第三 / 第四证人、点号回填
+///   `OcrTextCapture.Rules.cs`     裁决规矩（纯函数，最好单独测）：劈词证据、点号回填、
+///                                 第二票是否救回尾巴、编辑距离
+///   `OcrTextCapture.Utils.cs`     基础件：一次识别（RecognizeOnce）、位图转换、日志预览、
+///                                 失败结果、字符判断小工具
+///   `OcrTextCapture.Tuning.cs`    所有门槛常量（要调数值先来这里）
+///
+///   【为什么是 partial，不是拆成独立类】
+///     三套探针（`tools\探针\` 下 E6末尾 / 折行 / 真实数据）是按「类名 + 方法名」反射
+///     调真程序集的。拆成独立类，探针全得改，风险翻倍。
+///     partial 是「整理遗产代码」的过渡手法，不是终点站；将来若发现某两个文件
+///     「几乎从来不一起改」，那时再考虑升级成独立类 —— 那是以后单独一轮的事。
+///
+///   【以后加一门新语言（比如日语），3 个动作】
+///     1. 新建 `OcrTextCapture.Japanese.cs`，照 `OcrTextCapture.Foreign.cs` 的形状写
+///        （入口方法固定签名 + 自己的助手 + 自己的常量）；
+///     2. 在 `CaptureAsync` 的分岔处（现在分「外文 / 中文」两块）注册一行调用；
+///     3. 在 `OcrTextCapture.Tuning.cs` 里加日语的门槛值。
+///     → 除了分岔处那一行，老语言的文件一个字不用改。
+///
+///   【以后加一个新引擎】
+///     引擎封装（怎么调、怎么转图）放在 `TesseractOcr.cs` 的同类位置（或新文件）；
+///     「哪个引擎认哪一段」的调度在 `OcrTextCapture.cs` 分岔处 + 对应语言文件里接线；
+///     全部门槛值进 `Tuning`。这也是为什么 `RecognizeOnce` / `ToSoftwareBitmap`
+///     在第 1 步就搬进 `Utils` —— 引擎相关的基础件以后只有一处要动。
 /// </summary>
 internal sealed partial class OcrTextCapture : ITextCapture
 {
