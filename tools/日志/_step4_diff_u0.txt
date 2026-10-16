@@ -1,0 +1,414 @@
+﻿diff --git a/src/Core/Capture/OcrTextCapture.cs b/src/Core/Capture/OcrTextCapture.cs
+index 29f7576..08eb9e3 100644
+--- a/src/Core/Capture/OcrTextCapture.cs
++++ b/src/Core/Capture/OcrTextCapture.cs
+@@ -282,404 +282,5 @@ internal sealed partial class OcrTextCapture : ITextCapture
+-                    // ==========================================================
+-                    // 【2026-10-09 材料 3 实测后加：中文也要跑一遍 chi_sim 交叉验证】
+-                    //
+-                    //   **背景：中文这一路以前从不调用 Tesseract。**
+-                    //   白底中文一律直接用 Windows 自带的结果（又快又省，历史上也够好）。
+-                    //
+-                    //   **材料 3（实战版）把这个假设打穿了**，25 段里 Windows 中文全错：
+-                    //     M2  光学字符识别是指汁算机…        （计 → 汁）
+-                    //     X2  版本 2 ℃ 已于 2024 年发布…     （2.0 → 2 ℃，Windows 经典错法）
+-                    //     P2  服务已启动，端口 8080 。        （多个空格）
+-                    //     Z3  使用 Windows 10 系统， API…     （上两轮的老问题）
+-                    //     Z2  光学…的过程。。，⏎起           （上一轮也多出乱码）
+-                    //
+-                    //   **而 chi_sim 在中文上从没失手**：
+-                    //     Z1  0.87 逐字全对
+-                    //     Z2  0.94 逐字全对
+-                    //
+-                    //   所以现在的做法：**两个引擎都跑，比对结果。**
+-                    //
+-                    //   【三条分支，逐条都能讲清楚道理】
+-                    //     ① chi_sim 根本认不出中文 → 用 Windows。
+-                    //        （Tesseract 不可用、或它吐的全是乱码时也走这里）
+-                    //     ② 两个结果**一字不差** → 用它，并如实告诉用户「两个引擎读出来一致」。
+-                    //        **两个互相独立的引擎认出一模一样的字，可信度极高。**
+-                    //     ③ 两个结果**不一样** → 这正是「我不会出错」要管的情况：
+-                    //        **不能猜**。以 chi_sim 为准（实测它中文从没错过），
+-                    //        同时**把另一个结果也摆出来**，明确告诉用户两个引擎读得不一样。
+-                    //
+-                    //   【为什么不干脆不用 Windows 了】
+-                    //     分两步走：**先并排跑，把数据攒够**。
+-                    //     一次就把整条中文链路换掉，风险太大——
+-                    //     前面已经因为「一次改太多、出事无法归因」栽过三次。
+-                    //
+-                    //   【代价】
+-                    //     中文多花 30~50 毫秒（chi_sim 很快）。实测中文那一路总共才 47 毫秒，
+-                    //     加完大约 100 毫秒以内，仍然远快于外文那条路。
+-                    // ==========================================================
+-                    TesseractOcr.EnsureInitialized();
+-
+-                    if (TesseractOcr.IsAvailable && !string.IsNullOrWhiteSpace(text))
+-                    {
+-                        // 中文这边按 2 倍放大就行，不需要外文那套 4 倍（chi_sim 认汉字够用）
+-                        using Bitmap chineseImage = ImagePreprocessor.Preprocess(raw);
+-                        var chiCheck = TesseractOcr.TryRecognize(chineseImage, TesseractOcr.Languages.Chinese);
+-
+-                        string chiText = TextNormalizer.Normalize(chiCheck.Text ?? "");
+-                        int chiChars = TextNormalizer.CountMeaningfulChars(chiText);
+-                        bool chiLooksChinese = LanguageDetector.IsMostlyChinese(chiText) && chiChars >= 2;
+-
+-                        // ==========================================================
+-                        // 【2026-10-10 材料 2 的 Z1：中文流程也补上「红通道」那一路】
+-                        //
+-                        //   **Z1 的现场**（`今天天气不错适合出门`，橙底绿字）：
+-                        //     Windows 自带 → 0 字 / 错字
+-                        //     chi_sim 在**灰度图**上 → 0.76，卡在 0.78 门槛下面被拒
+-                        //     → 判为乱码 → **界面什么都不显示**
+-                        //
+-                        //   **为什么红通道能救**（数据本身的性质，不是猜的）：
+-                        //     橙底 RGB(255,165,0)，红分量 255
+-                        //     绿字 RGB(0,128,0)，红分量   0
+-                        //     → 红通道上对比度拉满，颜色天然分得开；
+-                        //       转灰度是三通道加权平均，**绿字那点红被稀释掉了**。
+-                        //
+-                        //   【这一段先后补过两个地方，两个都留着】
+-                        //     外文流程（约 1190 行）和中文流程（这里）。
+-                        //     **只因为「Z1 到底走哪条流程」这件事本身反复测不准**，
+-                        //     来回搬了两次都没生效。
+-                        //     两处都只在 `置信度 < 0.78` 时才跑一次，
+-                        //     **平时一秒都不多花**，那就都放着，一劳永逸。
+-                        // ==========================================================
+-                        if (chiCheck.Confidence < MinimumAcceptableConfidence)
+-                        {
+-                            using Bitmap redChineseImage = ImagePreprocessor.PreprocessRedChannel(raw, 2.0);
+-                            var chiRed = TesseractOcr.TryRecognize(redChineseImage, TesseractOcr.Languages.Chinese);
+-                            string chiRedText = TextNormalizer.Normalize(chiRed.Text ?? "");
+-                            int redChars = TextNormalizer.CountMeaningfulChars(chiRedText);
+-
+-                            AppLogger.Info(
+-                                $"中文红通道补试：置信度 {chiRed.Confidence:F2}（灰度版是 {chiCheck.Confidence:F2}），" +
+-                                $"有效字符 {redChars} 个，内容【{Preview(chiRedText)}】");
+-
+-                            bool redLooksChinese = LanguageDetector.IsMostlyChinese(chiRedText) && redChars >= 2;
+-                            if (redLooksChinese && chiRed.Confidence > chiCheck.Confidence)
+-                            {
+-                                chiCheck = chiRed;
+-                                chiText = chiRedText;
+-                                chiChars = redChars;
+-                                chiLooksChinese = true;
+-                                AppLogger.Info($"红通道这一版更好（{chiRed.Confidence:F2}），采用它");
+-                            }
+-                        }
+-
+-                        
+-
+-                        AppLogger.Info(
+-                            $"中文交叉验证：chi_sim 置信度 {chiCheck.Confidence:F2}，有效字符 {chiChars} 个，" +
+-                            $"判定为中文={chiLooksChinese}，内容【{Preview(chiText)}】");
+-
+-                        if (!chiLooksChinese)
+-                        {
+-                            // ==========================================================
+-                            // 【2026-10-10 材料 3 的 P2：行距贴太紧，chi_sim 分不开行】
+-                            //
+-                            //   P2 用的是 `line-height:1.0`，行与行几乎贴在一起。
+-                            //   实测：chi_sim **根本认不出中文**，
+-                            //   而 Windows 认出来了但错字多（`端囗`、`8C8`）。
+-                            //
+-                            //   **chi_sim 认不出，不是「不认识这些字」，是「看不见行边界」。**
+-                            //
+-                            //   【这里为什么不能靠整体放大解决】
+-                            //     整体放大时字和空隙**等比例**变大，
+-                            //     **「行距相对字高」根本没变**——所以 `Preprocess` 的 2 倍救不了。
+-                            //
+-                            //   【办法：只把竖向拉长】
+-                            //     横向不动（字不会被拉粗、笔画不会粘连），
+-                            //     竖向多拉 60% → **行间距同比变大，行边界就分开了**。
+-                            //
+-                            //   【采纳条件，和正常那一遍完全一样】
+-                            //     必须是中文、有效字符 ≥2、置信度 ≥ MinimumAcceptableConfidence。
+-                            //     **门槛不因为「是补救」就放松**——
+-                            //     否则又把一段乱码塞回给用户。
+-                            // ==========================================================
+-                            using Bitmap stretchedImage = ImagePreprocessor.PreprocessStretchY(raw, 1.6);
+-                            var chiStretch = TesseractOcr.TryRecognize(stretchedImage, TesseractOcr.Languages.Chinese);
+-                            string chiStretchText = TextNormalizer.Normalize(chiStretch.Text ?? "");
+-                            int stretchChars = TextNormalizer.CountMeaningfulChars(chiStretchText);
+-                            bool stretchLooksChinese = LanguageDetector.IsMostlyChinese(chiStretchText) && stretchChars >= 2;
+-
+-                            AppLogger.Info(
+-                                $"紧行距补救：竖向拉长 1.6 倍后再认，置信度 {chiStretch.Confidence:F2}，" +
+-                                $"有效字符 {stretchChars} 个，判定为中文={stretchLooksChinese}，" +
+-                                $"内容【{Preview(chiStretchText)}】");
+-
+-                            if (stretchLooksChinese && chiStretch.Confidence >= MinimumAcceptableConfidence)
+-                            {
+-                                // 认出来了，**当成正常那一遍的结果往下走**，
+-                                // 让后面那套「一致就说明没问题 / 不一致就采信 chi_sim」的逻辑照常处理
+-                                chiCheck = chiStretch;
+-                                chiText = chiStretchText;
+-                                chiChars = stretchChars;
+-                                chiLooksChinese = true;
+-                                AppLogger.Info($"竖向拉长后 chi_sim 认出来了，采用这一遍的结果（置信度 {chiCheck.Confidence:F2}）");
+-                            }
+-
+-                            if (!chiLooksChinese)
+-                            {
+-                                scoreNote = "中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带";
+-                            }
+-                        }
+-                        else if (chiCheck.Confidence < MinimumAcceptableConfidence)
+-                        {
+-                            // ==========================================================
+-                            // 【2026-10-10 用户实测小灰字时暴露：两个引擎都是乱的时候，我们硬选了一个】
+-                            //
+-                            //   当时的现场：
+-                            //     chi_sim  0.57 →【这一切专| J亲六革路刚队急材衬宫人小由有加了息…】全乱
+-                            //     Windows        →【、 25 段，每段框一次，按 F S M X P C 的顺序 ·】← 这份反而对
+-                            //     两个引擎读出来不一样 → 按老规矩采信 chi_sim → **选错了**
+-                            //
+-                            //   **这不是「chi_sim 比 Windows 准」的问题，是「两个都是乱的时候没依据」的问题。**
+-                            //   而现在的规矩恰好在这种最该留手的时候最武断。
+-                            //
+-                            //   【怎么补】
+-                            //     chi_sim 置信度**低于 0.60 就失去候选资格**。
+-                            //     0.60 这个数不是现拍的，是材料 3 实测出来的空档：
+-                            //       chi_sim 认对的：0.85、0.88、0.93
+-                            //       chi_sim 认成乱码的：0.57
+-                            //     而且 0.60 本来就是「这东西要不要给用户看」那道门槛
+-                            //     （MinimumAcceptableConfidence），**不是新数字，是同一条线**。
+-                            //
+-                            //   低于这条线 → 老老实实保留 Windows 的结果，
+-                            //   并如实告诉用户「Tesseract 置信度太低，不采信」。
+-                            // ==========================================================
+-                            scoreNote = $"中文：两个引擎读出来不一样，但 Tesseract 置信度只有 " +
+-                                        $"{chiCheck.Confidence:F2}（低于 {MinimumAcceptableConfidence:F2}，判定为乱码），保留 Windows 自带";
+-                            AppLogger.Warn(
+-                                $"⚠️ 两个引擎读出来不一样，但 chi_sim 置信度只有 {chiCheck.Confidence:F2}，" +
+-                                "判为乱码不采信，保留 Windows 自带");
+-                        }
+-                        else
+-                        {
+-                            bool identical = string.Equals(
+-                                TextNormalizer.Normalize(text),
+-                                TextNormalizer.Normalize(chiText),
+-                                StringComparison.Ordinal);
+-
+-                            if (identical)
+-                            {
+-                                scoreNote = "中文：Windows 自带和 Tesseract 读出来完全一致" +
+-                                            $"（置信度 {chiCheck.Confidence:F2}）";
+-                            }
+-                            else
+-                            {
+-                                // 两个引擎读出来不一样 —— 这是最需要如实告诉用户的情况。
+-                                // ⚠️ 先把 Windows 那份存下来：下面马上就把 text 换掉了，
+-                                //    不存的话日志里两边会显示成同一个内容，自己骗自己。
+-                                string windowsText = text;
+-
+-                                // 采信 chi_sim：实测它认中文从没错过，
+-                                // 而 Windows 在材料 3 的五段中文上全错。
+-                                text = chiText;
+-                                lineCount = TextNormalizer.CountLines(chiText);
+-                                channelUsed = "Tesseract";
+-
+-                                AppLogger.Warn(
+-                                    "⚠️ 两个引擎对中文读出来不一样：" +
+-                                    $"Windows【{Preview(windowsText)}】 vs chi_sim【{Preview(chiText)}】，" +
+-                                    $"置信度 {chiCheck.Confidence:F2}，已采用 chi_sim");
+-
+-                                // ==========================================================
+-                                // 【2026-10-10 材料 1 的 D1：第三证人——分数更高的那个说了算】
+-                                //
+-                                //   **先看探针测出来的数据（3 次 D1 + 3 次 X2）**：
+-                                //     D1（`API 版本 v2.0`）
+-                                //       Windows【…系统， API  版本 v2 ℃ 已于…】  ← API 对，v2.0 错
+-                                //       chi_sim【…系统，ApPl 版本 v2.0 已于…】    ← API 错，v2.0 对
+-                                //       第三票　【…系统，API  版本 v2.0 已于…】 0.90 ← **两个都对**
+-                                //       → 第三票 0.90 > chi_sim 0.89 → **换，API 认对了**
+-                                //
+-                                //     X2（`版本 2.0`，材料 3 里已通过的那段）
+-                                //       chi_sim 0.93，第三票 0.93 —— **平手**
+-                                //       → 不换 → **这一段一个字都不会变**
+-                                //
+-                                //   【为什么规矩是「分数更高」，不是「不一样就换」】
+-                                //     「三票里有两票一样就少数服从多数」听起来更美，
+-                                //     但 D1 里**第三票和两个都不一样**——
+-                                //     **不一样不代表更好**。
+-                                //     而「第三票分数比两个都高」是**两个引擎自己给的数字**，
+-                                //     不靠我们猜。
+-                                //
+-                                //   【平手为什么不换】
+-                                //     X2 实测就是平手，**平手就保持原来的做法**——
+-                                //     **宁可什么也不动，也不要把已经对的弄坏**。
+-                                //
+-                                //   【什么时候才会跑这条路】
+-                                //     只在「两个引擎不一致」这个**本来就在犹豫**的时刻，
+-                                //     两个引擎一致时**一秒都不多花**。
+-                                // ==========================================================
+-                                try
+-                                {
+-                                    using Bitmap thirdImage = ImagePreprocessor.PreprocessRedChannel(raw, 2.0);
+-                                    var third = TesseractOcr.TryRecognize(thirdImage, TesseractOcr.Languages.Chinese);
+-                                    string thirdText = TextNormalizer.Normalize(third.Text ?? "");
+-                                    int thirdChars = TextNormalizer.CountMeaningfulChars(thirdText);
+-                                    bool thirdLooksChinese =
+-                                        LanguageDetector.IsMostlyChinese(thirdText) && thirdChars >= 2;
+-
+-                                    bool sameAsWindows = string.Equals(
+-                                        thirdText, TextNormalizer.Normalize(windowsText), StringComparison.Ordinal);
+-                                    bool sameAsChi = string.Equals(
+-                                        thirdText, TextNormalizer.Normalize(chiText), StringComparison.Ordinal);
+-
+-                                    AppLogger.Info(
+-                                        $"【第三证人】红通道 chi_sim：置信度 {third.Confidence:F2}，" +
+-                                        $"内容【{Preview(thirdText)}】；" +
+-                                        $"与 Windows 一致={sameAsWindows}，与 chi_sim 一致={sameAsChi}");
+-
+-                                    if (thirdLooksChinese && third.Confidence > chiCheck.Confidence)
+-                                    {
+-                                        AppLogger.Info(
+-                                            $"第三票的分数更高（{third.Confidence:F2} > {chiCheck.Confidence:F2}）——" +
+-                                            "**多一个证人，高的那个说了算**，采用第三票");
+-                                        chiText = thirdText;
+-                                        chiChars = thirdChars;
+-                                        chiCheck = third;
+-                                        text = thirdText;
+-                                        lineCount = TextNormalizer.CountLines(thirdText);
+-
+-                                        scoreNote = $"中文：两个引擎不一致，又多问了一个证人，" +
+-                                                    $"分数更高的那份（{third.Confidence:F2}）被采用；" +
+-                                                    $"Windows 读出来的是【{Preview(windowsText)}】，请核对";
+-                                    }
+-                                    else
+-                                    {
+-                                        AppLogger.Info(
+-                                            $"第三票没有更高（{third.Confidence:F2} ≤ {chiCheck.Confidence:F2}）——" +
+-                                            "**平手或更差就保持原样**，不动已经对的那些段");
+-
+-                                        // ==========================================================
+-                                        // 【2026-10-13 X2：劈词证据优先】
+-                                        //   主票和第三票分数打平时本来是「不动」，
+-                                        //   但 X2 就死在这：主票 0.94（拆词的错答案）
+-                                        //   比第三票 0.93（对的）还高，两次实测都被这条规矩挡住。
+-                                        //   → 分数不可信，但**劈词这个现象是硬的**。
+-                                        // ==========================================================
+-                                        if (SplitWordEvidenceFavorsCandidate(
+-                                                chiText, thirdText, chiCheck.Confidence, third.Confidence))
+-                                        {
+-                                            AppLogger.Info(
+-                                                $"【劈词证据】主票被判定劈错（主票 {chiCheck.Confidence:F2} vs 第三票 " +
+-                                                $"{third.Confidence:F2}，字母数字完全一样、只差空格标点，且主票把连着的词拆开了）——" +
+-                                                "采用第三票");
+-                                            chiText = thirdText;
+-                                            chiChars = thirdChars;
+-                                            chiCheck = third;
+-                                            text = thirdText;
+-                                            lineCount = TextNormalizer.CountLines(thirdText);
+-                                        }
+-                                    }
+-
+-                                    // ==========================================================
+-                                    // 【2026-10-13 材料 3 的 X2：第四证人——chi_sim+eng】
+-                                    //
+-                                    //   X2（`版本 2.0 已于 2024 年发布 config.txt`）撤回 Sauvola 后
+-                                    //   实测 8 次错 6 次，错法一模一样：chi_sim 把 `config.txt`
+-                                    //   拆成 `config` + `txt` 两个词，**两个词分数一模一样（71.45）**，
+-                                    //   等于它自己也不知道那个点算不算分隔点。
+-                                    //   红通道第三票救回过 4 次，剩下那几次红通道也拆开了、
+-                                    //   两票平手，救不回来——**候选里根本没有全对的那一份**。
+-                                    //
+-                                    //   【为什么该挂英文表，而不是改别的】
+-                                    //     Windows 自带 OCR **每一次都把 `config.txt` 读对**，
+-                                    //     它只是把中文的 `2.0` 读成 `2 ℃` 才被整份丢掉。
+-                                    //     → 图本身够清楚，任何「以拉丁为主」的引擎都读得对，
+-                                    //       只有 chi_sim 这一个在那一点上骑墙。
+-                                    //     rus+eng 早就是干这个的（俄文夹 `config.txt`），
+-                                    //     这里只是把同一招用到 chi_sim 上，不新造机制。
+-                                    //
+-                                    //   【规矩不变】同一张图（红通道），只换模型，**分数更高才换**。
+-                                    //   没把握就不换——宁可不动，也不要把已经对的弄坏。
+-                                    //
+-                                    //   ponytail: 只在「两个引擎读出来不一样」这个本来就在犹豫的
+-                                    //   时刻跑这一票，一致时一秒都不多花；引擎没起来就跳过，
+-                                    //   不影响用户取词。
+-                                    // ==========================================================
+-                                    try
+-                                    {
+-                                        var fourth = TesseractOcr.TryRecognize(thirdImage, TesseractOcr.Languages.ChinesePlusEnglish);
+-                                        string fourthText = TextNormalizer.Normalize(fourth.Text ?? "");
+-                                        int fourthChars = TextNormalizer.CountMeaningfulChars(fourthText);
+-                                        bool fourthLooksChinese =
+-                                            LanguageDetector.IsMostlyChinese(fourthText) && fourthChars >= 2;
+-
+-                                        AppLogger.Info(
+-                                            $"【第四证人】红通道 chi_sim+eng：置信度 {fourth.Confidence:F2}，" +
+-                                            $"内容【{Preview(fourthText)}】");
+-
+-                                        if (fourthLooksChinese && fourth.Confidence > chiCheck.Confidence)
+-                                        {
+-                                            AppLogger.Info(
+-                                                $"第四票的分数更高（{fourth.Confidence:F2} > {chiCheck.Confidence:F2}）——" +
+-                                                "**多一个证人，高的那个说了算**，采用第四票");
+-                                            chiText = fourthText;
+-                                            chiChars = fourthChars;
+-                                            chiCheck = fourth;
+-                                            text = fourthText;
+-                                            lineCount = TextNormalizer.CountLines(fourthText);
+-                                        }
+-                                        else
+-                                        {
+-                                            AppLogger.Info(
+-                                                $"第四票没有更高（{fourth.Confidence:F2} ≤ {chiCheck.Confidence:F2}）——" +
+-                                                "**平手或更差就保持原样**，不动已经对的那些段");
+-
+-                                            // 同上：X2 的劈词证据，第四票也适用
+-                                            if (SplitWordEvidenceFavorsCandidate(
+-                                                    chiText, fourthText, chiCheck.Confidence, fourth.Confidence))
+-                                            {
+-                                                AppLogger.Info(
+-                                                    $"【劈词证据】主票被判定劈错（主票 {chiCheck.Confidence:F2} vs 第四票 " +
+-                                                    $"{fourth.Confidence:F2}，字母数字完全一样、只差空格标点，且主票把连着的词拆开了）——" +
+-                                                    "采用第四票");
+-                                                chiText = fourthText;
+-                                                chiChars = fourthChars;
+-                                                chiCheck = fourth;
+-                                                text = fourthText;
+-                                                lineCount = TextNormalizer.CountLines(fourthText);
+-                                            }
+-                                        }
+-                                    }
+-                                    catch (Exception ex)
+-                                    {
+-                                        // 第四证人失败绝不能影响用户取词
+-                                        AppLogger.Warn($"第四证人失败（已忽略）：{ex.Message}");
+-                                    }
+-                                }
+-                                catch (Exception ex)
+-                                {
+-                                    // 第三证人失败绝不能影响用户取词
+-                                    AppLogger.Warn($"第三证人失败（已忽略）：{ex.Message}");
+-                                }
+-
+-                                // 【2026-10-15 路二 · 点号回填】
+-                                // 第三/第四证人都试过之后才跑：它们是「换票」，这一步只是「回填」。
+-                                string restoredDots = MergeSplitDottedTokensFrom(text, windowsText);
+-                                if (!string.Equals(restoredDots, text, StringComparison.Ordinal))
+-                                {
+-                                    AppLogger.Info(
+-                                        $"【点号回填】最终结果把 Windows 读出来的词拆开了：" +
+-                                        $"{Preview(text)} → {Preview(restoredDots)}，按 Windows 的写法合并");
+-                                    text = restoredDots;
+-                                    lineCount = TextNormalizer.CountLines(text);
+-                                }
+-
+-                                scoreNote = "⚠️ 两个引擎读出来不一样，已采用 Tesseract" +
+-                                            $"（置信度 {chiCheck.Confidence:F2}，{chiChars} 个有效字符）；" +
+-                                            $"Windows 读出来的是【{Preview(windowsText)}】，请核对";
+-                            }
+-                        }
+-                    }
+-                    else if (!TesseractOcr.IsAvailable)
+-                    {
+-                        scoreNote = "中文：走 Windows 自带（Tesseract 不可用）";
+-                    }
++                    ChineseOutcome chinese = RunChinesePath(raw, text, lineCount, channelUsed, scoreNote);
++                    text = chinese.Text;
++                    lineCount = chinese.LineCount;
++                    channelUsed = chinese.ChannelUsed;
++                    scoreNote = chinese.ScoreNote;
