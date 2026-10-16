@@ -1,0 +1,992 @@
+时间: 09:26:46
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:26:55
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:26:57
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:01
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:03
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:05
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:09
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:13
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:16
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:19
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:25
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:27:28
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 09:27:32
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.92，78 个有效字符，用的是择优二值化后的图）
+字数: 111
+原文: Error 404 (Not Found): the file "config.txt" wasn't found - try /help?id=123 or e-mail me@example.com (50% off)
+##### 记录结束 #####
+时间: 09:27:36
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.91，60 个有效字符）
+字数: 93
+原文: HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB, ID #A17f-9x, e-mail: dev@corp.io; see p.42.
+##### 记录结束 #####
+时间: 09:27:38
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，124 个有效字符）
+字数: 147
+原文: This paragraph is deliberately rendered in a small font size, because small text is where optical character recognition usually struggles the most.
+##### 记录结束 #####
+时间: 09:27:41
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.93，46 个有效字符）
+字数: 55
+原文: Съешь же ещё этих мягких Французских булок да выпей чаю
+##### 记录结束 #####
+时间: 09:27:45
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 75 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.91，66 个有效字符，用的是择优二值化后的图）
+字数: 87
+原文: Ошибка 404 (страница не найдена): файл “config.txt” не найден — попробуйте /help?id=123
+##### 记录结束 #####
+时间: 09:27:45
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 125 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.91）
+字数: 10
+原文: 今天天气不错适合出门
+##### 记录结束 #####
+时间: 09:27:52
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等 / 场景中有非常广泛的应用。】，请核对
+字数: 63
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等⏎场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 09:27:53
+通道: Tesseract
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.91，30 个有效字符）；Windows 读出来的是【使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布】，请核对
+字数: 40
+原文: 使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布
+##### 记录结束 #####
+时间: 09:27:57
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.94，60 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 82
+原文: Error 404 (Not Found): the file was not found - try /help or e-mail me@example.com
+##### 记录结束 #####
+时间: 09:27:59
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，100 个有效字符）
+字数: 122
+原文: This is deliberately low contrast text on a grey background, which is one of the hardest cases for any recognition engine.
+##### 记录结束 #####
+时间: 09:28:03
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，63 个有效字符）
+字数: 73
+原文: Optical character recognition converts images of text into editable text.
+##### 记录结束 #####
+时间: 09:28:08
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.95，97 个有效字符）
+字数: 115
+原文: Машинный перевод — это раздел компьютерной лингвистики, в котором предложения переводятся с одного языка на другой.
+##### 记录结束 #####
+时间: 09:28:10
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.95，38 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 48
+原文: Ошибка 404 (страница не найдена): файл не найден
+##### 记录结束 #####
+时间: 09:28:11
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.93，10 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 10
+原文: 今天天气不错适合出门
+##### 记录结束 #####
+时间: 09:28:13
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.94，31 个有效字符）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 32
+原文: 光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。
+##### 记录结束 #####
+时间: 09:28:20
+通道: Tesseract
+语言: 俄文（中文 9 %，西里尔 55 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.86，25 个有效字符，用的是择优二值化后的图）
+字数: 34
+原文: 错误 404 (Not Found): файл не найден
+##### 记录结束 #####
+时间: 09:28:20
+通道: Tesseract
+语言: 中文（中文 44 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.83，22 个有效字符）；Windows 读出来的是【版本 2 ℃ 已于 2024 年发布 config.txt】，请核对
+字数: 29
+原文: 版本 2.0 已于 2024 年发布 config.txt
+##### 记录结束 #####
+时间: 09:28:23
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 57 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.92，21 个有效字符）
+字数: 25
+原文: Файл config.txt не найден
+##### 记录结束 #####
+时间: 09:28:26
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.90，31 个有效字符）；Windows 读出来的是【光学字符识别是指汁算机识别图像中的文字 / 并转换为可编辑文本的过程。】，请核对
+字数: 33
+原文: 光学字符识别是指计算机识别图像中的文字⏎并转换为可编辑文本的过程。
+##### 记录结束 #####
+时间: 09:28:29
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.95，56 个有效字符）
+字数: 65
+原文: Ошибка сервера. Попробуйте обновить страницу или вернуться позже.
+##### 记录结束 #####
+时间: 09:28:31
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，71 个有效字符）
+字数: 86
+原文: Server started on port 8080.⏎Database connection failed.⏎Please check the config file.
+##### 记录结束 #####
+时间: 09:28:35
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带
+字数: 32
+原文: 服务已启动，端口 8080。⏎数据库连接失败。⏎请检查配置文件。
+##### 记录结束 #####
+时间: 09:28:38
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，78 个有效字符）
+字数: 97
+原文: 2024-05-01 INFO server listening 2024-05-01 WARN disk usage 92% 2024-05-01 ERROR connection reset
+##### 记录结束 #####
+时间: 09:28:40
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，54 个有效字符）
+字数: 63
+原文: Machine translation converts text from one language to another.
+##### 记录结束 #####
+时间: 09:28:44
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.96，34 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 45
+原文: Error 404 (Not Found): the file was not found
+##### 记录结束 #####
+时间: 09:28:46
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.93，32 个有效字符）
+字数: 48
+原文: HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB
+##### 记录结束 #####
+时间: 10:21:39
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 10:21:45
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 10:21:49
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.92，78 个有效字符，用的是择优二值化后的图）
+字数: 111
+原文: Error 404 (Not Found): the file "config.txt" wasn't found - try /help?id=123 or e-mail me@example.com (50% off)
+##### 记录结束 #####
+时间: 10:21:54
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.91，60 个有效字符）
+字数: 93
+原文: HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB, ID #A17f-9x, e-mail: dev@corp.io; see p.42.
+##### 记录结束 #####
+时间: 10:22:07
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，124 个有效字符）
+字数: 147
+原文: This paragraph is deliberately rendered in a small font size, because small text is where optical character recognition usually struggles the most.
+##### 记录结束 #####
+时间: 10:22:11
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.93，46 个有效字符）
+字数: 55
+原文: Съешь же ещё этих мягких Французских булок да выпей чаю
+##### 记录结束 #####
+时间: 10:22:21
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 75 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.91，66 个有效字符，用的是择优二值化后的图）
+字数: 87
+原文: Ошибка 404 (страница не найдена): файл “config.txt” не найден — попробуйте /help?id=123
+##### 记录结束 #####
+时间: 10:22:26
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.91）
+字数: 10
+原文: 今天天气不错适合出门
+##### 记录结束 #####
+时间: 10:22:31
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:22:50
+通道: Tesseract
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.91，30 个有效字符）；Windows 读出来的是【使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布】，请核对
+字数: 40
+原文: 使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布
+##### 记录结束 #####
+时间: 10:22:59
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.94，60 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 82
+原文: Error 404 (Not Found): the file was not found - try /help or e-mail me@example.com
+##### 记录结束 #####
+时间: 10:23:01
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，100 个有效字符）
+字数: 122
+原文: This is deliberately low contrast text on a grey background, which is one of the hardest cases for any recognition engine.
+##### 记录结束 #####
+时间: 10:23:09
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，63 个有效字符）
+字数: 73
+原文: Optical character recognition converts images of text into editable text.
+##### 记录结束 #####
+时间: 10:23:15
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.95，97 个有效字符）
+字数: 115
+原文: Машинный перевод — это раздел компьютерной лингвистики, в котором предложения переводятся с одного языка на другой.
+##### 记录结束 #####
+时间: 10:23:21
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.95，38 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 48
+原文: Ошибка 404 (страница не найдена): файл не найден
+##### 记录结束 #####
+时间: 10:23:26
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.93，10 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 10
+原文: 今天天气不错适合出门
+##### 记录结束 #####
+时间: 10:23:29
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.94，31 个有效字符）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 32
+原文: 光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。
+##### 记录结束 #####
+时间: 10:23:37
+通道: Tesseract
+语言: 俄文（中文 9 %，西里尔 55 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.86，25 个有效字符，用的是择优二值化后的图）
+字数: 34
+原文: 错误 404 (Not Found): файл не найден
+##### 记录结束 #####
+时间: 10:23:38
+通道: Tesseract
+语言: 中文（中文 44 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，22 个有效字符）；Windows 读出来的是【版本 2 ℃ 已于 2024 年发布 config.txt】，请核对
+字数: 29
+原文: 版本 2.0 已于 2024 年发布 config.txt
+##### 记录结束 #####
+时间: 10:23:43
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 57 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.92，21 个有效字符）
+字数: 25
+原文: Файл config.txt не найден
+##### 记录结束 #####
+时间: 10:23:50
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.92，31 个有效字符）；Windows 读出来的是【光学字符识别是指汁算机识别图像中的文字并转换为可编辑文本的过程。】，请核对
+字数: 32
+原文: 光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。
+##### 记录结束 #####
+时间: 10:23:56
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.95，56 个有效字符）
+字数: 65
+原文: Ошибка сервера. Попробуйте обновить страницу или вернуться позже.
+##### 记录结束 #####
+时间: 10:23:59
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，71 个有效字符）
+字数: 86
+原文: Server started on port 8080.⏎Database connection failed.⏎Please check the config file.
+##### 记录结束 #####
+时间: 10:24:08
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带
+字数: 32
+原文: 服务已启动，端口 8080。⏎数据库连接失败。⏎请检查配置文件。
+##### 记录结束 #####
+时间: 10:24:14
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，78 个有效字符）
+字数: 97
+原文: 2024-05-01 INFO server listening 2024-05-01 WARN disk usage 92% 2024-05-01 ERROR connection reset
+##### 记录结束 #####
+时间: 10:24:22
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，54 个有效字符）
+字数: 63
+原文: Machine translation converts text from one language to another.
+##### 记录结束 #####
+时间: 10:24:27
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.96，34 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 45
+原文: Error 404 (Not Found): the file was not found
+##### 记录结束 #####
+时间: 10:24:31
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.93，32 个有效字符）
+字数: 48
+原文: HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB
+##### 记录结束 #####
+时间: 10:24:40
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:24:43
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:24:46
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:24:49
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:24:52
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:24:54
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:24:56
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:24:59
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:25:01
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:25:03
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:25:05
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 10:25:09
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 15:21:02
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.91，42 个有效字符，用的是择优二值化后的图）
+字数: 55
+原文: Sep 11 = Oct 31: Free daily use with unlimited credits.
+##### 记录结束 #####
+时间: 15:23:57
+通道: Tesseract
+语言: 中文（中文 66 %，西里尔 0 %）
+耗时: 77 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.85，158 个有效字符）；Windows 读出来的是【、新方法自带 catch { upsca1ed?.Dispose(); throw; } 。原来「抛异常（含用户取消）时释 / - 大位图」靠的是主文件爿个内层 finally （原 L2198 一 2201 ）。搬走之后，调用方在拿到 / firstPass.Upscaled ．之就被抛出去了，这段释放任须跟若方法走 _ _ 否则消 / 异常路径泄漏位图，违反 T3 一 8 · 这是保住既有行为，不是新逻辑 ·】，请核对
+字数: 202
+原文: 二、新方法自带 catch { upscaled?.Dispose(); throw; }。原来「抛异常 ( 含用户取消 ) 时释放放大位图上」靠的是主文件那个内层 finally ( 原 L2198-2201)。搬走之后，调用方在拿到⏎firstPass.Upscaled 之前就被抛出去了，这上段释放责任必须跟着方法走一一否则取消 /异常路径会泄漏位图，违反 T3-8。这是保住既有行为，不是新逻辑。
+##### 记录结束 #####
+时间: 15:25:06
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.92，10 个有效字符，用的是择优二值化后的图）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 13
+原文: HiBitUnins...
+##### 记录结束 #####
+时间: 15:25:18
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.80，13 个有效字符）；⚠️ 选区的右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 18
+原文: AutoCAD 2027 - fA.
+##### 记录结束 #####
+时间: 15:25:24
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.82，13 个有效字符，用的是择优二值化后的图）
+字数: 20
+原文: AutoCAD 2027 - iE...
+##### 记录结束 #####
+时间: 15:25:29
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.90，4 个有效字符，用的是择优二值化后的图）
+字数: 4
+原文: 归档文件
+##### 记录结束 #####
+时间: 15:25:32
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.92）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 4
+原文: 机械制图
+##### 记录结束 #####
+时间: 15:25:35
+通道: Tesseract
+语言: 未识别（没有文字）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.88，8 个有效字符，用的是择优二值化后的图）
+字数: 12
+原文: 30802871-...
+##### 记录结束 #####
+时间: 15:25:44
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.89，15 个有效字符）
+字数: 16
+原文: opencode Desktop
+##### 记录结束 #####
+时间: 15:25:54
+通道: WindowsOcr
+语言: （判定为乱码）
+耗时: 0 毫秒
+说明: Tesseract 置信度只有 0.68（低于 0.78，判定为乱码），不返回结果；⚠️ 选区的右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 19
+原文: skill⏎文件回收 deepseek
+##### 记录结束 #####
+时间: 15:25:58
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 24 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.83，17 个有效字符，用的是择优二值化后的图）
+字数: 19
+原文: skill 文件回收 deepseek
+##### 记录结束 #####
+时间: 15:26:03
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.82，12 个有效字符，用的是择优二值化后的图）
+字数: 13
+原文: workbuddy⏎TEX
+##### 记录结束 #####
+时间: 15:26:07
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 25 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.92，12 个有效字符）；⚠️ 选区的右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 14
+原文: workbuddy，⏎工作区
+##### 记录结束 #####
+时间: 15:26:11
+通道: WindowsOcr
+语言: 中文（中文 59 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：两个引擎读出来不一样，但 Tesseract 置信度只有 0.78（低于 0.78，判定为乱码），保留 Windows 自带
+字数: 33
+原文: 附录 A 提示昔忘录 · txt 主词模概 md⏎文档 · txt
+##### 记录结束 #####
+时间: 15:26:15
+通道: WindowsOcr
+语言: 中文（中文 59 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：两个引擎读出来不一样，但 Tesseract 置信度只有 0.78（低于 0.78，判定为乱码），保留 Windows 自带
+字数: 33
+原文: 附录 A 提示昔忘录 · txt 主词模概 md⏎文档 · txt
+##### 记录结束 #####
+时间: 15:26:28
+通道: WindowsOcr
+语言: 中文（中文 59 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：两个引擎读出来不一样，但 Tesseract 置信度只有 0.78（低于 0.78，判定为乱码），保留 Windows 自带；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 35
+原文: 附录 A 提示忘录 · txt 主词模板库 · md⏎文档 · txt
+##### 记录结束 #####
+时间: 15:27:02
+通道: WindowsOcr
+语言: 中文（中文 81 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：两个引擎读出来不一样，但 Tesseract 置信度只有 0.78（低于 0.78，判定为乱码），保留 Windows 自带
+字数: 25
+原文: 附录 A 提示昔忘录 · 主词模概 md⏎文档 ·
+##### 记录结束 #####
+时间: 16:03:28
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 62 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.94，458 个有效字符）
+字数: 549
+原文: REPENTOGON is an advanced mod for *The Binding of Isaac: Repentance+* that enhances the Lua API with critical bug fixes, extended functionality, and performance optimizations. Unlike traditional mods, REPENTOGON operates as an "EXE mod," interfacing directly with the game's code through the LibZHL framework, allowing for sophisticated modifications that were previously unachievable. Notable features include a robust API documentation, extensive enhancements to game mechanics, and an emphasis on performance without the need for intensive hacks.
+##### 记录结束 #####
+时间: 16:32:46
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 16:32:51
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，265 个有效字符）
+字数: 315
+原文: Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large neural networks that were trained on millions of parallel sentences collected from the internet.
+##### 记录结束 #####
+时间: 16:32:54
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.92，78 个有效字符，用的是择优二值化后的图）
+字数: 111
+原文: Error 404 (Not Found): the file "config.txt" wasn't found - try /help?id=123 or e-mail me@example.com (50% off)
+##### 记录结束 #####
+时间: 16:33:02
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.92，60 个有效字符）
+字数: 93
+原文: HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB, ID #A17f-9x, e-mail: dev@corp.io; see p.42.
+##### 记录结束 #####
+时间: 16:33:05
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，124 个有效字符）
+字数: 147
+原文: This paragraph is deliberately rendered in a small font size, because small text is where optical character recognition usually struggles the most.
+##### 记录结束 #####
+时间: 16:33:08
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.93，46 个有效字符）
+字数: 55
+原文: Съешь же ещё этих мягких Французских булок да выпей чаю
+##### 记录结束 #####
+时间: 16:33:12
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 75 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.91，66 个有效字符，用的是择优二值化后的图）
+字数: 87
+原文: Ошибка 404 (страница не найдена): файл “config.txt” не найден — попробуйте /help?id=123
+##### 记录结束 #####
+时间: 16:33:16
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.91）
+字数: 10
+原文: 今天天气不错适合出门
+##### 记录结束 #####
+时间: 16:33:21
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，58 个有效字符）；Windows 读出来的是【光学字符识别是指计机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。】，请核对
+字数: 62
+原文: 光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+##### 记录结束 #####
+时间: 16:33:22
+通道: Tesseract
+语言: 中文（中文 50 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.91，30 个有效字符）；Windows 读出来的是【使用 Windows 10 系统， API 版本 v2 ℃ 已于 2024 年发布】，请核对
+字数: 40
+原文: 使用 Windows 10 系统，API 版本 v2.0 已于 2024 年发布
+##### 记录结束 #####
+时间: 16:33:31
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.94，60 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 82
+原文: Error 404 (Not Found): the file was not found - try /help or e-mail me@example.com
+##### 记录结束 #####
+时间: 16:33:32
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，100 个有效字符）
+字数: 122
+原文: This is deliberately low contrast text on a grey background, which is one of the hardest cases for any recognition engine.
+##### 记录结束 #####
+时间: 16:33:35
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，63 个有效字符）
+字数: 73
+原文: Optical character recognition converts images of text into editable text.
+##### 记录结束 #####
+时间: 16:33:38
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.95，97 个有效字符）
+字数: 115
+原文: Машинный перевод — это раздел компьютерной лингвистики, в котором предложения переводятся с одного языка на другой.
+##### 记录结束 #####
+时间: 16:33:41
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.95，38 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 48
+原文: Ошибка 404 (страница не найдена): файл не найден
+##### 记录结束 #####
+时间: 16:33:41
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.93，10 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 10
+原文: 今天天气不错适合出门
+##### 记录结束 #####
+时间: 16:33:47
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.94，31 个有效字符）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 32
+原文: 光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。
+##### 记录结束 #####
+时间: 16:33:51
+通道: Tesseract
+语言: 俄文（中文 9 %，西里尔 55 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.86，25 个有效字符，用的是择优二值化后的图）
+字数: 34
+原文: 错误 404 (Not Found): файл не найден
+##### 记录结束 #####
+时间: 16:33:51
+通道: Tesseract
+语言: 中文（中文 44 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.93，22 个有效字符）；Windows 读出来的是【版本 2 ℃ 已于 2024 年发布 config.txt】，请核对
+字数: 29
+原文: 版本 2.0 已于 2024 年发布 config.txt
+##### 记录结束 #####
+时间: 16:33:55
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 57 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus+eng 模型，置信度 0.92，21 个有效字符）
+字数: 25
+原文: Файл config.txt не найден
+##### 记录结束 #####
+时间: 16:34:00
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.92，31 个有效字符）；Windows 读出来的是【光学字符识别是指汁算机识别图像中的文字并转换为可编辑文本的过程。】，请核对
+字数: 32
+原文: 光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。
+##### 记录结束 #####
+时间: 16:34:03
+通道: Tesseract
+语言: 俄文（中文 0 %，西里尔 100 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（rus 模型，置信度 0.95，56 个有效字符）
+字数: 65
+原文: Ошибка сервера. Попробуйте обновить страницу или вернуться позже.
+##### 记录结束 #####
+时间: 16:34:06
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，71 个有效字符）
+字数: 86
+原文: Server started on port 8080.⏎Database connection failed.⏎Please check the config file.
+##### 记录结束 #####
+时间: 16:34:09
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带
+字数: 32
+原文: 服务已启动，端口 8080。⏎数据库连接失败。⏎请检查配置文件。
+##### 记录结束 #####
+时间: 16:34:14
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，78 个有效字符）
+字数: 97
+原文: 2024-05-01 INFO server listening 2024-05-01 WARN disk usage 92% 2024-05-01 ERROR connection reset
+##### 记录结束 #####
+时间: 16:34:17
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.94，54 个有效字符）
+字数: 63
+原文: Machine translation converts text from one language to another.
+##### 记录结束 #####
+时间: 16:34:20
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.96，34 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 45
+原文: Error 404 (Not Found): the file was not found
+##### 记录结束 #####
+时间: 16:34:22
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.93，32 个有效字符）
+字数: 48
+原文: HTTP/2.0 2024-05-01 API v3.1 - 85% CPU, RAM 16GB
+##### 记录结束 #####
