@@ -780,7 +780,7 @@ internal static class ImagePreprocessor
     ///   本方法是英文那一遍用的。
     /// </summary>
     /// <summary>
-    /// 查这张图的**左边和上边**有没有被切到半个字（右边界和下边界不查）。
+    /// 查这张图的**四条边**有没有被切到半个字。
     /// 返回值可以直接拼进提示语，为空字符串表示没切到。
     ///
     /// 【2026-10-10 用户提出来的缺口：框到半个字】
@@ -802,14 +802,21 @@ internal static class ImagePreprocessor
     /// 【怎么判断「切到了」】
     ///   正常框选时，选区四边和文字之间总有一点点空隙。
     ///   而「半个字」的意思是：**笔画直接顶到了选区的边**。
-    ///   所以只要**最外面一列像素里有笔画**，就说明选区边界紧贴甚至切到了字。
+    ///   所以只要**最外面一列（行）像素里有笔画**，就说明选区边界紧贴甚至切到了字。
     ///
-    /// 【为什么只查左边和上边】
-    ///   实测里出问题的是**右边界**（`me@example.co`）和**上边界**（切到上一行），
-    ///   所以这两边一定要查。
-    ///   下边界也切字很常见，但那样通常切到的是**下一行**，切出来的笔画
-    ///   多半会被识别成下一行的字——**那属于「框多了」，不属于「框少了半个字」**，
-    ///   提示语也不一样，这里先不动。
+    /// 【2026-10-15 用户点名：右边和下边以前不查，现在补上】
+    ///   此前只查左边和上边，右边和下边一次都不查（验收日志一百二十三节记过这个缺口）。
+    ///   缺口是真实存在的：2026-10-13 那次 **478×20 和 476×24 两次框底明显切到了字，
+    ///   软件一句警告都没报**，而同一天 499×48 报了「上边切到了文字」。
+    ///   → 现在四条边都查，哪条边顶到笔画就报哪条（可能同时报好几条）。
+    ///
+    /// 【下边切到字，提示语和「框多了」不是一回事】
+    ///   下边界切字有两种情形：
+    ///     · 切掉**本行字的下半截** → 字认不全，**属于「框少了」**，正是本方法要报的；
+    ///     · 切进来**下一行的上半截** → 多半被识别成下一行的字，**属于「框多了」**。
+    ///   本方法按像素判，**分不出这两种**，所以提示语仍然只说
+    ///   「顶在文字上，很可能切到了半个字」，把判断交给用户看原文。
+    ///   （真正精确地区分要在识别结果层面做，那是另一件事，此处不做。）
     /// </summary>
     public static string FindCutEdge(Bitmap source)
     {
@@ -817,14 +824,26 @@ internal static class ImagePreprocessor
 
         using Bitmap gray = ToGrayscaleOnly(source);
 
-        bool cutLeft = ColumnHasInk(gray, 0);
-        bool cutTop = RowHasInk(gray, 0);
+        var edges = new List<string>(4);
+        if (ColumnHasInk(gray, 0)) edges.Add("左边");
+        if (ColumnHasInk(gray, gray.Width - 1)) edges.Add("右边");
+        if (RowHasInk(gray, 0)) edges.Add("上边");
+        if (RowHasInk(gray, gray.Height - 1)) edges.Add("下边");
 
-        if (cutLeft && cutTop) return "左边和上边";
-        if (cutLeft) return "左边";
-        if (cutTop) return "上边";
-        return string.Empty;
+        return DescribeEdges(edges);
     }
+
+    /// <summary>
+    /// 把顶到笔画的边拼成一句人话：一条「左边」，两条「左边和上边」，
+    /// 三条以上「左边、上边和右边」（中文用顿号列举、最后一处用「和」）。
+    /// </summary>
+    private static string DescribeEdges(List<string> edges) => edges.Count switch
+    {
+        0 => string.Empty,
+        1 => edges[0],
+        2 => $"{edges[0]}和{edges[1]}",
+        _ => string.Join("、", edges.Take(edges.Count - 1)) + "和" + edges[^1],
+    };
 
     /// <summary>这一列（第 columnIndex 列）里有没有比背景暗的笔画。</summary>
     private static bool ColumnHasInk(Bitmap gray, int columnIndex)

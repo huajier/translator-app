@@ -237,6 +237,60 @@ Console.WriteLine();
     Console.WriteLine();
 }
 
+// ── 断言：切边检测的四条边（2026-10-15，用户点名补右边和下边）──
+// 为什么要有这一段：此前只查左边和上边，右边和下边一次都不查，
+// 2026-10-13 那次 478×20 和 476×24 框底明显切到字却一句警告都没报。
+{
+    var asm5 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var type5 = asm5.GetType("TranslatorApp.Core.Capture.ImagePreprocessor")
+                ?? throw new InvalidOperationException("找不到 ImagePreprocessor");
+    var m5 = type5.GetMethod("FindCutEdge", BindingFlags.Public | BindingFlags.Static)
+             ?? throw new InvalidOperationException("找不到 FindCutEdge");
+
+    // 造一张 4×4 白图，只在指定坐标扎黑点；返回 FindCutEdge 的判断。
+    string Cut(params (int X, int Y)[] ink)
+    {
+        using var bmp = new Bitmap(4, 4);
+        for (int y = 0; y < 4; y++)
+            for (int x = 0; x < 4; x++)
+                bmp.SetPixel(x, y, Color.White);
+        foreach (var (x, y) in ink) bmp.SetPixel(x, y, Color.Black);
+        return (string)m5.Invoke(null, new object?[] { bmp })!;
+    }
+
+    int fail5 = 0;
+    (string got, string want, string why)[] cutCases =
+    {
+        (Cut(), "", "整张白纸，四边都没笔画 → 不报"),
+        (Cut((0, 1)), "左边", "只有左边有笔画 → 只报左边"),
+        (Cut((3, 1)), "右边", "只有右边有笔画 → 只报右边（以前这一边不查，是缺口）"),
+        (Cut((1, 0)), "上边", "只有上边有笔画 → 只报上边"),
+        (Cut((1, 3)), "下边", "只有下边有笔画 → 只报下边（以前这一边不查，是缺口）"),
+        (Cut((0, 1), (1, 0)), "左边和上边", "两条边 → 用「和」连接"),
+        (Cut((0, 1), (1, 0), (3, 1)), "左边、右边和上边", "三条边 → 顿号列举、最后用「和」（顺序固定为 左→右→上→下）"),
+        (Cut((0, 1), (3, 1), (1, 0), (1, 3)), "左边、右边、上边和下边", "四条边全中 → 四条都报出来"),
+        (Cut((0, 0)), "左边和上边", "左上角一个点同时踩中左列和首行 → 如实报两条"),
+    };
+    foreach (var (got, want, why) in cutCases)
+    {
+        bool ok = got == want;
+        if (!ok) fail5++;
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")}  期望[{want}] 实得[{got}]  {why}");
+    }
+
+    // 图太小（< 3 像素）时不查，直接返回空——别让一像素的图把小函数弄炸
+    using var tiny = new Bitmap(2, 2);
+    tiny.SetPixel(0, 0, Color.Black);
+    string tinyGot = (string)m5.Invoke(null, new object?[] { tiny })!;
+    bool tinyOk = tinyGot == "";
+    if (!tinyOk) fail5++;
+    Console.WriteLine($"  {(tinyOk ? "PASS" : "FAIL")}  期望[] 实得[{tinyGot}]  2×2 太小 → 不查、不炸");
+
+    Console.WriteLine(fail5 == 0 ? "切边检测断言全部通过" : $"切边检测断言失败 {fail5} 条");
+    if (fail5 > 0) Environment.Exit(1);
+    Console.WriteLine();
+}
+
 [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Unicode)]
 static extern bool SetDllDirectory(string path);
 
