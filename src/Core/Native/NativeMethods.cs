@@ -522,7 +522,7 @@ internal static class NativeMethods
             GetWindowThreadProcessId(hWnd, out uint pid);
             if (pid == 0) return "取不到";
 
-            process = OpenProcess(0x00100000 /*PROCESS_QUERY_LIMITED_INFORMATION*/, false, (int)pid);
+            process = OpenProcess(0x1000 /*PROCESS_QUERY_LIMITED_INFORMATION*/, false, (int)pid);
             if (process == IntPtr.Zero) return "取不到";
 
             // 先要路径（QueryFullProcessImageName 只给完整路径，进程名得自己取最后一段）
