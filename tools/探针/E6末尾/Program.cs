@@ -149,6 +149,51 @@ Console.WriteLine();
 }
 Console.WriteLine();
 
+// ── 断言：Windows 单字退路（2026-10-17，用户 m01856 批准）──
+// Tesseract 各路全不及格时，如果 Windows 第一遍读出来是「一个干净的外文单词」，采用它。
+// 判据只放单字、不放多词句子 —— 全历史 80 条判乱码记录里干净外文只有 4 条，
+// 多词那 2 条里 1 条错 2 个字母（cnwerts），放出来就撞用户「宁可别给」的规矩。
+{
+    var asmWord = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var typeWord = asmWord.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
+    var mWord = typeWord!.GetMethod("IsCleanSingleWord", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("找不到 IsCleanSingleWord");
+    bool Clean(string? s) => (bool)mWord.Invoke(null, new object?[] { s })!;
+
+    (string? text, bool want, string why)[] wcases =
+    {
+        // ↓ 真实现场：2026-10-17 16:27~16:28 三次框 BATTLEBOARD，Windows 第一遍全读对
+        ("BATTLEBOARD",  true,  "真样本：单字全对 → 放"),
+        ("BATTLEBOARD.", true,  "真样本：单字带句号 → 放"),
+        // ↓ 必须挡住的两条：放出来就是错的
+        ("The quick brown fox jumps over the lazy dog", false, "多词（虽然全对）→ 按规矩不放"),
+        ("Machine translation cnwerts text from one language tO another.", false, "多词且错 2 个字母 → 必须挡"),
+        ("@aIiJI config.txt He HaII\u00e4eH", false, "10-10 历史反例：含 @ 和非 ASCII → 挡"),
+        ("WISHLIST NOW\u23CEQN STEAM", false, "多行 → 挡"),
+        ("BATTLEBOARD\u2022", false, "含非 ASCII 圆点 → 挡"),
+        // ↓ 边界
+        ("  BATTLEBOARD  ", true,  "前后空格 → 放"),
+        ("BATTLEBOARD,", true,  "末尾逗号 → 放"),
+        ("AB", false, "太短（< 3）→ 挡"),
+        ("404", false, "纯数字不算单词 → 挡"),
+        ("", false, "空 → 挡"),
+        (null, false, "null → 挡"),
+    };
+    int wfail = 0;
+    foreach (var (s, want, why) in wcases)
+    {
+        bool got = Clean(s);
+        bool ok = got == want;
+        if (!ok) wfail++;
+        string shown = s is null ? "(null)" : s.Replace("\u23CE", "⏎").Replace("\u2022", "•");
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")} 期望{want} 实得{got}  [{shown}]  {why}");
+    }
+    Console.WriteLine(wfail == 0 ? "Windows 单字退路断言全部通过" : $"Windows 单字退路断言失败 {wfail} 条");
+    if (wfail > 0) Environment.Exit(1);
+    fail += wfail;
+}
+Console.WriteLine();
+
 // ── 断言：路二「点号回填」（2026-10-15）──
 {
     var asm2 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));

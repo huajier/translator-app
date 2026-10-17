@@ -241,6 +241,54 @@ internal sealed partial class OcrTextCapture : ITextCapture
            && secondConfidence <= firstConfidence - SecondVoteScoreDropLimit;
 
     /// <summary>
+    /// Windows 第一遍读出来的东西，是不是「一个干净的外文单词」。
+    ///
+    /// <para>【为什么只认「单个词」（2026-10-17，用户报的 BATTLEBOARD 错例）】
+    /// Tesseract 各路全都不到及格线时，以前一律报「判乱码」。
+    /// 但 BATTLEBOARD 这种按钮上的大写单词，Windows 自带每次都读对了
+    /// （`BATTLEBOARD` / `BATTLEBOARD.`），只是「人话分」只有 17~18 分，一直不敢用。</para>
+    ///
+    /// <para>【为什么不敢放「一行干净外文」】
+    /// 全历史 80 条判乱码记录、去重 30 条里，Windows 读成干净外文的只有 4 条：
+    ///   ✅ `The quick brown fox jumps over the lazy dog`（多词，全对）
+    ///   ✅ `BATTLEBOARD` / `BATTLEBOARD.`（单字，全对）
+    ///   ❌ `Machine translation cnwerts text from one language tO another.`（多词，错 2 个字母）
+    /// 放多词就会把最后那条错的放出来，撞用户 m01380 的规矩「宁可别给，也不给错的」。
+    /// 只放单字：4 条里放 2 条，**一条错例都不放**。</para>
+    ///
+    /// <para>【判据】单行、去掉首尾空白和末尾一个标点后，全是英文字母或数字，长度 ≥ 3，中间没有空格。</para>
+    /// </summary>
+    private static bool IsCleanSingleWord(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        string t = text.Trim();
+
+        // 多行一律不要：`⏎`（U+23CE）是取词记录里的换行替身，内存里则是真正的 \r\n。
+        if (t.IndexOf('\n') >= 0 || t.IndexOf('\r') >= 0 || t.IndexOf('\u23CE') >= 0) return false;
+
+        // 去掉末尾的标点：`BATTLEBOARD.` → `BATTLEBOARD`
+        const string trailing = ".,:;!?\"'";
+        while (t.Length > 0 && trailing.IndexOf(t[t.Length - 1]) >= 0)
+            t = t.Substring(0, t.Length - 1).TrimEnd();
+
+        if (t.Length < 3) return false;
+
+        bool hasLetter = false;
+        foreach (char c in t)
+        {
+            bool letter = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+            bool digit = c >= '0' && c <= '9';
+            if (!letter && !digit) return false;
+            if (letter) hasLetter = true;
+        }
+
+        // 纯数字（`404`）不算「单词」：数字单独出现时多半是图标、页码、角标，
+        // 放它出来收益不明、噪声风险更大。**宁可别给**。
+        return hasLetter;
+    }
+
+    /// <summary>
     /// `small` 的字是不是按原顺序都出现在 `big` 里（子序列）。
     /// </summary>
     private static bool IsSubsequence(string small, string big)

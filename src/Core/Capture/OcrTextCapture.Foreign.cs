@@ -1266,9 +1266,29 @@ internal sealed partial class OcrTextCapture : ITextCapture
                 {
                     // 以前这里是「保留 Windows 自带」，见 rejectedAsGarbage 的说明：
                     // 实测退回去给的也是乱的，所以改成直接报「未识别到文字」。
-                    rejectedAsGarbage = true;
-                    scoreNote = $"Tesseract 置信度只有 {best.Confidence:F2}" +
-                                $"（低于 {MinimumAcceptableConfidence:F2}，判定为乱码），不返回结果";
+                    //
+                    // 【2026-10-17 用户 m01856 批准：只放「一个干净的外文单词」】
+                    // BATTLEBOARD 这种按钮上的大写单词，Windows 每次读对、Tesseract 每次读糊，
+                    // 以前一律报乱码，用户一个字都看不到。现在多开一个口子：
+                    // Windows 读出来是「单行 + 纯字母数字 + 只有一个词」时，采用 Windows 的。
+                    // 判据只放单字、不放多词句子 —— 理由和样本见 IsCleanSingleWord 的注释。
+                    if (IsCleanSingleWord(first.Text))
+                    {
+                        text = first.Text.Trim();
+                        lineCount = TextNormalizer.CountLines(text);
+                        channelUsed = "WindowsOcr";
+                        scoreNote = $"Tesseract 置信度只有 {best.Confidence:F2}" +
+                                    $"（低于 {MinimumAcceptableConfidence:F2}），" +
+                                    $"但 Windows 自带读出了干净的一个词「{Preview(text)}」，采用它";
+                        AppLogger.Info($"【Windows 单字退路】Tesseract 各路都不到及格线，" +
+                                       $"Windows 第一遍读的是「{Preview(text)}」，采用它");
+                    }
+                    else
+                    {
+                        rejectedAsGarbage = true;
+                        scoreNote = $"Tesseract 置信度只有 {best.Confidence:F2}" +
+                                    $"（低于 {MinimumAcceptableConfidence:F2}，判定为乱码），不返回结果";
+                    }
                 }
                 else
                 {
