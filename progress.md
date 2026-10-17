@@ -318,6 +318,19 @@
     `src\TranslatorApp\TranslatorApp.csproj` 三处版本号已改 `0.3.4.0`；`release\V0.3.4.0\` 已构建。
     **以后再遇到同类交接班，照这条的三步走。**
 
+32. ⏸️ **`IntegrityOfPid` 权限常量写错（老 bug，用户 m00690 已拍板「修，但不现在」）**：
+    `src\Core\Native\NativeMethods.cs:439` 写的是 `OpenProcess(0x00100000 /*PROCESS_QUERY_LIMITED_INFORMATION*/, ...)`，
+    但 `PROCESS_QUERY_LIMITED_INFORMATION` 其实是 **`0x1000`**（`0x00100000` 是 `SYNCHRONIZE`）。
+    → `OpenProcess` 能成功、句柄权限不够，后面 `OpenTokenInformation` 一律失败，
+    **这条路上永远走「取不到」分支，从上线起就没真生效过**。
+    **用户已核过影响面**：`IntegrityOfPid` 只喂 `DiagnoseTrayEnvironment`，而后者只在 `TrayIcon` 第 1 次挂载失败时打一行日志，
+    **不碰任何取词/翻译行为，风险低**。
+    **将来单独开一轮修，照用户 m00690 的四点做**：①`0x00100000` → `0x1000`，那行注释顺手改对
+    ②修完给用户看一次**真实输出**（本程序 / 任务栏的权限等级要能真报出来，不再「取不到」——
+    它以前永远走取不到分支，修好后是第一次真生效，按规矩得看一眼）
+    ③改前 tag、构建 0 错 0 警、快测 28 段不受影响 ④照旧一轮一事。
+    **排期**：等阶段 3 收口/实测期告一段落再单独开一轮，**不许顺手改**（2026-10-17 本轮就没改，用户说「做得对」）。
+
 ---
 
 ## 六、关键路径索引
