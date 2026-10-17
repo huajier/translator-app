@@ -216,6 +216,31 @@ internal sealed partial class OcrTextCapture : ITextCapture
     }
 
     /// <summary>
+    /// 英文第二票的「分数护栏」：第一票已经够格、第二票却读糊一大截时，**不换票**。
+    ///
+    /// <para>【为什么要有这条（2026-10-17，用户报的 BATTLEBOARD 错例）】
+    /// <see cref="SecondVoteRecoversTail"/> 的四条路只看「两份内容对不对得上」，
+    /// 不看第二票读得好不好。路子③「字母数字一模一样」在同长度时也成立，于是
+    /// `BATTLEBOARD`（0.90，一个字母都没错）被 `BATTLEBOARD:`（0.28）换掉，
+    /// 之后四路择优又选中一版 0.70 的，低于门槛 → 整块判乱码扔掉。</para>
+    ///
+    /// <para>【0.10 这条线是量出来的，不是拍的】
+    /// 历史 333 次换票里，符合「第一票 ≥0.78 且第二票低 ≥0.10」的只有 **2 次**：
+    /// ① 2026-10-17 13:03:09 `0.90 → 0.28` BATTLEBOARD（救回，原本被扔掉）
+    /// ② 2026-10-17 10:17:01 `0.82 → 0.66` Issues is:issue（结果不变，四路救回）
+    /// 其余 325 次的分数变化都在 ±0.16 以内，这条线不误伤正常换票。
+    /// 调小（0.05）会开始拦「第二票略差但内容更全」的正常情况；
+    /// 调大（≥0.20）就拦不住 0.28 这种暴跌。**两头都别动。**</para>
+    ///
+    /// <para>【拦下之后保留第一票，而第一票本身也可能错】
+    /// 但它已经过了 <c>MinimumAcceptableConfidence</c> 那条线，
+    /// 比「换成一票糊的、再被门槛整块扔掉」更接近用户想要的东西。</para>
+    /// </summary>
+    private static bool SecondVoteTooWeak(double firstConfidence, double secondConfidence)
+        => firstConfidence >= MinimumAcceptableConfidence
+           && secondConfidence <= firstConfidence - SecondVoteScoreDropLimit;
+
+    /// <summary>
     /// `small` 的字是不是按原顺序都出现在 `big` 里（子序列）。
     /// </summary>
     private static bool IsSubsequence(string small, string big)

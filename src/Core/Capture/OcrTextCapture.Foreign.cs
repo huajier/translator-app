@@ -124,7 +124,15 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     using Bitmap sharpImage = ImagePreprocessor.PreprocessAndBinarize(foreignImage);
                     var secondVote = TesseractOcr.TryRecognize(sharpImage, TesseractOcr.Languages.English);
 
-                    if (SecondVoteRecoversTail(engResult.Text, secondVote.Text))
+                    // 护栏（2026-10-17）：第一票已经够格，第二票却读糊一大截时，不换。
+                    // 判据在 Rules.cs 的 SecondVoteTooWeak 里（含数据来源与天花板）。
+                    if (SecondVoteTooWeak(engResult.Confidence, secondVote.Confidence))
+                    {
+                        AppLogger.Info(
+                            $"【英文第二票】第一票读得好好的（{engResult.Confidence:0.00}），" +
+                            $"第二票只有 {secondVote.Confidence:0.00}，差得太多——这次不换，仍用第一票");
+                    }
+                    else if (SecondVoteRecoversTail(engResult.Text, secondVote.Text))
                     {
                         string gain = DescribeTailGain(engResult.Text!, secondVote.Text!);
                         // 文案对三条路都成立：路子③两份一样长，说「读得更全」是假话。

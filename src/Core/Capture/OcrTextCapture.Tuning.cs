@@ -119,6 +119,26 @@ internal sealed partial class OcrTextCapture : ITextCapture
     private const double MinimumAcceptableConfidence = 0.78;
 
     /// <summary>
+    /// 英文第二票的「分数护栏」：第一票已经够格（≥ MinimumAcceptableConfidence）、
+    /// 第二票却比它低这么多时，**不换票**，保留第一票。
+    ///
+    /// 【为什么要有这条（2026-10-17，用户报的 BATTLEBOARD 错例）】
+    ///   换票的四条路只看「两份内容对不对得上」，不看第二票读得好不好。
+    ///   路子①「字母数字一模一样」在同长度时也成立，于是
+    ///   `BATTLEBOARD`（0.90，一个字母都没错）被 `BATTLEBOARD:`（0.28）换掉，
+    ///   之后四路择优又选中一版 0.70 的，低于 0.78 → 整块判乱码扔掉。
+    ///
+    /// 【0.10 是怎么定的】
+    ///   历史 333 次换票里，符合「第一票 ≥0.78 且第二票低 ≥0.10」的只有 **2 次**：
+    ///     ① 2026-10-17 13:03:09  `0.90 → 0.28`   BATTLEBOARD（救回，原本被扔掉）
+    ///     ② 2026-10-17 10:17:01  `0.82 → 0.66`   Issues is:issue（结果不变，四路救回）
+    ///   325 次换票的分数变化都在 ±0.16 以内，**0.10 这条线不会误伤正常换票**。
+    ///   不要把这条线调小（0.05 会开始拦「第二票略差但内容更全」的正常情况），
+    ///   也不要调大（0.20 以上就拦不住 0.28 这种暴跌）。
+    /// </summary>
+    private const double SecondVoteScoreDropLimit = 0.10;
+
+    /// <summary>
     /// 四路二值图的顺序说明，只用于把日志写成人能看懂的话。
     /// 顺序必须和 ImagePreprocessor.PrepareAllPlanes 的返回顺序一致。
     /// </summary>

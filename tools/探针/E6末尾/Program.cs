@@ -32,7 +32,7 @@ Console.WriteLine($"预加载原生库：成功 {loaded} 个，装不上 {pendin
 // ── 断言：直接反射调用真程序集里那条规矩本身，不复制逻辑 ──
 int fail = 0;
 {
-    var asm = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var asm = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
     var type = asm.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
     var m = type!.GetMethod("SecondVoteRecoversTail", BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("找不到 SecondVoteRecoversTail");
@@ -109,9 +109,49 @@ Console.WriteLine(fail == 0 ? "断言全部通过" : $"断言失败 {fail} 条")
 if (fail > 0) Environment.Exit(1);
 Console.WriteLine();
 
+// ── 断言：英文第二票的「分数护栏」（2026-10-17，BATTLEBOARD 错例）──
+// 规矩本体只问内容对不对得上，不看第二票读得好不好；护栏补上分数这一维。
+{
+    var asmGuard = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var typeGuard = asmGuard.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
+    var mGuard = typeGuard!.GetMethod("SecondVoteTooWeak", BindingFlags.NonPublic | BindingFlags.Static)
+                 ?? throw new InvalidOperationException("找不到 SecondVoteTooWeak");
+    bool Weak(double a, double b) => (bool)mGuard.Invoke(null, new object?[] { a, b })!;
+
+    (double first, double second, bool want, string why)[] gcases =
+    {
+        // ↓ 真实现场（2026-10-17 13:03:09.374）：BATTLEBOARD 第一票 0.90、一个字母都没错，
+        //   二值化版 0.28 只是末尾多了个冒号，路子③「字母数字一样」就换了，
+        //   之后四路择优又选中 0.70 的一版，低于 0.78 → 整块判乱码扔掉。
+        (0.90, 0.28, true,  "BATTLEBOARD 真错例：第一票够格、第二票暴跌 → 拦下"),
+        // ↓ 另一次真实换票（10:17:01）：0.82 → 0.66，也会被拦，但四路择优救回来了，结果不变。
+        (0.82, 0.66, true,  "Issues is:issue 真现场：拦下后结果不变（四路救回）"),
+        // 下面几条锁住这条线的两头：太松会误伤正常换票，太紧就拦不住暴跌。
+        (0.78, 0.68, true,  "刚好卡在 0.10 上 → 拦（≥ 就拦）"),
+        (0.78, 0.69, false, "只差 0.09 → 放行（正常换票不许误伤）"),
+        (0.77, 0.20, false, "第一票自己都没过 0.78 → 护栏不插手（该换还得换）"),
+        (0.99, 0.89, true,  "高分区间同样按 0.10 算，不因分数高就放宽"),
+        (0.50, 0.10, false, "两边都低 → 不归护栏管，交给 0.78 门槛"),
+        (0.90, 0.90, false, "一样高分 → 不拦"),
+        (0.90, 0.95, false, "第二票更好 → 绝不拦"),
+    };
+    int gfail = 0;
+    foreach (var (a, b, want, why) in gcases)
+    {
+        bool got = Weak(a, b);
+        bool ok = got == want;
+        if (!ok) gfail++;
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")} 期望{want} 实得{got}  {a:0.00}/{b:0.00}  {why}");
+    }
+    Console.WriteLine(gfail == 0 ? "第二票护栏断言全部通过" : $"第二票护栏断言失败 {gfail} 条");
+    if (gfail > 0) Environment.Exit(1);
+    fail += gfail;
+}
+Console.WriteLine();
+
 // ── 断言：路二「点号回填」（2026-10-15）──
 {
-    var asm2 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var asm2 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
     var type2 = asm2.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
     var m2 = type2!.GetMethod("MergeSplitDottedTokensFrom", BindingFlags.NonPublic | BindingFlags.Static)
              ?? throw new InvalidOperationException("找不到 MergeSplitDottedTokensFrom");
@@ -147,7 +187,7 @@ Console.WriteLine();
 
 // ── 断言：路二第二步「删掉垫底的低分单字」（2026-10-15，Z1）──
 {
-    var asm3 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var asm3 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
     var type3 = asm3.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
     var m3 = type3!.GetMethod("DropLowScoreSingleChar", BindingFlags.NonPublic | BindingFlags.Static)
              ?? throw new InvalidOperationException("找不到 DropLowScoreSingleChar");
@@ -209,7 +249,7 @@ Console.WriteLine();
 
 // ── 断言：弹框拖动的位置夹取（2026-10-15，用户要求「弹框可以拖动」）──
 {
-    var asm4 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var asm4 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
     var type4 = asm4.GetType("TranslatorApp.UI.Shared.DebugToastWindow")
                 ?? throw new InvalidOperationException("找不到 DebugToastWindow");
     var m4 = type4.GetMethod("ClampAxis", BindingFlags.NonPublic | BindingFlags.Static)
@@ -241,7 +281,7 @@ Console.WriteLine();
 // 为什么要有这一段：此前只查左边和上边，右边和下边一次都不查，
 // 2026-10-13 那次 478×20 和 476×24 框底明显切到字却一句警告都没报。
 {
-    var asm5 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var asm5 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
     var type5 = asm5.GetType("TranslatorApp.Core.Capture.ImagePreprocessor")
                 ?? throw new InvalidOperationException("找不到 ImagePreprocessor");
     var m5 = type5.GetMethod("FindCutEdge", BindingFlags.Public | BindingFlags.Static)
@@ -297,7 +337,7 @@ Console.WriteLine();
 // `large⏎neural networks` 这种词中被劈开的折行一路留到用户手里。
 // 离线全量 774 处换行里，该合却没合 160 处（其中 148 处是同一句长英文）。
 {
-    var asm6 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.3.0", "TranslatorApp.dll"));
+    var asm6 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
     var type6 = asm6.GetType("TranslatorApp.Core.Capture.TextNormalizer")
                 ?? throw new InvalidOperationException("找不到 TextNormalizer");
     var m6 = type6.GetMethod("Normalize", BindingFlags.Public | BindingFlags.Static)
