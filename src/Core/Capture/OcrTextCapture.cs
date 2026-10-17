@@ -364,6 +364,26 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     lineCount = TextNormalizer.CountLines(text);
                 }
 
+                // ==========================================================
+                // 【2026-10-17 实测期第 2 批：列表圆点被认成 o / e】
+                //
+                //   用户原话：「识别会把前面的符号点给识别成文字导致多个a、e、o什么的」
+                //   现场（MediaWiki 的列表）：
+                //     `Adding content o If you are unsure of what to do…`
+                //     `e An edit doesn't have to be massive…`
+                //
+                //   **这不是「认不出来」，是图上那个圆点确实长得像 o/e。**
+                //   所以放在结果清理这一层删，不碰识别本身。
+                //   判据和全历史验证写在 TextNormalizer.DropMisreadBulletLetters 的注释里。
+                // ==========================================================
+                string noBullet = TextNormalizer.DropMisreadBulletLetters(text);
+                if (!string.Equals(noBullet, text, StringComparison.Ordinal))
+                {
+                    AppLogger.Info($"删掉了被认成字母的项目符号：{Preview(text)} → {Preview(noBullet)}");
+                    text = noBullet;
+                    lineCount = TextNormalizer.CountLines(text);
+                }
+
                 AppLogger.Info($"最终原文：{Preview(text)}");
 
                 // ==========================================================

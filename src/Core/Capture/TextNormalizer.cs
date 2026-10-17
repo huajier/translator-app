@@ -337,6 +337,83 @@ internal static class TextNormalizer
     }
 
     /// <summary>
+    /// 删掉**被认成字母的项目符号圆点**（`o` / `e`）。
+    ///
+    /// 【2026-10-17 用户实测第 2 批第 1 条报的】
+    ///   用户原话：「识别会把前面的符号点给识别成文字导致多个a、e、o什么的」
+    ///   图上是 MediaWiki 的列表圆点，认出来长这样：
+    ///     `Adding content o If you are unsure of what to do…`
+    ///     `e An edit doesn't have to be massive…`
+    ///     `o Register to edit and track your contributions.`
+    ///   **识别本身没错**——图上那个实心圆点确实长得像 `o` / `e`；
+    ///   但它不是原文的一部分，留在正文里会凭空多出一个字母。
+    ///
+    /// 【为什么敢删：判据卡得很死，三条同时成立才动手】
+    ///   1. 这个字母是**孤立的**——前面是行首或空格，后面紧跟一个空格；
+    ///   2. 那个空格后面紧跟**大写字母**（项目符号后面必然是列表项的第一句）；
+    ///   3. 它前面要么就是行首，要么是一个**完整的英文单词**（≥2 个字母）。
+    ///   真实的英文里 `o` / `e` 从不单独成词（能单独成词的只有 `a` / `I`），
+    ///   所以「孤立 + 后跟大写字母」这个形状在正常正文里几乎不可能出现。
+    ///   **`a` 一律不动**——英文行首真有 `a person can …` 这种句子。
+    ///
+    /// 【全历史验证（2026-10-17，69 份归档 + 当天 235 条，共 5432 条原文）】
+    ///   · 这条规则命中 **11 处**，**全部**是用户报的那 5 条记录里的项目符号；
+    ///   · 「孤立的 o/e 后面不跟大写字母」全历史只有 **1 处**，
+    ///     是俄文乱码串 `CbeUJb e 叫…`，不满足判据 2，**不会被误删**。
+    /// </summary>
+    public static string DropMisreadBulletLetters(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return text ?? "";
+
+        string[] lines = text.Replace("\r\n", "\n").Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            string line = lines[i];
+            if (line.Length < 3) continue;      // 至少要够「o + 空格 + 大写」
+
+            var sb = new StringBuilder(line.Length);
+            bool lineChanged = false;
+            int p = 0;
+            while (p < line.Length)
+            {
+                char c = line[p];
+                if ((c == 'o' || c == 'e' || c == 'O' || c == 'E') && IsMisreadBullet(line, p))
+                {
+                    p += 2;                     // 连字母带后面那个空格一起跳过
+                    lineChanged = true;
+                    continue;
+                }
+                sb.Append(c);
+                p++;
+            }
+            if (lineChanged) lines[i] = sb.ToString();
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>
+    /// <see cref="DropMisreadBulletLetters"/> 的判据本体：这个位置的 `o`/`e` 像不像项目符号。
+    /// 判据写在上面的 XML 注释里，这里只做机械检查。
+    /// </summary>
+    private static bool IsMisreadBullet(string line, int pos)
+    {
+        // 判据 1（后半）：后面必须紧跟「空格 + 大写字母」
+        if (pos + 2 >= line.Length) return false;
+        if (line[pos + 1] != ' ') return false;
+        if (!char.IsUpper(line[pos + 2])) return false;
+
+        // 判据 3：前面要么是行首，要么是「空格 + ≥2 个字母的单词」
+        if (pos == 0) return true;
+        if (line[pos - 1] != ' ') return false;
+
+        int end = pos - 2;                      // 跳过那个空格，指向单词最后一个字母
+        int q = end;
+        while (q >= 0 && char.IsLower(line[q])) q--;
+        return end - q >= 2;
+    }
+
+    /// <summary>
     /// 取文本里**第一段连续的汉字**（只取汉字，不含标点、空格、字母）。
     /// 没有汉字时返回空字符串。
     ///
