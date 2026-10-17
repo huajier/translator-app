@@ -271,6 +271,17 @@ internal static class NativeMethods
     /// <summary>自定义窗口消息号：请原进程把主窗口显示出来。两个进程各自注册同名消息，拿到同一个号。</summary>
     public static uint ShowMainWindowMessage { get; } = RegisterWindowMessage(ShowMainWindowMessageName);
 
+    /// <summary>
+    /// 资源管理器重启后 Windows 广播的消息号（名字固定就是 "TaskbarCreated"，不能改）。
+    ///
+    /// 【为什么必须处理这条消息】
+    ///   通知区域（右下角托盘）归 explorer.exe 管。explorer 一重启，托盘里所有图标都被清空，
+    ///   而 Windows 会向每个顶层窗口广播 TaskbarCreated，意思是「任务栏重建了，有图标的赶紧重挂」。
+    ///   不处理这条消息，图标就永远回不来 —— 表现是「资源管理器卡死重启后，托盘图标消失、再也叫不出来」。
+    ///   用 RegisterWindowMessage 拿号（系统保证全机唯一），不能写死某个数值。
+    /// </summary>
+    public static uint TaskbarCreatedMessage { get; } = RegisterWindowMessage("TaskbarCreated");
+
     // ==================================================================== 结构体
 
     [StructLayout(LayoutKind.Sequential)]

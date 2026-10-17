@@ -158,9 +158,35 @@ public static class TrayIcon
         _retryTimer = null;
     }
 
-    /// <summary>由主窗口消息钩子转发过来的托盘鼠标动作（lParam 就是鼠标消息号）。</summary>
-    public static void HandleMouseMessage(int mouseMessage)
+    /// <summary>
+    /// 资源管理器重启后把托盘图标重新挂回去（收到 TaskbarCreated 广播时由 App 调用）。
+    ///
+    /// 【为什么需要它】
+    ///   通知区域归 explorer.exe 管。explorer 一重启，托盘里的图标全被清空，
+    ///   而本程序还以为「已经挂上了」（_added=true），于是永远不会再挂 —— 图标就永久消失。
+    ///   这里把标记清零、重试计数清零，再走一遍正常的挂载流程（含失败重试）。
+    ///
+    /// 【必须调 NIM_DELETE 吗】不必：explorer 已经换了新进程，旧的那份记录跟着旧进程一起没了。
+    ///   直接 NIM_ADD 即可；万一 NIM_ADD 因为「已存在」失败，重试机制会兜住。
+    /// </summary>
+    public static void ReAddAfterExplorerRestart()
     {
+        if (_ownerHwnd == IntPtr.Zero)
+        {
+            AppLogger.Warn("资源管理器重启了，但没有窗口句柄，托盘图标无法重挂");
+            return;
+        }
+
+        AppLogger.Info("收到「任务栏重建」广播（资源管理器重启了）：正在把托盘图标重新挂回去");
+
+        _added = false;
+        _attempts = 0;
+        StopRetry();
+        AttemptAdd();
+    }
+
+    /// <summary>由主窗口消息钩子转发过来的托盘鼠标动作（lParam 就是鼠标消息号）。</summary>
+    public static void HandleMouseMessage(int mouseMessage)    {
         const int WM_RBUTTONUP = 0x0205;      // 右键抬起 → 弹菜单
         const int WM_LBUTTONDBLCLK = 0x0203;  // 左键双击 → 显示主窗口
 

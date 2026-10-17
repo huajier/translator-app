@@ -628,13 +628,24 @@ public partial class App : System.Windows.Application
 
     /// <summary>
     /// 窗口消息处理：
-    ///   1) 托盘上的鼠标动作 → 交给 TrayIcon；
-    ///   2) 第二个实例发来的「显示主窗口」请求 → 用 WPF 方式显示窗口（绝不能用 Win32 硬显示 → 黑框）；
-    ///   3) 阶段 2：钩子事件唤醒消息 → 取事件喂状态机；
-    ///   4) 阶段 2：睡眠唤醒广播 → 重装钩子。
+    ///   1) 资源管理器重启广播 → 把托盘图标重挂回去；
+    ///   2) 托盘上的鼠标动作 → 交给 TrayIcon；
+    ///   3) 第二个实例发来的「显示主窗口」请求 → 用 WPF 方式显示窗口（绝不能用 Win32 硬显示 → 黑框）；
+    ///   4) 阶段 2：钩子事件唤醒消息 → 取事件喂状态机；
+    ///   5) 阶段 2：睡眠唤醒广播 → 重装钩子。
     /// </summary>
     private static IntPtr MainWindowWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        // 资源管理器重启（卡死、崩溃、被任务管理器结束）→ 通知区域被重建，所有托盘图标都没了。
+        // Windows 广播 TaskbarCreated 就是叫有图标的程序赶紧重挂，这里必须接住，否则图标永久消失。
+        if (NativeMethods.TaskbarCreatedMessage != 0 &&
+            (uint)msg == NativeMethods.TaskbarCreatedMessage)
+        {
+            TrayIcon.ReAddAfterExplorerRestart();
+            handled = true;
+            return IntPtr.Zero;
+        }
+
         if ((uint)msg == NativeMethods.TrayCallbackMessage)
         {
             TrayIcon.HandleMouseMessage(lParam.ToInt32());
