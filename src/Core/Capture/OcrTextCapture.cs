@@ -405,7 +405,8 @@ internal sealed partial class OcrTextCapture : ITextCapture
                 {
                     CaptureRecord.Write(
                         text, channelUsed, "（判定为乱码）", scoreNote,
-                        (int)Math.Min(ocrMs, int.MaxValue));
+                        (int)Math.Min(ocrMs, int.MaxValue),
+                        request.SourceProcess);
 
                     return new CaptureResult
                     {
@@ -433,7 +434,8 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     $"{LanguageDetector.DisplayName(LanguageDetector.Detect(text))}"
                         + $"（{LanguageDetector.Describe(text).Split('（')[^1].TrimEnd('）')}）",
                     string.IsNullOrEmpty(scoreNote) ? "走的是 Windows 自带两遍流程" : scoreNote,
-                    (int)Math.Min(ocrMs, int.MaxValue));
+                    (int)Math.Min(ocrMs, int.MaxValue),
+                    request.SourceProcess);
 
                 // 6) 有效性判断（乱码 / 纯符号一律判无效）
                 if (TextNormalizer.LooksLikeGarbage(text) || TextNormalizer.CountMeaningfulChars(text) < 2)

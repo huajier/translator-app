@@ -560,7 +560,11 @@ public partial class App : System.Windows.Application
             DipRect = session.DipRect,
             MonitorRect = session.MonitorRect,
             MonitorDpi = session.MonitorDpi,
-            TriggerMode = session.TriggerMode
+            TriggerMode = session.TriggerMode,
+
+            // 此刻遮罩已经收起、提示框不抢焦点，前台窗口仍然是用户正在看的那个软件。
+            // 只记进程名（chrome.exe 之类），不记网址、不记窗口标题。
+            SourceProcess = NativeMethods.ForegroundProcessName()
         };
 
         DebugToastWindow? toast = null;

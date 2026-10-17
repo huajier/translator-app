@@ -31,6 +31,18 @@ internal sealed class CaptureRequest
     /// <summary>触发方式说明，例如 "Ctrl+Alt 拖拽"。</summary>
     public string TriggerMode { get; init; } = string.Empty;
 
+    /// <summary>
+    /// 框选那一刻**前台窗口所属的进程名**（如 `chrome.exe`），给取词记录对号用。
+    ///
+    /// 【为什么要它（2026-10-17 用户批的）】
+    ///   取词记录里原本没有任何「用户当时在看哪个软件」的线索，
+    ///   用户截图报错例时只能靠时间戳对号，一天测几十次很容易对错。
+    ///   记录时**只记进程名，不记网址、不记窗口标题**。
+    ///
+    /// 取不到时是「取不到」，不影响取词。
+    /// </summary>
+    public string SourceProcess { get; init; } = string.Empty;
+
     /// <summary>选区宽度（物理像素），用于「区域太小」的快速判断。</summary>
     public int WidthPixels => PhysicalRect.Right - PhysicalRect.Left;
 

@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using TranslatorApp.Core.Logging;
 
 namespace TranslatorApp.Core.Native;
@@ -490,6 +492,61 @@ internal static class NativeMethods
         };
     }
 
+    // ==================================================================== 实测期：前台窗口的进程名
+
+    /// <summary>
+    /// 取**前台窗口所属进程的名字**（如 `chrome.exe`），给取词记录对号用。
+    ///
+    /// 【为什么要这个（2026-10-17 用户批的）】
+    ///   取词记录里原本只有时间/通道/语言/耗时/说明/字数/原文，
+    ///   **没有「用户当时在看哪个网站」**。用户截图报错例时，
+    ///   只能靠时间戳去对 —— 同一天测几十次，光靠时间对号很容易对错。
+    ///   加一个进程名（`chrome.exe` / `Code.exe` / `WINWORD.EXE`），
+    ///   对号就多一条硬线索。
+    ///
+    /// 【只记进程名，不记网址、不记窗口标题】
+    ///   网址和标题是用户的内容，没必要记；进程名只说明「用的是哪个软件」。
+    ///
+    /// 【绝不抛异常、绝不影响取词】
+    ///   管理员权限的窗口（任务管理器之类）`OpenProcess` 会失败，
+    ///   这时返回「取不到」就行 —— 记录少一行线索，远好过取词崩掉。
+    /// </summary>
+    public static string ForegroundProcessName()
+    {
+        IntPtr process = IntPtr.Zero;
+        try
+        {
+            IntPtr hWnd = GetForegroundWindow();
+            if (hWnd == IntPtr.Zero) return "取不到";
+
+            GetWindowThreadProcessId(hWnd, out uint pid);
+            if (pid == 0) return "取不到";
+
+            process = OpenProcess(0x00100000 /*PROCESS_QUERY_LIMITED_INFORMATION*/, false, (int)pid);
+            if (process == IntPtr.Zero) return "取不到";
+
+            // 先要路径（QueryFullProcessImageName 只给完整路径，进程名得自己取最后一段）
+            var buffer = new StringBuilder(1024);
+            uint size = (uint)buffer.Capacity;
+            if (!QueryFullProcessImageName(process, 0, buffer, ref size)) return "取不到";
+
+            string path = buffer.ToString();
+            if (path.Length == 0) return "取不到";
+
+            string name = Path.GetFileName(path);
+            return string.IsNullOrEmpty(name) ? "取不到" : name;
+        }
+        catch (Exception ex)
+        {
+            // 记录线索而已，绝不能让取词因为这件事失败
+            return "取不到(" + ex.GetType().Name + ")";
+        }
+        finally
+        {
+            if (process != IntPtr.Zero) CloseHandle(process);
+        }
+    }
+
     // ==================================================================== 单实例
 
     /// <summary>
@@ -797,6 +854,16 @@ internal static class NativeMethods
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    // ---- 实测期对号用：取前台窗口的进程名 ----
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryFullProcessImageName(
+        IntPtr hProcess, uint dwFlags, StringBuilder lpExeName, ref uint lpdwSize);
 
     [DllImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

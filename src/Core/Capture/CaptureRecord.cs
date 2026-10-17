@@ -43,7 +43,9 @@ internal static class CaptureRecord
     /// 追加一条取词记录。
     /// </summary>
     /// <param name="text">识别出来的原文（会一字不截地记下来）</param>
-    public static void Write(string text, string channel, string language, string detail, int elapsedMs)
+    /// <param name="sourceProcess">框选那一刻前台窗口的进程名（如 chrome.exe）；取不到时是「取不到」</param>
+    public static void Write(string text, string channel, string language, string detail, int elapsedMs,
+                             string sourceProcess)
     {
         try
         {
@@ -53,6 +55,7 @@ internal static class CaptureRecord
 
             var sb = new StringBuilder();
             sb.AppendLine($"时间: {DateTime.Now:HH:mm:ss}");
+            sb.AppendLine($"窗口: {(string.IsNullOrWhiteSpace(sourceProcess) ? "（未知）" : sourceProcess)}");
             sb.AppendLine($"通道: {channel}");
             sb.AppendLine($"语言: {language}");
             sb.AppendLine($"耗时: {elapsedMs} 毫秒");
