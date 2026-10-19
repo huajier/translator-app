@@ -447,7 +447,11 @@ internal static class NativeMethods
     /// <summary>取某个进程的权限等级 SID 字符串；完整性 SID 的最后一个数字就是等级值。</summary>
     private static string IntegrityOfPid(int pid)
     {
-        IntPtr process = OpenProcess(0x00100000 /*PROCESS_QUERY_LIMITED_INFORMATION*/, false, pid);
+        // 0x1000 = PROCESS_QUERY_LIMITED_INFORMATION（要的是「查信息」）。
+        // 曾经误写成 0x00100000（那是 SYNCHRONIZE「等进程结束」）：OpenProcess 照样成功、
+        // 错误码 0，但句柄不带查询权限 → 下一步 OpenProcessToken 一律被拒（错误码 5），
+        // 于是本诊断从上线起永远返回「取不到」、两个等级一次也没比出来过（2026-10-19 修）。
+        IntPtr process = OpenProcess(0x1000 /*PROCESS_QUERY_LIMITED_INFORMATION*/, false, pid);
         if (process == IntPtr.Zero) return "取不到(OpenProcess错误码=" + Marshal.GetLastWin32Error() + ")";
 
         IntPtr token = IntPtr.Zero;
