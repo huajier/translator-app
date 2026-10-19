@@ -1267,12 +1267,31 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     // 以前这里是「保留 Windows 自带」，见 rejectedAsGarbage 的说明：
                     // 实测退回去给的也是乱的，所以改成直接报「未识别到文字」。
                     //
+                    // 【2026-10-19 用户批准：深色背景先裁掉四周噪声边再局部阈值】
+                    // 用户实测 BATTLEBOARD（深色游戏纹理背景上的按钮字）五次框选只出一次。
+                    // 离线实验（tools\探针\深色实验）证明：
+                    //   不裁边 + 局部阈值 → 0.000（纹理垃圾 `~-Y` 把整页均分拉死）
+                    //   裁掉四周噪声边 + 同一组参数 → 0.87~0.88，文本干干净净
+                    // 放大、膨胀、换全局阈值这三条都试过，全更差，别再走。
+                    // 只在「Tesseract 各路都不到及格线」时才跑，正常取词不经过这里。
+                    (string Text, double Confidence)? rescued = TryCroppedLocalRescue(raw, modelUsed);
+                    if (rescued is { } rescue && rescue.Confidence >= MinimumAcceptableConfidence)
+                    {
+                        text = rescue.Text;
+                        lineCount = TextNormalizer.CountLines(text);
+                        channelUsed = "Tesseract";
+                        scoreNote = $"Tesseract 置信度只有 {best.Confidence:F2}" +
+                                    $"（低于 {MinimumAcceptableConfidence:F2}），" +
+                                    $"但裁掉四周噪声边后重新识别拿到 {rescue.Confidence:F2}，采用它";
+                        AppLogger.Info($"【深色裁边兜底】各路都不到及格线，裁掉四周噪声边后重新识别：" +
+                                       $"置信度 {rescue.Confidence:F2}，文本「{Preview(text)}」");
+                    }
                     // 【2026-10-17 用户 m01856 批准：只放「一个干净的外文单词」】
                     // BATTLEBOARD 这种按钮上的大写单词，Windows 每次读对、Tesseract 每次读糊，
                     // 以前一律报乱码，用户一个字都看不到。现在多开一个口子：
                     // Windows 读出来是「单行 + 纯字母数字 + 只有一个词」时，采用 Windows 的。
                     // 判据只放单字、不放多词句子 —— 理由和样本见 IsCleanSingleWord 的注释。
-                    if (IsCleanSingleWord(first.Text))
+                    else if (IsCleanSingleWord(first.Text))
                     {
                         text = first.Text.Trim();
                         lineCount = TextNormalizer.CountLines(text);
@@ -1306,5 +1325,57 @@ internal sealed partial class OcrTextCapture : ITextCapture
         }
 
         return new ForeignOutcome(text, lineCount, channelUsed, scoreNote, rejectedAsGarbage);
+    }
+
+    /// <summary>
+    /// **深色背景兜底：把四周的噪声边裁掉，再用局部阈值重新识别。**
+    ///
+    /// 【它只做一件事】拿到原始截图 → 转成浅底深字 → 找文字的外接框 → 裁掉框外的东西
+    ///   → 用三个窗口各做一张局部阈值图 → 各识别一次 → 返回分数最高的那个。
+    ///
+    /// 【为什么值得单独写一个方法】
+    ///   主路径（PrepareAllPlanes）一次做五路，五路都喂给引擎选。
+    ///   那五路**都是补过白边的整图**，深色纹理背景上四周的暗角会被当成笔画，
+    ///   于是每一路前面都粘着垃圾、整页均分被拉到 0.00。
+    ///   这一路反过来：**先找到文字、把文字外面的东西全扔掉**，再二值化。
+    ///
+    /// 【任何一步出错都返回 null，绝不抛异常影响取词】
+    /// </summary>
+    private static (string Text, double Confidence)? TryCroppedLocalRescue(Bitmap raw, string language)
+    {
+        try
+        {
+            using Bitmap light = ImagePreprocessor.MakeLightBackground(raw);
+            Bitmap[] candidates = ImagePreprocessor.PrepareCroppedLocal(light);
+            if (candidates.Length == 0) return null;
+
+            string? bestText = null;
+            double bestConfidence = 0;
+            try
+            {
+                foreach (Bitmap image in candidates)
+                {
+                    TesseractOcr.Result result = TesseractOcr.TryRecognize(image, language);
+                    if (string.IsNullOrWhiteSpace(result.Text)) continue;
+                    if (result.Confidence <= bestConfidence) continue;
+                    bestConfidence = result.Confidence;
+                    bestText = result.Text;
+                }
+            }
+            finally
+            {
+                foreach (Bitmap image in candidates) image?.Dispose();
+            }
+
+            if (bestText is null) return null;
+            string normalized = TextNormalizer.Normalize(bestText);
+            if (string.IsNullOrWhiteSpace(normalized)) return null;
+            return (normalized, bestConfidence);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"裁边兜底失败（不影响取词）：{ex.GetType().Name} {ex.Message}");
+            return null;
+        }
     }
 }

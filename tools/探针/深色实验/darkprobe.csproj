@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    深色实验探针 —— 只做一件事：
+    拿一张真实的深色模式截图，测「不同预处理 + 不同语言模型」下 Tesseract 的置信度和文本。
+
+    为什么单独建这个工程：
+      项目主代码里 ImagePreprocessor 的每种处理都是内部逻辑，
+      想对比「全局阈值 vs 局部阈值」「反色 vs 不反色」就必须绕开主流程单独喂图。
+      探针直接引用 Tesseract 包，用和主程序完全相同的版本与 psm，结论才能对上。
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+  </ItemGroup>
+
+</Project>

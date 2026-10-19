@@ -199,6 +199,60 @@ internal static class ImagePreprocessor
     }
 
     /// <summary>
+    /// **深色背景兜底：先裁掉四周的噪声边，再局部阈值。**（2026-10-19 为 BATTLEBOARD 加）
+    ///
+    /// 【为什么需要这一路】
+    ///   深色游戏纹理背景上的文字（`BATTLEBOARD` 这种），Tesseract 各路最高只给 0.77，
+    ///   而错认成 `BATTLEBOAND` 的那一路反而有 0.78——分数分不出对错。
+    ///
+    /// 【实验证据（tools\探针\深色实验，同一张 231×80 截图）】
+    ///   不裁边 + 局部阈值(window=25,k=0.2)  → 0.000  `~-Y⏎⏎BATTLEBOARD:`（前面粘着纹理垃圾）
+    ///   裁边 + 同一组参数                   → 0.870  `BATTLEBOARD`
+    ///   裁边 + window=15                    → 0.880  `BATTLEBOARD`
+    ///   放大 2/3/4 倍、膨胀、换全局阈值       → 全部更差或全空（已试过，别再走）
+    ///
+    /// 【为什么返回多张】
+    ///   局部阈值的窗口大小跟图的高度强相关，裁完之后的图高矮不一，
+    ///   固定一个 window 会时好时坏（实测同一张图 window=15 给 0.88、25 给 0.41）。
+    ///   所以三个窗口各出一张，交给识别引擎按置信度挑。
+    ///
+    /// 【什么时候被调用】
+    ///   只在「Tesseract 各路都不到及格线」时兜底，正常取词不经过这里。
+    /// </summary>
+    public static Bitmap[] PrepareCroppedLocal(Bitmap source)
+    {
+        if (source is null) throw new ArgumentNullException(nameof(source));
+
+        // 先用默认参数探一次，只为找文字在哪
+        using Bitmap probe = BinarizeAdaptive(source);
+        var (x0, y0, x1, y1) = FindTextBounds(probe);
+        if (x0 < 0 || y0 < 0) return Array.Empty<Bitmap>();
+
+        int w = x1 - x0 + 1;
+        int h = y1 - y0 + 1;
+
+        // 裁得太小 = 没找到像样的文字区域，宁可不裁
+        if (w < probe.Width / 5 || h < probe.Height / 5) return Array.Empty<Bitmap>();
+
+        using Bitmap cropped = CropRect(source, x0, y0, w, h);
+
+        int[] windows = { 15, 25, 35 };
+        var result = new Bitmap[windows.Length];
+        try
+        {
+            for (int i = 0; i < windows.Length; i++)
+                result[i] = BinarizeAdaptive(cropped, windows[i], 0.2);
+        }
+        catch
+        {
+            foreach (var b in result) b?.Dispose();
+            throw;
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// **中文专用的「红通道、不二值化」版本**（2026-10-10 为 Z1 加）。
     ///
     /// 【Z1 的现场】
@@ -322,6 +376,99 @@ internal static class ImagePreprocessor
 
         return padded;
     }
+
+    /// <summary>
+    /// 在二值图上找文字的外接框。**先按行投影找「字所在的行带」，再只在行带内按列投影找左右边界。**
+    ///
+    /// 【判据为什么用「最多那一行的三成」，不是「全图平均的两倍」】
+    ///   第一版用的是平均值×2，结果在深色纹理背景上**几乎等于没裁**——
+    ///   纹理零散地铺满每一行，每行的墨迹数都超过了平均值。
+    ///   换成「最多那一行的三成」之后，文字行都很满、纹理行差得远，才分得开。
+    ///   （踩这个坑的证据：tools\探针\深色实验 AA 变体改判据前 0.000 / 改判据后 0.360）
+    ///
+    /// 【返回】找不到就返回 (-1,-1,-1,-1)，调用方据此放弃裁剪。
+    /// </summary>
+    private static (int X0, int Y0, int X1, int Y1) FindTextBounds(Bitmap bin)
+    {
+        int w = bin.Width;
+        int h = bin.Height;
+        var rows = new int[h];
+        long total = 0;
+
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                Color c = bin.GetPixel(x, y);
+                int v = (c.R * 299 + c.G * 587 + c.B * 114) / 1000;
+                if (v < 128) { rows[y]++; total++; }
+            }
+        }
+        if (total == 0) return (-1, -1, -1, -1);
+
+        int maxRow = 0;
+        for (int y = 0; y < h; y++) if (rows[y] > maxRow) maxRow = rows[y];
+        if (maxRow < 2) return (-1, -1, -1, -1);
+        int rowThreshold = Math.Max(2, (int)(maxRow * 0.30));
+
+        int y0 = -1;
+        int y1 = -1;
+        for (int y = 0; y < h; y++)
+        {
+            if (rows[y] >= rowThreshold)
+            {
+                if (y0 < 0) y0 = y;
+                y1 = y;
+            }
+        }
+        if (y0 < 0) return (-1, -1, -1, -1);
+
+        // 只在行带内做列投影，免得行外的纹理把左右边界撑开
+        var cols = new int[w];
+        for (int y = y0; y <= y1; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                Color c = bin.GetPixel(x, y);
+                int v = (c.R * 299 + c.G * 587 + c.B * 114) / 1000;
+                if (v < 128) cols[x]++;
+            }
+        }
+
+        int maxCol = 0;
+        for (int x = 0; x < w; x++) if (cols[x] > maxCol) maxCol = cols[x];
+        if (maxCol < 2) return (-1, -1, -1, -1);
+        int colThreshold = Math.Max(1, (int)(maxCol * 0.12));
+
+        int x0 = -1;
+        int x1 = -1;
+        for (int x = 0; x < w; x++)
+        {
+            if (cols[x] >= colThreshold)
+            {
+                if (x0 < 0) x0 = x;
+                x1 = x;
+            }
+        }
+        if (x0 < 0) return (-1, -1, -1, -1);
+
+        // 留 2 像素余量，免得字贴着边框被切
+        x0 = Math.Max(0, x0 - 2);
+        y0 = Math.Max(0, y0 - 2);
+        x1 = Math.Min(w - 1, x1 + 2);
+        y1 = Math.Min(h - 1, y1 + 2);
+        return (x0, y0, x1, y1);
+    }
+
+    /// <summary>从 source 上原样抠出一块（不缩放）。</summary>
+    private static Bitmap CropRect(Bitmap source, int x, int y, int w, int h)
+    {
+        var dst = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+        using (Graphics g = Graphics.FromImage(dst))
+            g.DrawImage(source, new Rectangle(0, 0, w, h), new Rectangle(x, y, w, h), GraphicsUnit.Pixel);
+        return dst;
+    }
+
     /// <summary>一路灰度的 256 级直方图统计。</summary>
     private readonly struct PlaneStats
     {
