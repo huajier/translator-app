@@ -32,7 +32,7 @@ Console.WriteLine($"预加载原生库：成功 {loaded} 个，装不上 {pendin
 // ── 断言：直接反射调用真程序集里那条规矩本身，不复制逻辑 ──
 int fail = 0;
 {
-    var asm = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var asm = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
     var type = asm.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
     var m = type!.GetMethod("SecondVoteRecoversTail", BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("找不到 SecondVoteRecoversTail");
@@ -112,7 +112,7 @@ Console.WriteLine();
 // ── 断言：英文第二票的「分数护栏」（2026-10-17，BATTLEBOARD 错例）──
 // 规矩本体只问内容对不对得上，不看第二票读得好不好；护栏补上分数这一维。
 {
-    var asmGuard = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var asmGuard = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
     var typeGuard = asmGuard.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
     var mGuard = typeGuard!.GetMethod("SecondVoteTooWeak", BindingFlags.NonPublic | BindingFlags.Static)
                  ?? throw new InvalidOperationException("找不到 SecondVoteTooWeak");
@@ -154,7 +154,7 @@ Console.WriteLine();
 // 判据只放单字、不放多词句子 —— 全历史 80 条判乱码记录里干净外文只有 4 条，
 // 多词那 2 条里 1 条错 2 个字母（cnwerts），放出来就撞用户「宁可别给」的规矩。
 {
-    var asmWord = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var asmWord = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
     var typeWord = asmWord.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
     var mWord = typeWord!.GetMethod("IsCleanSingleWord", BindingFlags.NonPublic | BindingFlags.Static)
                 ?? throw new InvalidOperationException("找不到 IsCleanSingleWord");
@@ -192,11 +192,52 @@ Console.WriteLine();
     if (wfail > 0) Environment.Exit(1);
     fail += wfail;
 }
+
+// ── 断言：Windows 单字退路「加一道核对」（2026-10-19，用户 m04050「修」）──
+// 起因：13:40:20 Windows 自己把末尾 R 读成 O（BATTLEBOAO），单字退路只查格式不查内容，
+// 把错的放了出去。现在要求：Windows 的词必须在 Tesseract 结果里找到编辑距离 ≤1 的对应词。
+{
+    var asmBack = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
+    var typeBack = asmBack.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
+    var mBack = typeBack!.GetMethod("WindowsWordBackedByTesseract", BindingFlags.NonPublic | BindingFlags.Static)
+                ?? throw new InvalidOperationException("找不到 WindowsWordBackedByTesseract");
+    bool Backed(string? w, string? t) => (bool)mBack.Invoke(null, new object?[] { w, t })!;
+
+    (string? word, string? tess, bool want, string why)[] bcases =
+    {
+        // ↓ 真实现场：两边一致 → 照常放行
+        ("BATTLEBOARD", "BATTLEBOARD", true, "真样本：两边完全一致 → 放"),
+        ("BATTLEBOARD", "BATTLEBOARD.", true, "真样本：Tesseract 多个句点 → 放"),
+        ("BATTLEBOARD", "Co —— -y BATTLEBOARD", true, "真样本：Tesseract 带垃圾前缀 → 切词后找得到 → 放"),
+        // ↓ 必须拦下的：2026-10-19 13:40:20 那次错例
+        ("BATTLEBOAO", "BATTLEBOAND.", false, "真错例：Windows 错 R→O，与 Tesseract 差 2 个字母 → 拦"),
+        ("BATTLEBOAO", "Co —— -y BATTLEBOARD", false, "真错例：与正确版差 2 个字母 → 拦"),
+        // ↓ 边界
+        ("BATTLEBOAR", "BATTLEBOARD", true, "少一个字母（差 1）→ 仍算同一个词 → 放"),
+        ("BATTLEBOARD", "", false, "Tesseract 没内容 → 拦"),
+        ("BATTLEBOARD", "ВАТТЦЕВОАВО", false, "Tesseract 读成俄文 → 拦"),
+        ("WISHLIST", "QN STEAM", false, "两边都对不上 → 拦"),
+        ("BATTLEBOARD", null, false, "null → 拦"),
+    };
+    int bfail = 0;
+    foreach (var (w, t, want, why) in bcases)
+    {
+        bool got = Backed(w, t);
+        bool ok = got == want;
+        if (!ok) bfail++;
+        string shownW = w ?? "(null)";
+        string shownT = t is null ? "(null)" : (t.Length > 34 ? t.Substring(0, 34) + "…" : t);
+        Console.WriteLine($"  {(ok ? "PASS" : "FAIL")} 期望{want} 实得{got}  [{shownW} | {shownT}]  {why}");
+    }
+    Console.WriteLine(bfail == 0 ? "Windows 单字核对断言全部通过" : $"Windows 单字核对断言失败 {bfail} 条");
+    if (bfail > 0) Environment.Exit(1);
+    fail += bfail;
+}
 Console.WriteLine();
 
 // ── 断言：路二「点号回填」（2026-10-15）──
 {
-    var asm2 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var asm2 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
     var type2 = asm2.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
     var m2 = type2!.GetMethod("MergeSplitDottedTokensFrom", BindingFlags.NonPublic | BindingFlags.Static)
              ?? throw new InvalidOperationException("找不到 MergeSplitDottedTokensFrom");
@@ -232,7 +273,7 @@ Console.WriteLine();
 
 // ── 断言：路二第二步「删掉垫底的低分单字」（2026-10-15，Z1）──
 {
-    var asm3 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var asm3 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
     var type3 = asm3.GetType("TranslatorApp.Core.Capture.OcrTextCapture");
     var m3 = type3!.GetMethod("DropLowScoreSingleChar", BindingFlags.NonPublic | BindingFlags.Static)
              ?? throw new InvalidOperationException("找不到 DropLowScoreSingleChar");
@@ -294,7 +335,7 @@ Console.WriteLine();
 
 // ── 断言：弹框拖动的位置夹取（2026-10-15，用户要求「弹框可以拖动」）──
 {
-    var asm4 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var asm4 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
     var type4 = asm4.GetType("TranslatorApp.UI.Shared.DebugToastWindow")
                 ?? throw new InvalidOperationException("找不到 DebugToastWindow");
     var m4 = type4.GetMethod("ClampAxis", BindingFlags.NonPublic | BindingFlags.Static)
@@ -326,7 +367,7 @@ Console.WriteLine();
 // 为什么要有这一段：此前只查左边和上边，右边和下边一次都不查，
 // 2026-10-13 那次 478×20 和 476×24 框底明显切到字却一句警告都没报。
 {
-    var asm5 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var asm5 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
     var type5 = asm5.GetType("TranslatorApp.Core.Capture.ImagePreprocessor")
                 ?? throw new InvalidOperationException("找不到 ImagePreprocessor");
     var m5 = type5.GetMethod("FindCutEdge", BindingFlags.Public | BindingFlags.Static)
@@ -382,7 +423,7 @@ Console.WriteLine();
 // `large⏎neural networks` 这种词中被劈开的折行一路留到用户手里。
 // 离线全量 774 处换行里，该合却没合 160 处（其中 148 处是同一句长英文）。
 {
-    var asm6 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.0", "TranslatorApp.dll"));
+    var asm6 = Assembly.LoadFrom(Path.Combine(root, "release", "V0.3.4.1", "TranslatorApp.dll"));
     var type6 = asm6.GetType("TranslatorApp.Core.Capture.TextNormalizer")
                 ?? throw new InvalidOperationException("找不到 TextNormalizer");
     var m6 = type6.GetMethod("Normalize", BindingFlags.Public | BindingFlags.Static)

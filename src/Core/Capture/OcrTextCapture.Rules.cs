@@ -289,6 +289,54 @@ internal sealed partial class OcrTextCapture : ITextCapture
     }
 
     /// <summary>
+    /// Windows 读出的那个单字，Tesseract 是不是也读出了同一个词（或只差一个字母）。
+    ///
+    /// <para>【为什么要有这道检查】2026-10-19 用户框 BATTLEBOARD 14 次，有 1 次 Windows 自己
+    /// 把末尾的 R 读成了 O（`BATTLEBOAO`），而单字退路只检查「是不是干净的一个词」，
+    /// 不检查「这个词对不对」，于是把错的放了出去。用户 m01380 的规矩是「宁可别给，也不给错的」，
+    /// 所以再加一道：**Windows 的词必须能在 Tesseract 的结果里找到影子**。</para>
+    ///
+    /// <para>【判据】把 Tesseract 的文本切成词（按非字母数字切开），只要有一个词与 Windows 的词
+    /// 编辑距离 ≤ 1（不分大小写），就算「对得上」。差 1 个字母放过（少一个字母仍算同一个词）；
+    /// 差 2 个及以上拦下（`BATTLEBOAO` 对 `BATTLEBOAND` 差 2）。</para>
+    ///
+    /// <para>【为什么先切词再比】四路择优后 `best.Text` 可能带垃圾前缀
+    /// （`Co —— -y BATTLEBOARD`），整串比会永远差得远，切词后逐个比才找得到。</para>
+    /// </summary>
+    private static bool WindowsWordBackedByTesseract(string? windowsWord, string? tessText)
+    {
+        if (string.IsNullOrWhiteSpace(windowsWord) || string.IsNullOrWhiteSpace(tessText)) return false;
+
+        string w = windowsWord.Trim();
+        const string trailing = ".,:;!?\"'";
+        while (w.Length > 0 && trailing.IndexOf(w[w.Length - 1]) >= 0)
+            w = w.Substring(0, w.Length - 1).TrimEnd();
+        if (w.Length < 3) return false;
+
+        string lower = w.ToLowerInvariant();
+        int start = -1;
+        for (int i = 0; i <= tessText.Length; i++)
+        {
+            bool wordChar = i < tessText.Length && IsLatinLetterOrDigit(tessText[i]);
+            if (wordChar)
+            {
+                if (start < 0) start = i;
+            }
+            else if (start >= 0)
+            {
+                string token = tessText.Substring(start, i - start);
+                if (token.Length >= 2 && EditDistance(lower, token.ToLowerInvariant()) <= 1) return true;
+                start = -1;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>英文字母或数字（切词用；汉字、西里尔、标点一律当分隔符）。</summary>
+    private static bool IsLatinLetterOrDigit(char c)
+        => (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+
+    /// <summary>
     /// `small` 的字是不是按原顺序都出现在 `big` 里（子序列）。
     /// </summary>
     private static bool IsSubsequence(string small, string big)

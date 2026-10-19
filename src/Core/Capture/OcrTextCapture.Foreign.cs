@@ -1293,14 +1293,32 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     // 判据只放单字、不放多词句子 —— 理由和样本见 IsCleanSingleWord 的注释。
                     else if (IsCleanSingleWord(first.Text))
                     {
-                        text = first.Text.Trim();
-                        lineCount = TextNormalizer.CountLines(text);
-                        channelUsed = "WindowsOcr";
-                        scoreNote = $"Tesseract 置信度只有 {best.Confidence:F2}" +
-                                    $"（低于 {MinimumAcceptableConfidence:F2}），" +
-                                    $"但 Windows 自带读出了干净的一个词「{Preview(text)}」，采用它";
-                        AppLogger.Info($"【Windows 单字退路】Tesseract 各路都不到及格线，" +
-                                       $"Windows 第一遍读的是「{Preview(text)}」，采用它");
+                        // 【2026-10-19 用户 m04050「修」】再加一道核对：
+                        // Windows 读出的词，Tesseract 那边也得有对得上的影子。
+                        // 起因：13:40:20 那次 Windows 把末尾 R 读成 O（`BATTLEBOAO`），
+                        // 单字退路只查「是不是干净的一个词」，不查「对不对」，把错的放了出去。
+                        // 判据见 WindowsWordBackedByTesseract：切词后编辑距离 ≤1 才算对得上。
+                        if (!WindowsWordBackedByTesseract(first.Text, best.Text))
+                        {
+                            rejectedAsGarbage = true;
+                            scoreNote = $"Tesseract 置信度只有 {best.Confidence:F2}" +
+                                        $"（低于 {MinimumAcceptableConfidence:F2}），" +
+                                        $"Windows 读出的「{Preview(first.Text.Trim())}」在 Tesseract 的结果里找不到对得上的词，" +
+                                        $"判定为乱码，不返回结果";
+                            AppLogger.Info($"【Windows 单字退路】拦下了：Windows 读的是「{Preview(first.Text.Trim())}」，" +
+                                           $"但 Tesseract 各路都没有对得上的词（差 2 个字母以上），宁可不给");
+                        }
+                        else
+                        {
+                            text = first.Text.Trim();
+                            lineCount = TextNormalizer.CountLines(text);
+                            channelUsed = "WindowsOcr";
+                            scoreNote = $"Tesseract 置信度只有 {best.Confidence:F2}" +
+                                        $"（低于 {MinimumAcceptableConfidence:F2}），" +
+                                        $"但 Windows 自带读出了干净的一个词「{Preview(text)}」，采用它";
+                            AppLogger.Info($"【Windows 单字退路】Tesseract 各路都不到及格线，" +
+                                           $"Windows 第一遍读的是「{Preview(text)}」，采用它");
+                        }
                     }
                     else
                     {

@@ -13,7 +13,7 @@ using Tesseract;
 string root = FindRoot();
 CopyNativeLibraries(root);
 
-string tessdata = Path.Combine(root, "release", "V0.3.4.0", "tessdata");
+string tessdata = Path.Combine(root, "release", "V0.3.4.1", "tessdata");
 string srcPath = Path.Combine(root, "tools", "日志", "实测期错例", "第2批-20261017", "图2-13.00-BATTLEBOARD没认出.png");
 
 if (!File.Exists(srcPath))
