@@ -284,7 +284,7 @@ Console.WriteLine();
     {
         object boxed = Activator.CreateInstance(resultType, new object?[]
         {
-            text, 0.89, minConf, minWord, secondMin
+            text, 0.89, minConf, minWord, secondMin, 0, 0
         })!;
         return (string)m3.Invoke(null, new object?[] { text, boxed })!;
     }

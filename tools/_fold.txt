@@ -1,0 +1,327 @@
+===== 一、真实折行现场，Normalize 之后还剩不剩折行 =====
+PASS  C类 rely on large / neural
+      入: Modern systems rely on large<NL>neural networks that were trained
+      出: Modern systems rely on large neural networks that were trained
+PASS  C类 struggles the / most.
+      入: It usually struggles the<NL>most.
+      出: It usually struggles the most.
+PASS  C类 recognition / engine.
+      入: which is one of the hardest cases for any recognition<NL>engine.
+      出: which is one of the hardest cases for any recognition engine.
+PASS  B类 文字 / 并转换
+      入: 光学字符识别是指计算机识别图像中的文字<NL>并转换为可编辑文本的过程。
+      出: 光学字符识别是指计算机识别图像中的文字并转换为可编辑文本的过程。
+PASS  B类 票据录 / 入
+      入: 票据录<NL>入等场景
+      出: 票据录入等场景
+PASS  B类 场 / 景中
+      入: 它在扫描文档、电子书、票据录入等场<NL>景中有非常广泛的应用。
+      出: 它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+PASS  B类 空行版
+      入: 票据录<NL><NL>入等场景
+      出: 票据录入等场景
+PASS  B类 天花板：句号丢了被黏
+      入: 数据库连接失败<NL>请检查配置文件。
+      出: 数据库连接失败请检查配置文件。
+PASS  A类 句号结尾（英文）
+      入: Server started on port 8080.<NL>Database connection failed.
+      出: Server started on port 8080.<NL>Database connection failed.
+PASS  A类 句号结尾（中文）
+      入: 服务已启动，端口 8080。<NL>数据库连接失败。
+      出: 服务已启动，端口 8080。<NL>数据库连接失败。
+
+===== 二、逐条问 ShouldJoinLines（不动文本，只看闸门）=====
+  ShouldJoinLines(前「ely on large」| 后「neural netwo」) = True
+  ShouldJoinLines(前「翻译软件」| 后「翻译软件」) = True
+  ShouldJoinLines(前「票据录」| 后「入等场景」) = True
+  ShouldJoinLines(前「等场」| 后「景中有非常广泛的应用。」) = True
+  ShouldJoinLines(前「指计算机识别图像中的文字」| 后「并转换为可编辑文本的过程」) = True
+  ShouldJoinLines(前「the」| 后「most.」) = True
+  ShouldJoinLines(前「recognition」| 后「engine.」) = True
+
+合计：PASS 10，FAIL 0
+
+===== 三、真实归档里的换行（最终文本）逐行解剖 =====
+
+【第1轮-20261009.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第2轮-20261009.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第38轮-20261013.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第40轮-20261013.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第41轮-20261013.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第42轮-20261013.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第43轮-20261013.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第45轮-20261013.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第46轮-20261013.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第47轮-20261013.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第48轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第49轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第50轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第51轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第52轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第53轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第54轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第55轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第56轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第57轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第58轮-20261014.txt】共 2 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第59轮-20261015.txt】共 2 段
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第60轮-20261015.txt】共 2 段
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第61轮-20261015.txt】共 2 段
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第62轮-20261015.txt】共 2 段
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第63轮-20261015.txt】共 2 段
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第64轮-20261015.txt】共 2 段
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  段0: 尾=e U+0065 首=U+004D 「Machine translation is a type of computational linguistics where sentences are translated from one language to another by means of a computer program without the need of a human translator. Modern systems rely on large」
+  段1: 尾=. U+002E 首=U+006E 「neural networks that were trained on millions of parallel sentences collected from the internet.」
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第65轮-20261016.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第66轮-20261016.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第67轮-20261016.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第68轮-20261017.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第69轮-20261017.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第70轮-20261017.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第71轮-20261019.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第72轮-20261019.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第73轮-20261019.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+【第74轮-20261019.txt】共 1 段
+  喂进 Normalize 之后：已合成一段
+  出来是 1 行
+
+===== 四、全部归档里「本该合却没合」的相邻行对 =====
+归档里相邻行对共 1045 处，其中 ShouldJoinLines 认为「该合」的 326 处
+样例（该合却没合）:
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…、电子书、票据录入等场景中有非常 ⏎ 广泛的应用。…
+  ：…数据库连接失败 ⏎ 请检查配置文件。…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…、电子书、票据录入等场景中有非常 ⏎ 广泛的应用。…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：… systems rely on ⏎ large neural net…
+  ：…ly struggles the ⏎ most.…
+  ：…程，它在扫描文档、电子书、票据录 ⏎ 入等场景中有非常广泛的应用。…
+  ：…le was not found ⏎ try /help or e-m…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：…符识别是指汁算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：… systems rely on ⏎ large neural net…
+  ：…程，它在扫描文档、电子书、票据录 ⏎ 入等场景中有非常广泛的应用。…
+  ：… any recognition ⏎ engine.…
+  ：…符识别是指计算机识别图像中的文字 ⏎ 并转换为可编辑文本的过程。…
+  ：… systems rely on ⏎ large neural net…
+  ：…程，它在扫描文档、电子书、票据录 ⏎ 入等场景中有非常广泛的应用。…
+  ：… any recognition ⏎ engine.…
+
+===== 五、根因：单换行 vs 空行 =====
+  单换行：入 Modern systems rely on large<NL>neural networks
+      出 Modern systems rely on large neural networks  → 合成一段
+  空行：入 Modern systems rely on large<NL><NL>neural networks
+      出 Modern systems rely on large neural networks  → 合成一段
+  空行（中文段）：入 识别图像中的文字<NL><NL>并转换为可编辑文本
+      出 识别图像中的文字并转换为可编辑文本  → 合成一段
+
+===== 六、改法一（空行也问 ShouldJoinLines）会合掉哪些行对 =====
+会合掉 326 处（去重后 25 种），留下的换行 719 处（其中 542 处前一行以句末标点结尾 = 真段落，本来就该留）
+  ×1   … our changelog + 12 hours ago…
+  ×26  … rely on large + neural network…
+  ×1   … struggles the + most.…
+  ×1   … was not found + try /help or e…
+  ×87  …别是指计算机识别图像中的文字 + 并转换为可编辑文本的过程。…
+  ×1   …别是指汁算机识别图像中的文字 + 并转换为可编辑文本的过程。…
+  ×26  …描文档、电子书、票据录入等场 + 景中有非常广泛的应用。…
+  ×3   …扫描文档、电子书、票据录入等 + 场景中有非常广泛的应用。…
+  ×2   …数据库连接失败 + 请检查配置文件。…
+  ×43  …它在扫描文档、电子书、票据录 + 入等场景中有非常广泛的应用。…
+  ×1   …子三个一性、往多何、生中天性 + 一共 25 段，每段框一次,…
+  ×2   …子书、票据录入等场景中有非常 + 广泛的应用。…
+  ×1   …and management + 2 days ago…
+  ×1   …Docs + 19 Pull reques…
+  ×1   …dy 。巳 n 匚。 d 巳 + 工作区…
+  ×1   …ents for least + privilege and …
+  ×1   …es and new Max + option…
+  ×77  …ny recognition + engine.…
+  ×1   …option + 18 hours ago…
+  ×1   …search 8 ~ + ~ + (Preview) ~…
+  ×1   …sitories found + & Good afterno…
+  ×1   …Status + $e Auto ~…
+  ×1   …ub, Inc. Terms + 0 Write code ~…
+  ×1   …w lockfiles in + public preview…
+  ×44  …ystems rely on + large neural n…
+
+===== 七、B 类（汉+汉）折行全貌 =====
+汉+汉折行共 166 处（去重后 9 种）
+  ×1   … 。巳 n 匚。 d 巳 + 工作区…
+  ×2   …、票据录入等场景中有非常 + 广泛的应用。…
+  ×26  …档、电子书、票据录入等场 + 景中有非常广泛的应用。…
+  ×1   …个一性、往多何、生中天性 + 一共 25 段，每段框一…
+  ×43  …扫描文档、电子书、票据录 + 入等场景中有非常广泛的应…
+  ×2   …数据库连接失败 + 请检查配置文件。…
+  ×3   …文档、电子书、票据录入等 + 场景中有非常广泛的应用。…
+  ×87  …指计算机识别图像中的文字 + 并转换为可编辑文本的过程…
+  ×1   …指汁算机识别图像中的文字 + 并转换为可编辑文本的过程…
+
+===== 八、B 类候选规矩对拍（对折行敏感的口径）=====
+  标准答案 56 段（续行用空格接上）
+  会被这条规矩动到的记录：166 条（汉+汉折行）
+  现状：对 4542，错 199，认不了 1462
+  合并后：对 4614，错 199，认不了 1390
+  → 净变化：+72 对，0 错
+  新救回 72 条，弄坏 0 条
+  ✅ 合并之后从「错/认不了」变「对」的（前 25 条）：
+  第38轮-20261013.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第40轮-20261013.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第41轮-20261013.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第42轮-20261013.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第43轮-20261013.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第45轮-20261013.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第46轮-20261013.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第47轮-20261013.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第48轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第49轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第49轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第50轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第50轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第51轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第51轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第51轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第52轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第52轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第52轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第53轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第53轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第53轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第53轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第54轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。
+  第54轮-20261014.txt  →  光学字符识别是指计算机识别图像中的文字并将其转换为可编辑文本的过程，它在扫描文档、电子书、票据录入等场景中有非常广泛的应用。

@@ -187,12 +187,25 @@ internal sealed class TesseractOcr
     ///
     ///   只有一个词时它等于那一个词的分数；没取到词时给 100。
     /// </param>
+    /// <param name="DictWordCount">
+    ///   这一版认出来的词里，**有几个在 Tesseract 自带的词典里**。
+    ///
+    ///   【为什么加（2026-10-20）】
+    ///     08:37:49 实测：灰度通道 `'PLAY THE DEMO NOW ON` 置信度 0.74，
+    ///     5 个词 PLAY/THE/DEMO/NOW/ON **全在词典**、内容全对；
+    ///     蓝通道 `PLAYsTHE DEMO.NOW ON` 置信度 0.75，只有 ON 一个词在词典。
+    ///     旧规则只看置信度 → 选了蓝通道 → 0.75 < 0.78 判乱码。
+    ///     **整句分数分不出来，词典命中率一眼分出来。**
+    /// </param>
+    /// <param name="TotalWordCount">这一版一共认出几个词（配合 DictWordCount 算命中率）。</param>
     public readonly record struct Result(
         string? Text,
         double Confidence,
         double MinWordConfidence = 100.0,
         string? MinWordText = null,
-        double SecondMinWordConfidence = 100.0);
+        double SecondMinWordConfidence = 100.0,
+        int DictWordCount = 0,
+        int TotalWordCount = 0);
 
     /// <summary>认一段图，返回文字和置信度；失败返回空结果（不抛异常）。</summary>
     public static Result TryRecognize(System.Drawing.Bitmap bitmap, string language)
@@ -240,7 +253,7 @@ internal sealed class TesseractOcr
             using var pix = Pix.LoadFromMemory(png);
             string text;
             double confidence;
-            (float Lowest, string? LowestWord, float SecondLowest)? wordReport;
+            (float Lowest, string? LowestWord, float SecondLowest, int DictCount, int TotalCount)? wordReport;
 
             // 【2026-10-12 修一个自己挖的坑：必须用大括号把 page 的范围关住】
             //   引擎是**一次只能处理一张图**的（Only one image can be processed at once）。
@@ -304,7 +317,9 @@ internal sealed class TesseractOcr
                     confidence,
                     wordReport?.Lowest ?? 100.0,
                     wordReport?.LowestWord,
-                    wordReport?.SecondLowest ?? 100.0);
+                    wordReport?.SecondLowest ?? 100.0,
+                    wordReport?.DictCount ?? 0,
+                    wordReport?.TotalCount ?? 0);
         }
         catch (Exception ex)
         {
@@ -619,12 +634,13 @@ internal sealed class TesseractOcr
     ///   这一句里**分数最低的那个词**是哪个词、多少分、**次低**的多少分（0~100）；
     ///   一个词都没取到、或者中途出错，返回 null（调用方按「没发现问题」处理）。
     /// </returns>
-    private static (float Lowest, string? LowestWord, float SecondLowest)? LogWordSelfReport(Page page, string language)
+    private static (float Lowest, string? LowestWord, float SecondLowest, int DictCount, int TotalCount)? LogWordSelfReport(Page page, string language)
     {
         try
         {
             var report = new System.Text.StringBuilder();
             int count = 0;
+            int dictCount = 0;
             float lowest = 100f;
             float secondLowest = 100f;
             string? lowestWord = null;
@@ -649,6 +665,7 @@ internal sealed class TesseractOcr
                     secondLowest = wordConf;
                 }
 
+                if (inDict) dictCount++;
                 if (count > 0) report.Append(" ｜ ");
                 report.Append('【').Append(word.Trim())
                       .Append('】').Append(' ').Append(wordConf.ToString("F2"))
@@ -659,14 +676,14 @@ internal sealed class TesseractOcr
 
             if (count > 0)
             {
-                AppLogger.Info($"  词级自报（{language}）共 {count} 词，最低 {lowest:F2}：" + report);
+                AppLogger.Info($"  词级自报（{language}）共 {count} 词（词典 {dictCount}/{count}），最低 {lowest:F2}：" + report);
             }
             else
             {
                 AppLogger.Info($"  词级自报（{language}）：**一个词都没取到**（这条诊断本身可能失效了）");
             }
 
-            return count > 0 ? (lowest, lowestWord, secondLowest) : ((float, string?, float)?)null;
+            return count > 0 ? (lowest, lowestWord, secondLowest, dictCount, count) : ((float, string?, float, int, int)?)null;
         }
         catch (Exception ex)
         {

@@ -1,0 +1,383 @@
+预加载原生库：成功 2 个，装不上 0 个（D:\111Desktop\deepseek\翻译软件\tools\探针\E6末尾\bin\Release\net10.0-windows10.0.19041.0\x64）
+  PASS 期望True 实得True  E6 真错例：第一票咬掉尾巴，第二票补上
+  PASS 期望True 实得True  A16 真错例：第一票句中打磕巴，第二票全对
+  PASS 期望True 实得True  A5 真错例：第一票词里错几个字，第二票全对
+  PASS 期望False 实得False  短串：差太远不许换（固定 4 会放行，按长度收窄后挡住）
+  PASS 期望True 实得True  短串：只差 1 个字且在限额内 → 换
+  PASS 期望False 实得False  第二票自己读糊了（trips→tnps）→ 第一票的字找不齐 → 不动
+  PASS 期望False 实得False  第二票交白卷 → 不动
+  PASS 期望False 实得False  反过来：短的不能当长的用
+  PASS 期望True 实得True  结尾多出数字也会触发（已知挡不住，如实记录）
+  PASS 期望False 实得False  中间不一样且少字 → 找不齐 → 不动
+  PASS 期望False 实得False  完全不同 → 不动
+  PASS 期望True 实得True  补测真错例：第一票末尾句号丢了，第二票有 → 路子③换
+  PASS 期望True 实得True  补测真错例：第一票末尾句号变竖线 → 字母数字一样 → 换
+  PASS 期望True 实得True  补测真错例：第一票把 text 掰成 t ext → 字母数字一样 → 换
+  PASS 期望True 实得True  字母数字一模一样 → 路子③换第二票（两份连标点都一样时换了也一样）
+  PASS 期望False 实得False  第二票把字母改错（quick→quuck）→ 字母数字不同 → 不换
+  PASS 期望True 实得True  A 系列真错例①：第一票末尾多吐一个 e，第二票干净但短一个 → 路子④换
+  PASS 期望True 实得True  A 系列真错例②：第一票末尾多吐一个 a → 路子④换
+  PASS 期望True 实得True  路子④已知天花板：第一票对、第二票反而少一个字母 → 仍会换（如实记录）
+  PASS 期望True 实得True  第一票漏了尾字、第二票读全 → 采用第二票
+  PASS 期望True 实得True  第二票多读了东西但第一票的字按序都在（顺序关系允许长了）
+  PASS 期望False 实得False  第一票没结果 → 不动
+  PASS 期望False 实得False  第二票空 → 不动
+断言全部通过
+
+  PASS 期望True 实得True  0.90/0.28  BATTLEBOARD 真错例：第一票够格、第二票暴跌 → 拦下
+  PASS 期望True 实得True  0.82/0.66  Issues is:issue 真现场：拦下后结果不变（四路救回）
+  PASS 期望True 实得True  0.78/0.68  刚好卡在 0.10 上 → 拦（≥ 就拦）
+  PASS 期望False 实得False  0.78/0.69  只差 0.09 → 放行（正常换票不许误伤）
+  PASS 期望False 实得False  0.77/0.20  第一票自己都没过 0.78 → 护栏不插手（该换还得换）
+  PASS 期望True 实得True  0.99/0.89  高分区间同样按 0.10 算，不因分数高就放宽
+  PASS 期望False 实得False  0.50/0.10  两边都低 → 不归护栏管，交给 0.78 门槛
+  PASS 期望False 实得False  0.90/0.90  一样高分 → 不拦
+  PASS 期望False 实得False  0.90/0.95  第二票更好 → 绝不拦
+第二票护栏断言全部通过
+
+  PASS 期望True 实得True  [BATTLEBOARD]  真样本：单字全对 → 放
+  PASS 期望True 实得True  [BATTLEBOARD.]  真样本：单字带句号 → 放
+  PASS 期望False 实得False  [The quick brown fox jumps over the lazy dog]  多词（虽然全对）→ 按规矩不放
+  PASS 期望False 实得False  [Machine translation cnwerts text from one language tO another.]  多词且错 2 个字母 → 必须挡
+  PASS 期望False 实得False  [@aIiJI config.txt He HaIIäeH]  10-10 历史反例：含 @ 和非 ASCII → 挡
+  PASS 期望False 实得False  [WISHLIST NOW⏎QN STEAM]  多行 → 挡
+  PASS 期望False 实得False  [BATTLEBOARD•]  含非 ASCII 圆点 → 挡
+  PASS 期望True 实得True  [  BATTLEBOARD  ]  前后空格 → 放
+  PASS 期望True 实得True  [BATTLEBOARD,]  末尾逗号 → 放
+  PASS 期望False 实得False  [AB]  太短（< 3）→ 挡
+  PASS 期望False 实得False  [404]  纯数字不算单词 → 挡
+  PASS 期望False 实得False  []  空 → 挡
+  PASS 期望False 实得False  [(null)]  null → 挡
+Windows 单字退路断言全部通过
+  PASS 期望True 实得True  [BATTLEBOARD | BATTLEBOARD]  真样本：两边完全一致 → 放
+  PASS 期望True 实得True  [BATTLEBOARD | BATTLEBOARD.]  真样本：Tesseract 多个句点 → 放
+  PASS 期望True 实得True  [BATTLEBOARD | Co —— -y BATTLEBOARD]  真样本：Tesseract 带垃圾前缀 → 切词后找得到 → 放
+  PASS 期望False 实得False  [BATTLEBOAO | BATTLEBOAND.]  真错例：Windows 错 R→O，与 Tesseract 差 2 个字母 → 拦
+  PASS 期望False 实得False  [BATTLEBOAO | Co —— -y BATTLEBOARD]  真错例：与正确版差 2 个字母 → 拦
+  PASS 期望True 实得True  [BATTLEBOAR | BATTLEBOARD]  少一个字母（差 1）→ 仍算同一个词 → 放
+  PASS 期望False 实得False  [BATTLEBOARD | ]  Tesseract 没内容 → 拦
+  PASS 期望False 实得False  [BATTLEBOARD | ВАТТЦЕВОАВО]  Tesseract 读成俄文 → 拦
+  PASS 期望False 实得False  [WISHLIST | QN STEAM]  两边都对不上 → 拦
+  PASS 期望False 实得False  [BATTLEBOARD | (null)]  null → 拦
+Windows 单字核对断言全部通过
+
+  PASS  期望[版本 2.0 已于 2024 年发布 config.txt] 实得[版本 2.0 已于 2024 年发布 config.txt]  X2 真错例：Windows 有 config.txt，最终结果被拆成 config txt → 合回来
+  PASS  期望[config.txt] 实得[config.txt]  最小例
+  PASS  期望[config txt] 实得[config txt]  Windows 自己也是拆开的 → 没票可回填，不动
+  PASS  期望[config txt] 实得[config txt]  Windows 里没有这个带点词 → 一个字都不许造
+  PASS  期望[版本 2.0 已发布 config txt] 实得[版本 2.0 已发布 config txt]  Windows 没有完整写法 → 不动（不许凭 2.0 自己猜）
+  PASS  期望[a.b] 实得[a.b]  短词也照合（凭 Windows 那张票说话，不看长短）
+  PASS  期望[foo.bar config.txt] 实得[foo.bar config.txt]  一处不够两处都合
+  PASS  期望[see config.txt] 实得[see config.txt]  本来就带点 → 原样不动
+  PASS  期望[] 实得[]  空串 → 不动（不炸）
+  PASS  期望[config txt] 实得[config txt]  Windows 空 → 不动（不炸）
+  PASS  期望[版本 2 · 0 config.txt] 实得[版本 2 · 0 config.txt]  只动点号那一处，`2 · 0` 原样保留
+点号回填断言全部通过
+
+  PASS  期望[今天天气不错适合出门] 实得[今天天气不错适合出门]  Z1 真错例：垫底的「和」63.37 对第二低 89.05 → 删掉
+  PASS  期望[今天天气不错适合出门] 实得[今天天气不错适合出门]  Z1 上界那次（66.84 / 92.48）也照删
+  PASS  期望[今天天和气不错适合出门] 实得[今天天和气不错适合出门]  正好 70 分不删（门槛是「低于 70」）
+  PASS  期望[今天天和气不错适合出门] 实得[今天天和气不错适合出门]  拉不开差距（63.37 ≥ 70×0.85）→ 不删
+  PASS  期望[今天天气abc不错适合出门] 实得[今天天气abc不错适合出门]  垫底的不是汉字 → 不删
+  PASS  期望[今天天气不错适合出门] 实得[今天天气不错适合出门]  那个字出现两次 → 不知道该删哪个 → 不删
+  PASS  期望[今天天气不错适合出门] 实得[今天天气不错适合出门]  没取到垫底词 → 不删
+  PASS  期望[] 实得[]  空串 → 不动（不炸）
+  PASS  期望[今天天  气不错适合出门] 实得[今天天  气不错适合出门]  已知陷阱：传原始文本会留下两个空格 → 调用方必须先 Normalize
+  PASS  期望[光学字符识别是指计算机识别像中的文字] 实得[光学字符识别是指计算机识别像中的文字]  天花板：离线里 Z2 那种「图」垫底时会被删——靠作用范围挡住，规矩本身挡不住
+低分单字断言全部通过
+
+  PASS  期望[100] 实得[100]  屏幕内 → 原样
+  PASS  期望[0] 实得[0]  拖出左边界 → 拉回 0
+  PASS  期望[1920] 实得[1920]  拖出右边界 → 拉回上界
+  PASS  期望[-500] 实得[-500]  副屏在左边（负坐标是合法的）→ 不许当成越界拉回 0
+  PASS  期望[0] 实得[0]  显示器比卡片还窄（上界 < 下界）→ 待在 lo，不许算出屏幕外
+弹框拖动断言全部通过
+
+  PASS  期望[] 实得[]  整张白纸，四边都没笔画 → 不报
+  PASS  期望[左边] 实得[左边]  只有左边有笔画 → 只报左边
+  PASS  期望[右边] 实得[右边]  只有右边有笔画 → 只报右边（以前这一边不查，是缺口）
+  PASS  期望[上边] 实得[上边]  只有上边有笔画 → 只报上边
+  PASS  期望[下边] 实得[下边]  只有下边有笔画 → 只报下边（以前这一边不查，是缺口）
+  PASS  期望[左边和上边] 实得[左边和上边]  两条边 → 用「和」连接
+  PASS  期望[左边、右边和上边] 实得[左边、右边和上边]  三条边 → 顿号列举、最后用「和」（顺序固定为 左→右→上→下）
+  PASS  期望[左边、右边、上边和下边] 实得[左边、右边、上边和下边]  四条边全中 → 四条都报出来
+  PASS  期望[左边和上边] 实得[左边和上边]  左上角一个点同时踩中左列和首行 → 如实报两条
+  PASS  期望[] 实得[]  2×2 太小 → 不查、不炸
+切边检测断言全部通过
+
+  PASS  期望[Modern systems rely on large neural networks] 实得[Modern systems rely on large neural networks]  病根：空行隔开的两行也该问判官（以前直接保留换行）
+  PASS  期望[It usually struggles the most.] 实得[It usually struggles the most.]  现场第二种：the / most.
+  PASS  期望[for any recognition engine.] 实得[for any recognition engine.]  现场第三种：recognition / engine.
+  PASS  期望[Modern systems rely on large neural networks] 实得[Modern systems rely on large neural networks]  单换行照旧要合（回归保护）
+  PASS  期望[Server started on port 8080.<NL>Database connection failed.] 实得[Server started on port 8080.<NL>Database connection failed.]  句末标点结尾 = 真段落，判官自己拦住，只把多余空行收掉
+  PASS  期望[服务已启动，端口 8080。<NL>数据库连接失败。] 实得[服务已启动，端口 8080。<NL>数据库连接失败。]  中文句号结尾同样不许合
+  PASS  期望[票据录入等场景] 实得[票据录入等场景]  汉+汉折行第二步：两侧都是汉字时交给判官（离线 +70 对 0 错）
+  PASS  期望[识别图像中的文字并转换为可编辑文本] 实得[识别图像中的文字并转换为可编辑文本]  中文词中被折开：第二步已治
+  PASS  期望[数据库连接失败请检查配置文件。] 实得[数据库连接失败请检查配置文件。]  天花板（历史 2 次）：句号丢了 => 真段落被黏，规矩分不出，如实钉住
+  PASS  期望[识别文字abc<NL>并转换] 实得[识别文字abc<NL>并转换]  汉+拉丁：只有「两边都是汉字」量过，这一类照旧不合并
+  PASS  期望[Modern systems rely on large neural networks] 实得[Modern systems rely on large neural networks]  首尾空行照旧去掉
+  PASS  期望[] 实得[]  只有空行 → 空串，不炸
+  PASS  期望[] 实得[]  空串 → 空串，不炸
+折行断言全部通过
+
+基准存图：sel_20261014_084008_047.png  493×29
+（基准答案是 63 个字母数字）
+
+【一】右边裁掉几像素（框右边没框到 / 框偏窄）
+【二】右边多留几像素白边（框右边留空）
+【三】上下裁切（框偏矮 / 偏高）
+【四】左右同时偏（框没对齐行首）
+【五】整张缩放（相当于换字号 / 换缩放比）
+
+================ 逐条明细 ================
+右边裁 0px（493×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边裁 1px（492×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边裁 2px（491×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边裁 3px（490×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边裁 4px（489×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边裁 5px（488×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边裁 6px（487×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边裁 7px（486×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边裁 8px（485×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边留白 2px（495×29）                   第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边留白 4px（497×29）                   第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边留白 6px（499×29）                   第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边留白 8px（501×29）                   第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边留白 12px（505×29）                  第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边留白 16px（509×29）                  第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+右边留白 24px（517×29）                  第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 0 下裁 0（493×29）                  第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 0 下裁 1（493×28）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 0 下裁 2（493×27）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 0 下裁 3（493×26）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 1 下裁 1（493×27）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 1 下裁 2（493×26）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 1 下裁 3（493×25）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 2 下裁 2（493×25）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 2 下裁 3（493×24）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+上裁 3 下裁 3（493×23）                  第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+左边裁 0px（493×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+左边裁 1px（492×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+左边裁 2px（491×29）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+左边裁 3px（490×29）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+缩放 0.80（394×23）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+缩放 0.85（419×25）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+缩放 0.90（444×26）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+缩放 0.95（468×28）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+缩放 1.00（493×29）                    第一票 61❌  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+缩放 1.05（518×30）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+缩放 1.10（542×32）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+缩放 1.25（616×36）                    第一票 63✅  第二票 63✅   [Optical character recognition converts images …] | [Optical character recognition converts images …]
+
+一共试了 38 个选区：第一票咬尾巴 20 个（52.6%），第二票能救回来 38 个（100.0%）
+触发条件同时成立的（第一票错 + 第二票对）：20 个
+
+================ 规矩体检（合成多句） ================
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+Empty page!!
+合成样本 255 个（15 句 × 17 种外观）
+第一票对+第二票也对 168；【第一票对、第二票错】31；第一票错+第二票对 5；两边都错 51
+  ⚠️ 以下是「第二票更差」的底子——换票规矩一旦在这里出手就是弄坏：
+     句1 Times New Roman 15px    第一票[Optical character recognition converts i…] 第二票[Optical character recognition converts 1…]
+     句1 Arial 16px              第一票[Optical character recognition converts i…] 第二票[]
+     句1 Arial 15px              第一票[Optical character recognition converts i…] 第二票[Oo) {{or-1Nei == T0 Ig (Tele]e [gl {ola …]
+     句2 Times New Roman 15px    第一票[The quick brown fox jumps over the lazy …] 第二票[The quuck brown fox jumps over the lazy …]
+     句3 Arial 16px              第一票[Learning a language takes practice every…] 第二票[]
+     句4 Arial 13px              第一票[Small printed text is hard to read on a …] 第二票[Small printed text 1s hard to read on a …]
+     句4 Times New Roman 15px    第一票[Small printed text is hard to read on a …] 第二票[Small printed text 1s hard to read on a …]
+     句5 Arial 15px              第一票[Please restart the application and try a…] 第二票[MEER Ela RGR ool [lor 1{(e] a K-1a le R{…]
+     句5 Consolas 14px           第一票[Please restart the application and try a…] 第二票[CEI I |g Rd [R= To oD A e- h Ne la - Tee…]
+     句6 Consolas 14px           第一票[Version 2.0 was released in 2024 for all…] 第二票[Version 2.9 was released in 2024 for all…]
+     句6 Times New Roman 15px    第一票[Version 2.0 was released in 2024 for all…] 第二票[Version 2.0 was released 1n 2024 for all…]
+     句6 Consolas 14px           第一票[Version 2.0 was released in 2024 for all…] 第二票[VIL Nel (PIR E E =D N=F- 11-1 BRN (PAZ D…]
+     （还有 19 个）
+第一票本来就对 199 个；第二票更长但读的是垃圾 13 个；第二票更长且读对 2 个；第二票更长却把对的换坏 1 个
+R0 现行：第二票更长且第一票是它的前缀（严格）
+    出手 0/255：救回 0，把对的换坏 0
+R1 去掉空格后比前缀
+    出手 0/255：救回 0，把对的换坏 0
+R2 第二票更长，且第一票是第二票的子序列
+    出手 1/255：救回 1，把对的换坏 0
+R3 只要第二票更长就换（无脑）
+    出手 15/255：救回 2，把对的换坏 1
+R4 拟议：字母数字一模一样就取第二票
+    出手 184/255：救回 0，把对的换坏 0
+R5 子序列 + 第一票短碎词更多
+    出手 0/255：救回 0，把对的换坏 0
+R6 子序列（不要「第二票更长」这条）
+    出手 1/255：救回 1，把对的换坏 0
+R7 子序列 + 第一票短碎词更多（不要长度）
+    出手 0/255：救回 0，把对的换坏 0
+R8 子序列 + 第一票短碎词更多 + 第二票不短太多（-3 以内）
+    出手 0/255：救回 0，把对的换坏 0
+R9 第二票更长 + 两份只差 4 个字符以内（编辑距离）
+    出手 1/255：救回 1，把对的换坏 0
+R10 第二票更长 + 只差 4 个字符 + 第一票短碎词更多
+    出手 0/255：救回 0，把对的换坏 0
+R14 第二票更长 + 编辑距离 ≤ min(4, max(1, 第一票长度/4))（拟上线）
+    出手 1/255：救回 1，把对的换坏 0
+R16 字母数字一模一样就取第二票（候选）
+    出手 0/255：救回 0，把对的换坏 0
+
+================ 真实病例（日志原文，不经合成） ================
+R0 现行：第二票更长且第一票是它的前缀（严格）
+    2 例出手：✅救回(E6 历史失败) ｜ ✅救回(E6 历史失败)
+R1 去掉空格后比前缀
+    1 例出手：✅救回(E6 历史失败)
+R2 第二票更长，且第一票是第二票的子序列
+    3 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败) ｜ ✅救回(E6 历史失败)
+R3 只要第二票更长就换（无脑）
+    3 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败) ｜ ✅救回(E6 历史失败)
+R4 拟议：字母数字一模一样就取第二票
+    1 例出手：⚪无变化(两份都对，只是第二票多个句点)
+R5 子序列 + 第一票短碎词更多
+    2 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败)
+R6 子序列（不要「第二票更长」这条）
+    3 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败) ｜ ✅救回(E6 历史失败)
+R7 子序列 + 第一票短碎词更多（不要长度）
+    2 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败)
+R8 子序列 + 第一票短碎词更多 + 第二票不短太多（-3 以内）
+    2 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败)
+R9 第二票更长 + 两份只差 4 个字符以内（编辑距离）
+    3 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败) ｜ ✅救回(E6 历史失败)
+R10 第二票更长 + 只差 4 个字符 + 第一票短碎词更多
+    2 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败)
+R14 第二票更长 + 编辑距离 ≤ min(4, max(1, 第一票长度/4))（拟上线）
+    3 例出手：✅救回(A16 实测失败（09:16:12）第一票句中插空格，第二票全对) ｜ ✅救回(E6 历史失败) ｜ ✅救回(E6 历史失败)
+R16 字母数字一模一样就取第二票（候选）
+    1 例出手：⚪无变化(两份都对，只是第二票多个句点)
+
+【真实病例总计】五条规矩加起来：救回 26 次，弄坏 0 次

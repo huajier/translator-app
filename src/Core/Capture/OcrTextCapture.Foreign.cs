@@ -527,9 +527,65 @@ internal sealed partial class OcrTextCapture : ITextCapture
                             best.Confidence < MinimumAcceptableConfidence
                             && planeResult.Confidence >= MinimumAcceptableConfidence;
 
+                        // ==========================================================
+                        // 【2026-10-20 补：词典命中率】
+                        //
+                        //   08:37:49 那次 PLAY THE DEMO NOW ON 的实证：
+                        //     蓝通道  0.75、词典 1/3（PLAYsTHE✗ DEMO.NOW✗ ON✓）
+                        //     灰度    0.74、词典 5/5（PLAY✓ THE✓ DEMO✓ NOW✓ ON✓）← 内容全对
+                        //   分数只差 0.01，旧规则按分数选了黏字那一版，
+                        //   然后 0.75 < 0.78 判乱码——**正确答案就在旁边，被 0.01 分挡掉了**。
+                        //
+                        //   整句平均分分不出「黏字乱码」和「认得很清楚只是分数低」，
+                        //   但「有几个词是词典里的真词」一眼分得出。
+                        //   所以补一条：分数几乎打平（差 ≤0.05）时，词典命中率高的胜。
+                        //   要求命中率高出 30 个百分点以上，防噪声。
+                        // ==========================================================
+                        const double DictionaryScoreWindow = 0.05;
+                        const double DictionaryHitMargin = 0.30;
+
+                        double planeDictRate = planeResult.TotalWordCount > 0
+                            ? (double)planeResult.DictWordCount / planeResult.TotalWordCount
+                            : 0.0;
+                        double bestDictRate = best.TotalWordCount > 0
+                            ? (double)best.DictWordCount / best.TotalWordCount
+                            : 0.0;
+
+                        bool dictionaryHitIsBetter =
+                            planeResult.TotalWordCount > 0 && best.TotalWordCount > 0
+                            && Math.Abs(planeResult.Confidence - best.Confidence) <= DictionaryScoreWindow
+                            && planeDictRate > bestDictRate + DictionaryHitMargin;
+
+                        // ==========================================================
+                        // 【2026-10-20 再补：词典内词数（绝对个数）】
+                        //
+                        //   08:53:30 实测，同一张 PLAY THE DEMO NOW ON：
+                        //     蓝通道 0.83，3 个词，只有 ON 在词典   ← 黏字版，分数最高
+                        //     灰度   0.66，5 个词，**全在词典**     ← 内容全对，分数最低
+                        //   分数差了 0.17，光靠「分数打平才比词典」这条救不回来。
+                        //
+                        //   但看**绝对词数**就一目了然：黏字会把两个词吞成一个
+                        //   （PLAY THE → PLAYsTHE），所以**词数少、词典内词更少**。
+                        //   这一版有 5 个真词，那一版只有 1 个。
+                        //
+                        //   所以补一条：候选的词典内词数多出 2 个以上、
+                        //   它自己的词典命中率不低于 60%、分数也没低超过 0.20 → 换。
+                        //   60% 那道闸是防「碎词一大堆但都不在词典」的垃圾。
+                        // ==========================================================
+                        const int DictionaryWordAdvantage = 2;
+                        const double DictionaryRateFloor = 0.60;
+                        const double DictionaryWordScoreFloor = 0.20;
+
+                        bool dictionaryWordsAreMore =
+                            planeResult.TotalWordCount > 0 && best.TotalWordCount > 0
+                            && planeResult.DictWordCount >= best.DictWordCount + DictionaryWordAdvantage
+                            && planeDictRate >= DictionaryRateFloor
+                            && planeResult.Confidence >= best.Confidence - DictionaryWordScoreFloor;
+
                         bool planeClearlyBetter =
                             moreChars || sameCharsBetterScore || slightlyFewerButClearlyBetterScore
-                            || cleanWordsButFewerChars || candidatePassesButBestDoesNot;
+                            || cleanWordsButFewerChars || candidatePassesButBestDoesNot
+                            || dictionaryHitIsBetter || dictionaryWordsAreMore;
 
                         if (planeClearlyBetter)
                         {
@@ -563,6 +619,29 @@ internal sealed partial class OcrTextCapture : ITextCapture
                                     $"　　↑ 它置信度 {planeResult.Confidence:F2} **过线**（≥ {MinimumAcceptableConfidence:F2}），" +
                                     $"当前这份 {best.Confidence:F2} 不过线（本来就要当乱码扔掉）" +
                                     $"——**过线的比不过线的强，不管谁字多**");
+                            }
+
+                            if (dictionaryHitIsBetter && !moreChars && !sameCharsBetterScore
+                                && !slightlyFewerButClearlyBetterScore && !cleanWordsButFewerChars
+                                && !candidatePassesButBestDoesNot)
+                            {
+                                AppLogger.Info(
+                                    $"　　↑ 分数几乎打平（差 {Math.Abs(planeResult.Confidence - best.Confidence):F2}），" +
+                                    $"但**词典命中率 {planeDictRate * 100:F0}% > {bestDictRate * 100:F0}%**" +
+                                    $"（{planeResult.DictWordCount}/{planeResult.TotalWordCount} vs " +
+                                    $"{best.DictWordCount}/{best.TotalWordCount}）" +
+                                    $"——黏字那一版词都不在词典，认词认得清的这一版全在");
+                            }
+
+                            if (dictionaryWordsAreMore && !dictionaryHitIsBetter && !moreChars
+                                && !sameCharsBetterScore && !slightlyFewerButClearlyBetterScore
+                                && !cleanWordsButFewerChars && !candidatePassesButBestDoesNot)
+                            {
+                                AppLogger.Info(
+                                    $"　　↑ 分数低 {best.Confidence - planeResult.Confidence:F2}，但**真词多 " +
+                                    $"{planeResult.DictWordCount - best.DictWordCount} 个**" +
+                                    $"（{planeResult.DictWordCount} 个 vs {best.DictWordCount} 个在词典）" +
+                                    $"——黏字把两个词吞成一个，词数少的那版分数反而虚高");
                             }
 
                             best = planeResult;
@@ -1352,7 +1431,13 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     // 放大、膨胀、换全局阈值这三条都试过，全更差，别再走。
                     // 只在「Tesseract 各路都不到及格线」时才跑，正常取词不经过这里。
                     (string Text, double Confidence)? rescued = TryCroppedLocalRescue(raw, modelUsed);
-                    if (rescued is { } rescue && rescue.Confidence >= MinimumAcceptableConfidence)
+                    // 【2026-10-20 补：best 本身够好时，不许兜底覆盖】
+                    //   09:13:05 实测：四路已经选出灰度 `'PLAY THE DEMO NOW ON`
+                    //   （5 个词全在词典，置信度 0.7799，差 0.0001 没过 0.78 的线）→ 进了兜底分支，
+                    //   兜底拿 `HE:DEMO;NOW, ON`（0.84）把它盖掉——**PLAY THE 直接消失**。
+                    //   兜底本来是治「深色纹理背景」的，不该拿来换掉一份词全在词典的结果。
+                    if (rescued is { } rescue && rescue.Confidence >= MinimumAcceptableConfidence
+                        && !HasEnoughDictionaryWords(best, out _))
                     {
                         text = rescue.Text;
                         lineCount = TextNormalizer.CountLines(text);
@@ -1362,6 +1447,36 @@ internal sealed partial class OcrTextCapture : ITextCapture
                                     $"但裁掉四周噪声边后重新识别拿到 {rescue.Confidence:F2}，采用它";
                         AppLogger.Info($"【深色裁边兜底】各路都不到及格线，裁掉四周噪声边后重新识别：" +
                                        $"置信度 {rescue.Confidence:F2}，文本「{Preview(text)}」");
+                    }
+                    // ==========================================================
+                    // 【2026-10-20 补：词典命中率豁免】
+                    //
+                    //   08:37:49 那次的实证：四路择优按新规则选中灰度通道的
+                    //   `'PLAY THE DEMO NOW ON`（5 个词全在词典、内容全对），
+                    //   但置信度 0.74 < 0.78 → 走到这里仍然要判乱码。
+                    //
+                    //   0.78 这条线是拿「整句平均分」卡垃圾的，可它分不清
+                    //   「黏字乱码」和「认得很清楚、只是字体描边让分数偏低」。
+                    //   词典命中率分得出：真乱码的词几乎全不在词典。
+                    //   所以补一个出口——分数 ≥0.70、至少 3 个词、8 成以上在词典
+                    //   → 不判乱码，采用。
+                    //
+                    //   【三道闸缺一不可】
+                    //     0.70 以下仍判乱码（0.45 那种 `PIAYSTHE:` 挡得住）；
+                    //     3 词以下不放（两三个常用词凑不出「一句话」）；
+                    //     8 成以下不放（真乱码碰巧含一两个词典词是常事）。
+                    // ==========================================================
+                    else if (HasEnoughDictionaryWords(best, out string dictNote))
+                    {
+                        text = best.Text!.Trim();
+                        lineCount = TextNormalizer.CountLines(text);
+                        channelUsed = "Tesseract";
+                        scoreNote = $"Tesseract 置信度只有 {best.Confidence:F2}" +
+                                    $"（低于 {MinimumAcceptableConfidence:F2}），" +
+                                    $"但 {dictNote}，内容可信，采用它";
+                        AppLogger.Info($"【词典命中率豁免】置信度 {best.Confidence:F2} 不到 " +
+                                       $"{MinimumAcceptableConfidence:F2}，但 {dictNote}，不判乱码：" +
+                                       $"「{Preview(text)}」");
                     }
                     // 【2026-10-17 用户 m01856 批准：只放「一个干净的外文单词」】
                     // BATTLEBOARD 这种按钮上的大写单词，Windows 每次读对、Tesseract 每次读糊，
@@ -1419,6 +1534,29 @@ internal sealed partial class OcrTextCapture : ITextCapture
             scoreNote = "不是中文，但 Tesseract 不可用（俄文可能无法识别），只能保留 Windows 自带";
         }
 
+        // ==============================================================
+        // 【2026-10-20 补：首尾装饰符号清洗】
+        //
+        //   09:05 实测 10 次：黏字已经绝迹，剩下的是图片背景里的装饰符号
+        //   被一起认了进来——
+        //     ‘PLAY THE DEMO NOW ON      ← 前面多一个左引号
+        //     •'PLAY'THE DEMO NOW ON ：  ← 前面 `•'`、后面全角冒号
+        //   这些符号在图上**真实存在**，Tesseract 认出来没错，但对用户是噪声。
+        //
+        //   只删**开头和结尾**的装饰标点，中间一律不动
+        //   （don't / it's 那种真缩写不能碰），
+        //   也不动 `.` `,` `!` `?` —— 句尾句号是正常标点。
+        // ==============================================================
+        if (!string.IsNullOrEmpty(text) && !rejectedAsGarbage)
+        {
+            string cleaned = TrimEdgeSymbols(text);
+            if (cleaned.Length > 0 && cleaned != text)
+            {
+                text = cleaned;
+                lineCount = TextNormalizer.CountLines(text);
+            }
+        }
+
         return new ForeignOutcome(text, lineCount, channelUsed, scoreNote, rejectedAsGarbage);
     }
 
@@ -1473,4 +1611,59 @@ internal sealed partial class OcrTextCapture : ITextCapture
             return null;
         }
     }
+
+    /// <summary>
+    /// **分数不高但内容可信**——词典命中率豁免的门槛。
+    ///
+    /// 【为什么是这三个数（2026-10-20 实测数据定）】
+    ///   0.70：08:37:49 那次的灰度通道是 0.74（内容全对）；
+    ///         而 08:37:49 的 `PIAYSTHE:` 只有 0.45、`PAYATHE:DEMO;NOW` 0.48，真垃圾都在 0.5 以下。
+    ///   3 词：两三个词凑不出「一句话」，也挡不住单个乱词碰巧在词典里。
+    ///   80%：真乱码里偶尔混进一两个 `ON`/`THE` 是常事，但成不了八成。
+    /// </summary>
+    private const double DictionaryRescueMinConfidence = 0.70;
+    private const double DictionaryRescueMinHitRate = 0.80;
+    private const int DictionaryRescueMinWords = 3;
+
+    /// <summary>
+    /// 这份结果够不够格走「词典命中率豁免」：分数 ≥0.70、至少 3 个词、8 成以上在词典。
+    /// </summary>
+    /// <param name="note">够格时给出「5/5 个词在词典里（100%，≥80%）」这种人话说明。</param>
+    private static bool HasEnoughDictionaryWords(TesseractOcr.Result result, out string note)
+    {
+        note = "";
+        if (result.TotalWordCount < DictionaryRescueMinWords) return false;
+        if (result.Confidence < DictionaryRescueMinConfidence) return false;
+
+        double rate = (double)result.DictWordCount / result.TotalWordCount;
+        if (rate < DictionaryRescueMinHitRate) return false;
+
+        note = $"{result.DictWordCount}/{result.TotalWordCount} 个词在词典里" +
+               $"（{rate * 100:F0}%，≥{DictionaryRescueMinHitRate * 100:F0}%）";
+        return true;
+    }
+
+    /// <summary>
+    /// **删掉开头和结尾的装饰标点**（图片背景里的 `•`、引号、全角冒号之类）。
+    ///
+    /// 【为什么只删首尾】
+    ///   中间的撇号可能是 `don't` / `it's` 这种真缩写，删了就把词弄坏了。
+    ///   句尾的 `.` `,` `!` `?` 是正常标点，**不在这个名单里**，一律保留。
+    /// </summary>
+    private static string TrimEdgeSymbols(string text)
+    {
+        int start = 0;
+        while (start < text.Length && IsEdgeSymbol(text[start])) start++;
+
+        int end = text.Length;
+        while (end > start && IsEdgeSymbol(text[end - 1])) end--;
+
+        if (start == 0 && end == text.Length) return text;
+        return text.Substring(start, end - start).Trim();
+    }
+
+    /// <summary>这些字符出现在首尾时一律当装饰品删掉（`. , ! ?` 不在此列）。</summary>
+    private static bool IsEdgeSymbol(char c) =>
+        c is '•' or '·' or '‘' or '’' or '“' or '”' or '\'' or '：' or '、' or '|'
+        || char.IsWhiteSpace(c);
 }
