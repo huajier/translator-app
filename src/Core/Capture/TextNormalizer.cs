@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Text.RegularExpressions;
 using TranslatorApp.Core.Logging;
 
 namespace TranslatorApp.Core.Capture;
@@ -29,7 +30,7 @@ internal static class TextNormalizer
 
         for (int i = 0; i < lines.Length; i++)
         {
-            string line = TrimLeadingStrayQuotes(FixUnmatchedQuotes(FixSpuriousSpaces(lines[i].Trim())));
+            string line = TrimLeadingStrayQuotes(FixUnmatchedQuotes(FixWordSeparators(FixSpuriousSpaces(lines[i].Trim()))));
 
             if (line.Length == 0) continue;
 
@@ -563,6 +564,42 @@ internal static class TextNormalizer
     ///
     ///   这条规则**不依赖语种**，所以不会重蹈 R2「删中文标点前的空格误伤俄文」的覆辙。
     /// </summary>
+    /// <summary>
+    /// 把「被认成分隔符的词间空格」改回空格。
+    ///
+    /// 【2026-10-20 实测 14 次里 6 次都是这个问题】
+    ///   原文：`PLAY THE DEMO NOW ON`
+    ///   认成：`PLAY•THE DEMO NOW ON ：` / `PLAY.THE DEMO NOW ON ．` / `PLAY THE DEMO_NOW ON`
+    ///   文字全对，**只有词和词之间那个空格认错了**——
+    ///   白色粗体字压在彩色插画上，词间的空白在 Tesseract 眼里像标点。
+    ///
+    /// 【为什么敢改】
+    ///   两个**完整的大写英文词**之间夹着 `_` `•` 或 `.`，正常英文里几乎不存在：
+    ///     · `U.S.A` 是单字母，被「≥2 字母」的条件排除；
+    ///     · `config.txt` 是小写，同样排除；
+    ///     · `PLAY.THE` 这种全大写、两边都 ≥2 字母的，只可能是空格被认错。
+    ///   逗号、句号后面跟小写的情况**一个字都不动**。
+    ///
+    /// 【末尾那个孤零零的符号】
+    ///   `PLAY THE DEMO NOW ON ：` —— 选区右边多框进了一点相邻内容，
+    ///   认成全角冒号/句号挂在结尾。只删**行尾、前面带空格、单独出现**的 `：` `．` `•`。
+    /// </summary>
+    private static string FixWordSeparators(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+
+        string result = Regex.Replace(text, @"(?<=[A-Z]{2,})[_•](?=[A-Z]{2,})", " ");
+        result = Regex.Replace(result, @"(?<=[A-Z]{2,})\.(?=[A-Z]{2,})", " ");
+        result = Regex.Replace(result, @"\s+[：．•]\s*$", "");
+        result = result.TrimEnd();
+
+        if (!string.Equals(result, text, StringComparison.Ordinal))
+        {
+            AppLogger.Info($"整理了词间被认错的符号：【{text}】→ 【{result}】");
+        }
+        return result;
+    }
+
     private static string FixUnmatchedQuotes(string text)
     {
         if (string.IsNullOrEmpty(text)) return text;
