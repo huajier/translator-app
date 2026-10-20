@@ -582,10 +582,32 @@ internal sealed partial class OcrTextCapture : ITextCapture
                             && planeDictRate >= DictionaryRateFloor
                             && planeResult.Confidence >= best.Confidence - DictionaryWordScoreFloor;
 
+                        // ==========================================================
+                        // 【2026-10-20 再补：全词典版优先】
+                        //
+                        //   10:05:46 实测，同一张 PLAY THE DEMO NOW ON：
+                        //     灰度   0.72，5 个词，**全在词典**（内容全对）← 被「有效字符 16 < 18」否掉
+                        //     蓝通道 0.69，7 个词，5 个在词典（含 PLAYsTHE 黏字 + `-—` `=` 垃圾）
+                        //   两条词典规则都没触发：命中率 71% vs 100% 只差 28.6 个百分点（门槛 30），
+                        //   词典内词数 5 vs 5 打平。最后选了 0.69 那版，低于 0.78 判成乱码。
+                        //
+                        //   所以补一条最硬的：**这一版每个词都在词典里（至少 2 词），
+                        //   而当前最好的那版还带生词** → 换。
+                        //   依据：真乱码很难做到「2 个以上词全在词典」，
+                        //   黏字（PLAY THE→PLAYsTHE）和碎词一定会漏出词典外的词。
+                        // ==========================================================
+                        const int AllInDictionaryMinWords = 2;
+
+                        bool allWordsInDictionary =
+                            planeResult.TotalWordCount >= AllInDictionaryMinWords
+                            && planeResult.DictWordCount == planeResult.TotalWordCount
+                            && (best.TotalWordCount == 0 || best.DictWordCount < best.TotalWordCount);
+
                         bool planeClearlyBetter =
                             moreChars || sameCharsBetterScore || slightlyFewerButClearlyBetterScore
                             || cleanWordsButFewerChars || candidatePassesButBestDoesNot
-                            || dictionaryHitIsBetter || dictionaryWordsAreMore;
+                            || dictionaryHitIsBetter || dictionaryWordsAreMore
+                            || allWordsInDictionary;
 
                         if (planeClearlyBetter)
                         {
@@ -642,6 +664,16 @@ internal sealed partial class OcrTextCapture : ITextCapture
                                     $"{planeResult.DictWordCount - best.DictWordCount} 个**" +
                                     $"（{planeResult.DictWordCount} 个 vs {best.DictWordCount} 个在词典）" +
                                     $"——黏字把两个词吞成一个，词数少的那版分数反而虚高");
+                            }
+
+                            if (allWordsInDictionary && !dictionaryHitIsBetter && !dictionaryWordsAreMore
+                                && !moreChars && !sameCharsBetterScore && !slightlyFewerButClearlyBetterScore
+                                && !cleanWordsButFewerChars && !candidatePassesButBestDoesNot)
+                            {
+                                AppLogger.Info(
+                                    $"　　↑ **这一版每个词都在词典里**（{planeResult.DictWordCount}/{planeResult.TotalWordCount}），" +
+                                    $"那版有 {best.TotalWordCount - best.DictWordCount} 个生词" +
+                                    $"——全认成真词的比带生词的可靠，不管谁字多");
                             }
 
                             best = planeResult;
