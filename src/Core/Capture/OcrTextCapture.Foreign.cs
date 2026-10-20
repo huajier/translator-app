@@ -395,8 +395,19 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         //     是不是别的路认对了、就因为分数低被扔掉了？
                         //     还是四路都少了那两个字（那就得从图像本身找原因）？
                         // ==========================================================
+                        // 【2026-10-19 只加日志、不改行为：把垫底词分一起打出来】
+                        //   这张图（PLAY THE DEMO NOW ON，彩色插画背景+白字描边）
+                        //   暴露了一个判据问题：红通道 0.82 分、只多一个引号，
+                        //   却因为「字数 16 < 20」被否；错的版本字多是因为**黏字**
+                        //   （PLAY THE → PUAYATHE）和**多认**（凭空一个 DE）。
+                        //   而 TesseractOcr.Result 里本来就有 MinWordConfidence
+                        //   （垫底词分，E5 那次十次全错时它出现过 0.00），
+                        //   一直「只是拿来看的」——现在四路择优里也没用它。
+                        //   先只打出来，等这张图的数据够了再定规则。
                         AppLogger.Info(
                             $"  四路之一「{PlaneNames[i]}」：置信度 {planeResult.Confidence:F2}，" +
+                            $"垫底词分 {planeResult.MinWordConfidence:F2}" +
+                            $"（{(planeResult.MinWordText ?? "—")}），" +
                             $"内容【{(planeResult.Text ?? "").Replace("\n", " ")}】");
 
                         // ==========================================================
@@ -467,9 +478,28 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         const double CharDeficitTolerance = 0.10;
                         const double ConfidenceMargin = 0.01;
 
+                        // ==========================================================
+                        // 【2026-10-20 补：垫底词分出口】
+                        //
+                        //   16:46:28 那次 PLAY THE DEMO NOW ON 的实证：
+                        //     红通道 0.81、有效字符 16、垫底词分 33.50  ← 内容全对
+                        //     基准   0.40、有效字符 22、垫底词分 3.31   ← `fs rs TR Ws` 碎词
+                        //   红通道被「16 < 22×0.9」否掉，最后整段判乱码。
+                        //
+                        //   乱码的特征不是「字数少」，是「有词分低到离谱」（3.31 / 0.00）。
+                        //   所以补一个出口：垫底词分明显更高、且字数没少太多（≥60%）时采用。
+                        //   字少太多的仍然否决（F5：19/55 → 19 < 33，照样挡住）。
+                        // ==========================================================
+                        const double CharDeficitToleranceWithCleanWords = 0.40;
+                        const double MinWordConfidenceMargin = 20.0;
+
                         int allowedChars = bestChars <= 0
                             ? 0
                             : (int)Math.Ceiling(bestChars * (1.0 - CharDeficitTolerance));
+
+                        int allowedCharsWithCleanWords = bestChars <= 0
+                            ? 0
+                            : (int)Math.Ceiling(bestChars * (1.0 - CharDeficitToleranceWithCleanWords));
 
                         bool moreChars = planeChars > bestChars;
                         bool sameCharsBetterScore =
@@ -477,9 +507,29 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         bool slightlyFewerButClearlyBetterScore =
                             planeChars >= allowedChars
                             && planeResult.Confidence > best.Confidence + ConfidenceMargin;
+                        bool cleanWordsButFewerChars =
+                            planeChars >= allowedCharsWithCleanWords
+                            && planeResult.MinWordConfidence > best.MinWordConfidence + MinWordConfidenceMargin;
+
+                        // ==========================================================
+                        // 【2026-10-20 补：过线的无条件优先】
+                        //
+                        //   08:11:55 那次 PLAY THE DEMO NOW ON 的实证：
+                        //     基准   0.53、17 有效字符  ← 不过线（0.78），本来就该扔
+                        //     绿通道 0.80、14 有效字符  ← **过线**，但被「14 < 15.3」否掉
+                        //   最后基准带着 0.52 的乱码版一路走到「判乱码」，
+                        //   一份已经过线的结果被一份注定要扔的当尺子量掉了。
+                        //
+                        //   规矩和下面「红通道不二值化」那步的 rescued 是**同一条**：
+                        //   **过线的比不过线的强，不管谁字多。**
+                        // ==========================================================
+                        bool candidatePassesButBestDoesNot =
+                            best.Confidence < MinimumAcceptableConfidence
+                            && planeResult.Confidence >= MinimumAcceptableConfidence;
 
                         bool planeClearlyBetter =
-                            moreChars || sameCharsBetterScore || slightlyFewerButClearlyBetterScore;
+                            moreChars || sameCharsBetterScore || slightlyFewerButClearlyBetterScore
+                            || cleanWordsButFewerChars || candidatePassesButBestDoesNot;
 
                         if (planeClearlyBetter)
                         {
@@ -494,6 +544,25 @@ internal sealed partial class OcrTextCapture : ITextCapture
                                     $"　　↑ 它字少 {bestChars - planeChars} 个（{lostPct:F0}%，在容忍范围内），" +
                                     $"但分数高 {planeResult.Confidence - best.Confidence:F2}（超过 {ConfidenceMargin:F2} 的门槛）" +
                                     $"——**字少这么点不算内容缺失，认分数**");
+                            }
+
+                            if (cleanWordsButFewerChars && !moreChars && !sameCharsBetterScore
+                                && !slightlyFewerButClearlyBetterScore)
+                            {
+                                AppLogger.Info(
+                                    $"　　↑ 它字少 {bestChars - planeChars} 个，但**垫底词分 {planeResult.MinWordConfidence:F2} > " +
+                                    $"{best.MinWordConfidence:F2}**（最差的那个词都比对面最差的强 " +
+                                    $"{planeResult.MinWordConfidence - best.MinWordConfidence:F2} 分）" +
+                                    $"——碎词多的一版是乱码，认词认得清的一版");
+                            }
+
+                            if (candidatePassesButBestDoesNot && !moreChars && !sameCharsBetterScore
+                                && !slightlyFewerButClearlyBetterScore && !cleanWordsButFewerChars)
+                            {
+                                AppLogger.Info(
+                                    $"　　↑ 它置信度 {planeResult.Confidence:F2} **过线**（≥ {MinimumAcceptableConfidence:F2}），" +
+                                    $"当前这份 {best.Confidence:F2} 不过线（本来就要当乱码扔掉）" +
+                                    $"——**过线的比不过线的强，不管谁字多**");
                             }
 
                             best = planeResult;
@@ -635,7 +704,15 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         bool rescued = oldIsDoomed
                                     && grayResult.Confidence >= MinimumAcceptableConfidence;
 
-                        if (notWorseAtAll || rescued || slightlyFewerButClearlyBetter)
+                        // 【2026-10-20 补：不过线的不许覆盖过线的】
+                        // 08:11 那次：绿通道 0.80 已过线，被 0.52 的乱码版按「字更全」覆盖，
+                        // 最后整段判乱码。过线是硬门槛，字数只是软比较。
+                        bool newVersionFailsButOldPasses =
+                            best.Confidence >= MinimumAcceptableConfidence
+                            && grayResult.Confidence < MinimumAcceptableConfidence;
+
+                        if (!newVersionFailsButOldPasses
+                            && (notWorseAtAll || rescued || slightlyFewerButClearlyBetter))
                         {
                             best = grayResult;
                             usedPrepared = true;
@@ -655,7 +732,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
                                 : $"这一版分数没降（{grayResult.Confidence:F2} ≥ {oldConfidence:F2}）"
                                   + $"且字数没少（{newChars} ≥ {oldChars}），两项都不差，改用它");
                         }
-                        else if (muchMore && notMuchWorse)
+                        else if (!newVersionFailsButOldPasses && muchMore && notMuchWorse)
                         {
                             best = grayResult;
                             usedPrepared = true;

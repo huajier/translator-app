@@ -213,7 +213,27 @@ internal sealed class TesseractOcr
             byte[] png;
             using (var buffer = new MemoryStream())
             {
-                bitmap.Save(buffer, System.Drawing.Imaging.ImageFormat.Png);
+                // ==========================================================
+                // 【2026-10-20 补：喂给 Tesseract 之前，四周加一圈白边】
+                //
+                //   【官方文档原文】tessdoc 的 ImproveQuality 页「Borders」章节：
+                //     「如果你只 OCR 一块文字区域、完全不留边框，
+                //       Tesseract 会有问题。」建议加 10px 边框。
+                //     同页 psm 章节也说「给裁得太紧的文字加一圈白边可能有帮助」。
+                //
+                //   【我们踩到的实证】08:27 同一张 PLAY THE DEMO NOW ON：
+                //     框 429×67（带背景留白）→ 置信度 0.79，过线，取词成功；
+                //     框 299×28（紧贴文字）  → 四路全空 / 0.57，判乱码。
+                //     只差有没有留白，结果天壤之别。
+                //
+                //   【为什么只加在 Tesseract 这一路】
+                //     不动截图、不动 Windows OCR、不动预处理，
+                //     万一加边反而变差，回退这一个方法就行。
+                // ==========================================================
+                using (Bitmap padded = AddWhiteBorder(bitmap, 10))
+                {
+                    padded.Save(buffer, System.Drawing.Imaging.ImageFormat.Png);
+                }
                 png = buffer.ToArray();
             }
 
@@ -291,6 +311,25 @@ internal sealed class TesseractOcr
             AppLogger.Warn($"Tesseract 认字失败（不影响主通道）：{ex.GetType().Name} {ex.Message}");
             return new Result(null, 0);
         }
+    }
+
+    /// <summary>
+    /// 四周加一圈白边再交给 Tesseract。
+    /// Tesseract 官方文档明确要求：紧贴文字裁剪的图要先加 10px 边框，
+    /// 否则行切分器切不出完整行（08:27:49 实测四路全空就是这个原因）。
+    /// </summary>
+    private static Bitmap AddWhiteBorder(Bitmap source, int border)
+    {
+        var padded = new Bitmap(
+            source.Width + border * 2,
+            source.Height + border * 2,
+            System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(padded))
+        {
+            g.Clear(Color.White);
+            g.DrawImage(source, border, border, source.Width, source.Height);
+        }
+        return padded;
     }
 
     /// <summary>常用的模型组合。命名保持和 tessdata 文件名一致，避免以后看不懂。</summary>
