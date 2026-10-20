@@ -108,12 +108,19 @@ internal static class TextNormalizer
         if (line.Length == 0) return line;
 
         const string quotes = "'\"‘’‚‛“”«»";
+
+        // 【2026-10-20 补：行首的逗号/分号/项目符号也是噪声】
+        //   实测 `,'PLAY THE DEMO NOW ON`、`•PLAY THE DEMO NOW ON`、
+        //   `•PLAY THE DEMO NOW ON,*`——选区左边多框了一点，把相邻内容的首字符带了进来。
+        //   英文句首不可能是逗号、分号、项目符号、星号、竖线，删掉伤不到正文。
+        //   `:` 故意不加：`:)`、`:D` 这类表情和 `12:30` 都可能是真的。
+        const string leadingNoise = ",;•·*|";
         int start = 0;
 
         while (start < line.Length)
         {
             char c = line[start];
-            if (quotes.Contains(c))
+            if (quotes.Contains(c) || leadingNoise.Contains(c))
             {
                 start++;
                 continue;
@@ -591,6 +598,9 @@ internal static class TextNormalizer
         string result = Regex.Replace(text, @"(?<=[A-Z]{2,})[_•](?=[A-Z]{2,})", " ");
         result = Regex.Replace(result, @"(?<=[A-Z]{2,})\.(?=[A-Z]{2,})", " ");
         result = Regex.Replace(result, @"\s+[：．•]\s*$", "");
+        // 行尾「逗号/分号 + 星号/项目符号」一起删（`PLAY THE DEMO NOW ON,*` 是右边多框进来的）。
+        // 单独的逗号**不删**——`Hello,` 这种省略句可能是真的。
+        result = Regex.Replace(result, @"[,;]\s*[*•·|]\s*$", "");
         result = result.TrimEnd();
 
         if (!string.Equals(result, text, StringComparison.Ordinal))
