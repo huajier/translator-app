@@ -242,10 +242,32 @@ internal sealed class TesseractOcr
                 //   【为什么只加在 Tesseract 这一路】
                 //     不动截图、不动 Windows OCR、不动预处理，
                 //     万一加边反而变差，回退这一个方法就行。
+                //
+                //   ==========================================================
+                //   【2026-10-21 修：白边只能补在**白底图**上】
+                //
+                //   补一圈纯色 = 往直方图里插一根又高又尖的柱子。
+                //     · 底色本来就是白的 → 这根柱子和背景挤在一起，不碍事；
+                //     · 底色不是白的     → 它成了一根孤零零的新峰，
+                //       Otsu 会把分界线往它那边挪，**整张图连字一起判成暗侧**，
+                //       引擎直接报 Empty page!!，一个字都认不出来。
+                //
+                //   实测（12 张真图，4 倍原图直接喂 eng）：
+                //     灰底低对比度那段：补白边 0 字 → 不补边 123 字全对
+                //     蓝灰斜条纹中文段：补白边 0 字 → 不补边 32 字全对
+                //     PLAY THE DEMO：   补白边 0 字 → 不补边 28 字
+                //     白底图三张：      补不补一模一样（34/34、55/55、51/51）
+                //   → 所以规则是「**只给白底图补**」，不是「一律补」也不是「一律不补」。
+                //     （试过「补底色」，会弄瞎一张金色底的图，不能用。）
                 // ==========================================================
-                using (Bitmap padded = AddWhiteBorder(bitmap, 10))
+                if (HasWhiteBackground(bitmap))
                 {
+                    using Bitmap padded = AddWhiteBorder(bitmap, 10);
                     padded.Save(buffer, System.Drawing.Imaging.ImageFormat.Png);
+                }
+                else
+                {
+                    bitmap.Save(buffer, System.Drawing.Imaging.ImageFormat.Png);
                 }
                 png = buffer.ToArray();
             }
@@ -332,6 +354,7 @@ internal sealed class TesseractOcr
     /// 四周加一圈白边再交给 Tesseract。
     /// Tesseract 官方文档明确要求：紧贴文字裁剪的图要先加 10px 边框，
     /// 否则行切分器切不出完整行（08:27:49 实测四路全空就是这个原因）。
+    /// **只对白底图调用**——底色不是白的补白边会把整张图废掉，见调用点的说明。
     /// </summary>
     private static Bitmap AddWhiteBorder(Bitmap source, int border)
     {
@@ -345,6 +368,43 @@ internal sealed class TesseractOcr
             g.DrawImage(source, border, border, source.Width, source.Height);
         }
         return padded;
+    }
+
+    /// <summary>
+    /// 底色是不是白的：抽点统计亮度，**出现次数最多的那一档 ≥ 250** 才算白。
+    ///
+    /// 【为什么用「出现最多」而不是平均值】
+    ///   平均值会被文字拉低（灰底浅字那张平均只有 185，而底色是 185 没错，
+    ///   但一张黑字密集的白底图平均值也会掉到 200 以下），
+    ///   而背景永远占面积最大，所以「出现最多的亮度」就是底色。
+    ///
+    /// 【250 这个门槛】
+    ///   是个可调的旋钮。#f5f5f5 这类近白底会判成「不是白」，于是不补边——
+    ///   不补边比乱补安全，实测里不补边 0 误伤。
+    /// </summary>
+    private static bool HasWhiteBackground(Bitmap bitmap)
+    {
+        var counts = new int[256];
+        int stepX = Math.Max(1, bitmap.Width / 64);
+        int stepY = Math.Max(1, bitmap.Height / 64);
+
+        for (int y = 0; y < bitmap.Height; y += stepY)
+        {
+            for (int x = 0; x < bitmap.Width; x += stepX)
+            {
+                Color c = bitmap.GetPixel(x, y);
+                int lum = (int)(0.299 * c.R + 0.587 * c.G + 0.114 * c.B);
+                counts[lum]++;
+            }
+        }
+
+        int peak = 0;
+        for (int i = 1; i < 256; i++)
+        {
+            if (counts[i] > counts[peak]) peak = i;
+        }
+
+        return peak >= 250;
     }
 
     /// <summary>常用的模型组合。命名保持和 tessdata 文件名一致，避免以后看不懂。</summary>

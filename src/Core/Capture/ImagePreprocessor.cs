@@ -167,7 +167,20 @@ internal static class ImagePreprocessor
                 sumSquares[p] = new long[256];
             }
 
-            ReadPlanes(padded, counts, sums, sumSquares);
+            // 【2026-10-21 直方图只统计**补边前的原图**，白边不参与定阈值】
+            //   补白边是为了保护贴边的字，这件事没错；但白边占了整张图的面积，
+            //   一进直方图就会把 Otsu 的阈值往亮处推。
+            //
+            //   实测（灰底低对比度那段，底 185 字 154）：
+            //     · 只补 10px 白边 → 阈值 172 → 174，认得出
+            //     · 再补 PadAround 那圈（图高 1/5）→ 阈值 218，**比底色还亮**
+            //       → 整张图连字一起被划成暗侧、二值化成纯黑，只剩白边是白的
+            //       → 引擎报 Empty page!!，五路全 0 字
+            //
+            //   BinarizePlane 里 counts/sums **只用来算那一个阈值**，
+            //   不参与逐像素映射（映射只看 padded 自己的像素）。
+            //   所以直方图从哪张图统计是自由的——白边照样保护边缘，但不许影响阈值。
+            ReadPlanes(source, counts, sums, sumSquares);
 
             // 注意：这里**不挑**，五路全做，交给识别引擎用置信度选。
             // 第 5 路是 **局部阈值**（治斜条纹底，见 BinarizeAdaptive 的说明），
