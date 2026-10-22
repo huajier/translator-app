@@ -147,6 +147,36 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     lineCount = second.LineCount;
                     note = "第二遍结果（放大 2 倍 + 二值化）";
                     AppLogger.Info("采用第二遍（对照实验显示二值化版在所有字号上都优于原图）");
+
+                    // ==========================================================
+                    // 【2026-10-22 补末尾句号】
+                    //
+                    //   现象：`材料3-P2` 第二遍认成
+                    //   `服务已启动，端口 8080。⏎数据库连接失败。⏎请检查配置文件`
+                    //   **最后那个句号丢了**，差 1 字符判错。
+                    //
+                    //   做法：第二遍末尾是个「字」、而第一遍末尾是句末标点，
+                    //   就把第一遍那个标点补到第二遍末尾。
+                    //
+                    //   离线对拍（`tools\临时\模拟补句号2.ps1`，14 个历史日志、
+                    //   2884 次「采用第二遍」）：只触发 6 次，**6 次全对**。
+                    //
+                    //   ⚠️ 判据必须带「第二遍末尾是字」这一条。第二遍常把
+                    //   「。」认成「．」(U+FF0E) 或「·」(U+00B7)，光看
+                    //   「结尾不是 。」会把它们也当成丢了，补成「过程．。」。
+                    //   不加这条：19 次触发里 13 次是错的（数据见同一脚本）。
+                    // ==========================================================
+                    string secondTrimmed = text.TrimEnd();
+                    string firstTrimmed = (first.Text ?? string.Empty).TrimEnd();
+                    if (secondTrimmed.Length > 0 && firstTrimmed.Length > 0
+                        && char.IsLetterOrDigit(secondTrimmed[^1])
+                        && firstTrimmed[^1] is '.' or '!' or '?' or '。' or '？' or '！')
+                    {
+                        char tail = firstTrimmed[^1];
+                        text = secondTrimmed + tail;
+                        note += "（末尾补回句号）";
+                        AppLogger.Info($"补末尾句号：第二遍末尾是「{secondTrimmed[^1]}」，第一遍以「{tail}」结尾");
+                    }
                 }
 
                 ocrMs += second.OcrMs;
