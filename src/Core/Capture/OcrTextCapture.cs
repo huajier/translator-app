@@ -64,6 +64,22 @@ internal sealed partial class OcrTextCapture : ITextCapture
 
     public bool IsAvailable => OcrEngineFactory.IsAvailable;
 
+    /// <summary>
+    /// 图库回放用：设了这张图，<see cref="CaptureAsync"/> 就不再截屏，直接拿它当「刚截到的画面」。
+    ///
+    /// 【为什么要这个口子】
+    ///   要判断「这次改完有没有退步」，得把图库里那几十张图**同一张图前后各跑一遍**。
+    ///   人手框选做不到——每次框的松紧、位置、像素都不一样，比出来的差异分不清是代码变了还是框变了。
+    ///
+    /// 【为什么放在这里而不是另写一套识别代码】
+    ///   从这里塞进去的图，走的是**和真机完全同一条流水线**：
+    ///   判深底 → 反色 → 放大 → 补边 → 五路二值化 → 四路择优 → 判乱码 → 清符号。
+    ///   另写一套就只测了「另写的那套」，代表不了真机。
+    ///
+    /// 平时没人设它，恒为 null，对真机行为零影响。
+    /// </summary>
+    internal static Bitmap? ReplaySource { get; set; }
+
     public async Task<CaptureResult> CaptureAsync(CaptureRequest request, CancellationToken cancellationToken)
     {
         long start = Environment.TickCount64;
@@ -77,7 +93,10 @@ internal sealed partial class OcrTextCapture : ITextCapture
         }
 
         // 1) 截图
-        using Bitmap? captured = ScreenCaptureService.TryCapture(request.PhysicalRect);
+        //    【图库回放】设了 ReplaySource 就直接拿它当截图结果，不碰屏幕；下面一个字都不用改。
+        using Bitmap? captured = ReplaySource is { } replay
+            ? new Bitmap(replay)
+            : ScreenCaptureService.TryCapture(request.PhysicalRect);
         if (captured is null)
         {
             return Fail(CaptureFailure.ScreenshotFailed, start, "截图失败");

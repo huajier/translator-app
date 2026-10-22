@@ -174,6 +174,21 @@ public partial class App : System.Windows.Application
         {
             AppLogger.Warn($"读设置失败（不影响取词）：{ex.Message}");
         }
+
+        // 1.2) 图库回放：`--回放 "清单.txt" "结果.txt"`
+        //      不建窗口、不挂托盘、不碰屏幕，跑完直接退出。
+        //
+        //      【为什么放在「读设置之后」】识别要用设置里的 Tesseract 开关，
+        //      放在前面会把那条路堵死（跟上面 1.1 是同一个坑）。
+        //      【为什么放在「单实例检查之前」】回放是只读的：不截屏、不弹窗、
+        //      不写用户配置，没理由因为主程序开着就跑不了。
+        if (args.Length >= 3 && args[0] == "--回放")
+        {
+            AppLogger.Info("进入图库回放模式");
+            _ = RunReplayAsync(args[1], args[2]);
+            return;
+        }
+
         if (!TryAcquireSingleInstance())
         {
             AppLogger.Info("已有实例在运行：请它显示主窗口，然后结束本次启动");
@@ -598,6 +613,26 @@ public partial class App : System.Windows.Application
     }
 
     /// <summary>取词 + 把结果填回提示卡。所有异常都在这里兜住，绝不让它把程序带崩。</summary>
+    /// <summary>
+    /// 图库回放：跑完清单里所有图，然后关掉进程。
+    /// 失败也要关——否则命令行会一直挂着，脚本那边等不到返回。
+    /// </summary>
+    private static async Task RunReplayAsync(string listPath, string resultPath)
+    {
+        try
+        {
+            await ReplayRunner.RunAsync(listPath, resultPath).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "图库回放失败");
+        }
+        finally
+        {
+            Current?.Shutdown();
+        }
+    }
+
     private static async Task RunCaptureAsync(CaptureRequest request, DebugToastWindow card)
     {
         CaptureResult result;
