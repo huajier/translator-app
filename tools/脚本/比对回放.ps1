@@ -5,7 +5,8 @@
 
 param(
     [string]$Result = 'tools\临时\回放-结果.txt',
-    [switch]$All
+    [switch]$All,
+    [switch]$Approve
 )
 
 $ErrorActionPreference = 'Stop'
@@ -77,10 +78,12 @@ foreach ($l in [System.IO.File]::ReadAllLines($resultPath, [System.Text.Encoding
 $ok = 0
 $bad = New-Object System.Collections.ArrayList
 $missing = New-Object System.Collections.ArrayList
+$nowOk = @{}
 
 foreach ($id in $answers.Keys) {
     if (-not $actual.ContainsKey($id)) { [void]$missing.Add($id); continue }
-    if ($actual[$id] -eq $answers[$id]) { $ok++ }
+    $nowOk[$id] = ($actual[$id] -eq $answers[$id])
+    if ($nowOk[$id]) { $ok++ }
     else { [void]$bad.Add([pscustomobject]@{ Id = $id; Want = $answers[$id]; Got = $actual[$id] }) }
 }
 
@@ -133,5 +136,69 @@ if ($extra.Count -gt 0) {
         }
         Write-Host ("  逐张看：{0} 段全对，{1} 段有图认错（共 {2} 段）" -f $perfect, $shaky, ($perfect + $shaky)) -ForegroundColor Cyan
     }
+}
+
+# ---------- 与基线对比（判退步）----------
+# 基线只记「每段过没过」，不存原文 —— 原文长得多，基线要小到能进 git、一眼看得懂。
+# 放 `tools\素材\`（进 git）而不是 `tools\语料\`（被 .gitignore 忽略，会被清掉）。
+$baselinePath = Join-Path $root 'tools\素材\基线.json'
+
+if ($Approve) {
+    if ($missing.Count -gt 0) {
+        Write-Host ("  ⛔ 缺测 {0} 段，不能当基线（缺的段会被记成「错」，下次就会谎报退步）" -f $missing.Count) -ForegroundColor Red
+        Write-Host ""
+        return
+    }
+    $obj = [ordered]@{
+        时间 = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+        结果 = $Result
+        段   = $nowOk
+    }
+    $dir = Split-Path -Parent $baselinePath
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    [System.IO.File]::WriteAllText($baselinePath, ($obj | ConvertTo-Json -Depth 4), (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host ("  ✅ 已把这轮写成新基线（{0} 段判对）：{1}" -f $ok, $baselinePath) -ForegroundColor Green
+    Write-Host ""
+    return
+}
+
+if (-not (Test-Path $baselinePath)) {
+    Write-Host "  没有基线可比（第一次用）。确认这轮成绩没问题后，加 -Approve 跑一次存成基线。" -ForegroundColor DarkGray
+    Write-Host ""
+    return
+}
+
+$base = Get-Content $baselinePath -Raw -Encoding UTF8 | ConvertFrom-Json
+$baseOk = @{}
+foreach ($p in $base.段.PSObject.Properties) { $baseOk[$p.Name] = [bool]$p.Value }
+
+$regressed = New-Object System.Collections.ArrayList
+$improved = New-Object System.Collections.ArrayList
+$stillBad = New-Object System.Collections.ArrayList
+
+foreach ($id in $nowOk.Keys) {
+    if (-not $baseOk.ContainsKey($id)) { continue }
+    $was = $baseOk[$id]; $now = $nowOk[$id]
+    if ($was -and -not $now) { [void]$regressed.Add($id) }
+    elseif (-not $was -and $now) { [void]$improved.Add($id) }
+    elseif (-not $was) { [void]$stillBad.Add($id) }
+}
+
+Write-Host ("=== 与基线对比（基线 {0}）===" -f $base.时间) -ForegroundColor Cyan
+if ($regressed.Count -eq 0) {
+    Write-Host "  ✅ 没有退步：基线里对的段，这轮还都对" -ForegroundColor Green
+} else {
+    Write-Host ("  ❌ 退步 {0} 段（基线对、这轮错）：" -f $regressed.Count) -ForegroundColor Red
+    foreach ($id in ($regressed | Sort-Object)) { Write-Host ("     {0}" -f $id) -ForegroundColor Red }
+}
+if ($improved.Count -gt 0) {
+    Write-Host ("  ✅ 修好 {0} 段：{1}" -f $improved.Count, (($improved | Sort-Object) -join '、')) -ForegroundColor Green
+}
+if ($stillBad.Count -gt 0) {
+    Write-Host ("  ⚪ 一直错 {0} 段：{1}" -f $stillBad.Count, (($stillBad | Sort-Object) -join '、')) -ForegroundColor DarkGray
+}
+$newSeg = @($nowOk.Keys | Where-Object { -not $baseOk.ContainsKey($_) } | Sort-Object)
+if ($newSeg.Count -gt 0) {
+    Write-Host ("  🆕 基线里没有的新段 {0} 段：{1}" -f $newSeg.Count, ($newSeg -join '、')) -ForegroundColor DarkGray
 }
 Write-Host ""

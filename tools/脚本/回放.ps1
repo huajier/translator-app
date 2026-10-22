@@ -13,8 +13,9 @@
 # ============================================================
 param(
     [string]$Exe = '',
-    [string]$Result = 'tools\临时\回放-结果.txt',
-    [string]$List = 'tools\临时\回放-清单.txt'
+    [string]$Result = 'tools\语料\回放-结果.txt',
+    [string]$List = 'tools\语料\回放-清单.txt',
+    [switch]$Approve
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,4 +58,4 @@ Write-Host ("程序跑完，用时 {0:N1} 秒" -f $sw.Elapsed.TotalSeconds) -For
 
 if (-not (Test-Path $resultPath)) { throw "没有生成回放结果：$resultPath（程序可能没构建 --回放 模式）" }
 
-& (Join-Path $PSScriptRoot '比对回放.ps1') -Result $resultPath
+& (Join-Path $PSScriptRoot '比对回放.ps1') -Result $resultPath -Approve:$Approve
