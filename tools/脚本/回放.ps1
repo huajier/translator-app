@@ -36,7 +36,8 @@ $lines = foreach ($it in $items) {
     $p = Join-Path $corpus $it.file
     if (-not (Test-Path $p)) { continue }
     $n = [int]([IO.Path]::GetFileNameWithoutExtension($it.file))
-    $id = "材料$($it.mat)-$($it.id)"
+    # 材料 0 = 实战图，段名前面不带「材料0」，直接用「实战-名字」
+    $id = if ($it.mat -eq 0) { "实战-$($it.id)" } else { "材料$($it.mat)-$($it.id)" }
     if ($n -gt 1) { $id = "$id-$n" }
     "$id|$p"
 }

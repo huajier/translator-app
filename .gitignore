@@ -101,3 +101,5 @@ assets/引擎/
 Thumbs.db
 desktop.ini
 .DS_Store
+# DSH 视觉工具的临时产物，不进仓库
+.dsh-vision-router/

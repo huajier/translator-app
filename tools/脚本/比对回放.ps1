@@ -69,6 +69,21 @@ foreach ($n in '验收标准答案.txt', '验收标准答案2.txt', '验收标�
 $resultPath = if ([IO.Path]::IsPathRooted($Result)) { $Result } else { Join-Path $root $Result }
 if (-not (Test-Path $resultPath)) { throw "找不到回放结果：$resultPath" }
 
+# ---------- 实战图：答案就存在图库清单里，不进 56 段 ----------
+# 不加进 $answers 是故意的：56 段是验收尺子，加进实战图会让这把尺子永远动。
+# 实战图单独列一段「实战」成绩，有错的就大声报出来。
+$corpusManifest = Join-Path $root 'tools\语料\清单.json'
+$battle = [ordered]@{}
+if (Test-Path $corpusManifest) {
+    $doc = [System.IO.File]::ReadAllText($corpusManifest, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+    foreach ($it in @($doc.images)) {
+        if ($it.mat -ne 0 -or -not $it.answer) { continue }
+        $n = [int]([IO.Path]::GetFileNameWithoutExtension($it.file))
+        $key = if ($n -gt 1) { "实战-$($it.id)-$n" } else { "实战-$($it.id)" }
+        $battle[$key] = Norm ([string]$it.answer)
+    }
+}
+
 $actual = @{}
 foreach ($l in [System.IO.File]::ReadAllLines($resultPath, [System.Text.Encoding]::UTF8)) {
     if ($l -match '^([^|]+)\|(.*)$') { $actual[$Matches[1]] = Norm $Matches[2] }
@@ -91,6 +106,30 @@ $total = $answers.Count
 Write-Host ""
 Write-Host "=== 图库回放成绩 ===" -ForegroundColor Cyan
 Write-Host ("  应测 {0} 段，判对 {1} 段，判错 {2} 段，缺 {3} 段" -f $total, $ok, $bad.Count, $missing.Count)
+
+# ---------- 实战图成绩（单独一把尺子）----------
+$battleOk = 0
+$battleBad = New-Object System.Collections.ArrayList
+$battleMissing = New-Object System.Collections.ArrayList
+foreach ($k in $battle.Keys) {
+    if (-not $actual.ContainsKey($k)) { [void]$battleMissing.Add($k); continue }
+    $nowOk[$k] = ($actual[$k] -eq $battle[$k])
+    if ($nowOk[$k]) { $battleOk++ }
+    else { [void]$battleBad.Add([pscustomobject]@{ Id = $k; Want = $battle[$k]; Got = $actual[$k] }) }
+}
+if ($battle.Count -gt 0) {
+    Write-Host ("  实战图 {0} 张：对 {1}，错 {2}，缺 {3}" -f $battle.Count, $battleOk, $battleBad.Count, $battleMissing.Count) -ForegroundColor $(if ($battleBad.Count -eq 0) { 'Green' } else { 'Yellow' })
+    if ($battleBad.Count -gt 0) {
+        foreach ($b in $battleBad) {
+            Write-Host ("    [{0}] 差 {1} 字符" -f $b.Id, (EditDist $b.Want $b.Got)) -ForegroundColor Yellow
+            Write-Host ("      答案：{0}" -f $b.Want)
+            Write-Host ("      实得：{0}" -f $b.Got)
+        }
+    }
+    if ($battleMissing.Count -gt 0) {
+        Write-Host ("    实战图缺测：{0}" -f ($battleMissing -join '、')) -ForegroundColor Red
+    }
+}
 if ($bad.Count -gt 0) {
     Write-Host ""
     Write-Host "  判错明细：" -ForegroundColor Yellow
@@ -107,7 +146,7 @@ if ($missing.Count -gt 0) {
 }
 
 # 同一段存了多张图时（例如 E4 有 3 张），多出来的单独列出来，不计入 56 段
-$extra = $actual.Keys | Where-Object { -not $answers.Contains($_) } | Sort-Object
+$extra = $actual.Keys | Where-Object { -not $answers.Contains($_) -and -not $battle.Contains($_) } | Sort-Object
 if ($extra.Count -gt 0) {
     Write-Host ""
     if (-not $All) {
@@ -144,8 +183,8 @@ if ($extra.Count -gt 0) {
 $baselinePath = Join-Path $root 'tools\素材\基线.json'
 
 if ($Approve) {
-    if ($missing.Count -gt 0) {
-        Write-Host ("  ⛔ 缺测 {0} 段，不能当基线（缺的段会被记成「错」，下次就会谎报退步）" -f $missing.Count) -ForegroundColor Red
+    if ($missing.Count -gt 0 -or $battleMissing.Count -gt 0) {
+        Write-Host ("  ⛔ 缺测 {0} 段（56 段里缺 {1}、实战图缺 {2}），不能当基线（缺的段会被记成「错」，下次就会谎报退步）" -f ($missing.Count + $battleMissing.Count), $missing.Count, $battleMissing.Count) -ForegroundColor Red
         Write-Host ""
         return
     }

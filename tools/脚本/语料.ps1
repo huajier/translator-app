@@ -13,13 +13,14 @@
 # ============================================================
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('add', 'remove', 'status', '实机')]
+    [ValidateSet('add', 'remove', 'status', '实机', '实战')]
     [string]$Action = 'status',
 
     [int]$Mat = 0,
     [string]$Id = '',
     [string]$Img = '',
-    [string]$Note = ''
+    [string]$Note = '',
+    [string]$Answer = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,9 +63,15 @@ function WriteManifest($items) {
 function Get-Sha([string]$p) { return (Get-FileHash $p -Algorithm SHA256).Hash.ToLower() }
 
 # ========================= 收一张图 =========================
-function Add-One([int]$Mat, [string]$Id, [string]$Img, [string]$Note) {
-    if ($Mat -lt 1 -or $Mat -gt 3) { throw '-Mat 必须是 1、2 或 3（对应三份材料）' }
-    if ($Id -notmatch '^[A-Z]\d+$') { throw '-Id 必须是 A1 这种格式（大写字母 + 数字）' }
+function Add-One([int]$Mat, [string]$Id, [string]$Img, [string]$Note, [string]$Answer = '') {
+    # mat = 0 是「实战图」：用户随手截的问题图 + 他给的正确答案，自己成一段。
+    if ($Mat -lt 0 -or $Mat -gt 3) { throw '-Mat 必须是 0（实战图）、1、2 或 3（三份材料）' }
+    if ($Mat -eq 0) {
+        # 实战图的段名来自文件名，只要求它不会拼出奇怪路径
+        if ($Id -notmatch '^[\w\u4e00-\u9fff\-\. ]{1,40}$') { throw "-Id 只能含中文/字母/数字/连字符，且不超过 40 字：$Id" }
+    } elseif ($Id -notmatch '^[A-Z]\d+$') {
+        throw '-Id 必须是 A1 这种格式（大写字母 + 数字）'
+    }
     if (-not $Img) { throw '-Img 必填，指向要收进来的 png' }
     if (-not (Test-Path $Img)) { throw "找不到图片：$Img" }
 
@@ -79,15 +86,16 @@ function Add-One([int]$Mat, [string]$Id, [string]$Img, [string]$Note) {
         return $false
     }
 
-    $dir = Join-Path $corpus "材料$Mat\$Id"
+    $segDir = if ($Mat -eq 0) { "实战\$Id" } else { "材料$Mat\$Id" }
+    $dir = Join-Path $corpus $segDir
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
     $n = 1
     while (Test-Path (Join-Path $dir "$n.png")) { $n++ }
     Copy-Item -LiteralPath $src -Destination (Join-Path $dir "$n.png")
 
-    $rel = "材料$Mat\$Id\$n.png"
+    $rel = "$segDir\$n.png"
     $size = (Get-Item (Join-Path $dir "$n.png")).Length
-    $items = @($items) + [pscustomobject]@{
+    $item = [pscustomobject]@{
         file       = $rel
         mat        = $Mat
         id         = $Id
@@ -96,14 +104,48 @@ function Add-One([int]$Mat, [string]$Id, [string]$Img, [string]$Note) {
         addedAt    = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
         note       = $Note
     }
+    # 实战图带自己的标准答案：比 56 段那三份答案文件更硬（答案就贴在图上），
+    # 换了图答案跟着走，不会出现「图换了答案还是老的」。
+    if ($Answer) { $item | Add-Member -NotePropertyName answer -NotePropertyValue $Answer }
+    $items = @($items) + $item
     WriteManifest $items
     Write-Host ("已收进图库：{0}  （{1} 字节，SHA-256 {2}…）" -f $rel, $size, $hash.Substring(0, 12)) -ForegroundColor Green
+    if ($Answer) { Write-Host ("  答案已一并存下：{0}" -f $Answer) -ForegroundColor DarkGray }
     return $true
 }
 
 # ============================ add ============================
 if ($Action -eq 'add') {
-    [void](Add-One $Mat $Id $Img $Note)
+    [void](Add-One $Mat $Id $Img $Note $Answer)
+    return
+}
+
+# =========================== 实战 ===========================
+# 扫 tools\语料\实机\ 里的「图 + 同名 .txt」，一张图配一份正确答案，各成一段。
+#   tools\语料\实机\播放失败1.png
+#   tools\语料\实机\播放失败1.txt   ← 里面写这张图应该认成什么
+# 段名就用文件名（不含扩展名）。收进去后原图原 txt 删掉。
+if ($Action -eq '实战') {
+    $drop = Join-Path $corpus '实机'
+    if (-not (Test-Path $drop)) { New-Item -ItemType Directory -Path $drop -Force | Out-Null }
+    $files = @(Get-ChildItem $drop -Filter *.png -File)
+    if ($files.Count -eq 0) {
+        Write-Host "tools\语料\实机\ 里没有 png。" -ForegroundColor Yellow
+        return
+    }
+    $noAnswer = New-Object System.Collections.ArrayList
+    foreach ($f in $files | Sort-Object Name) {
+        $txt = [IO.Path]::ChangeExtension($f.FullName, '.txt')
+        if (-not (Test-Path $txt)) { [void]$noAnswer.Add($f.Name); continue }
+        $ans = ([System.IO.File]::ReadAllText($txt, [System.Text.Encoding]::UTF8)).Trim()
+        if (-not $ans) { [void]$noAnswer.Add($f.Name); continue }
+        [void](Add-One 0 $f.BaseName $f.FullName "实战图 $($f.Name)" $ans)
+        Remove-Item -LiteralPath $f.FullName -Force
+        Remove-Item -LiteralPath $txt -Force
+    }
+    if ($noAnswer.Count -gt 0) {
+        Write-Host ("这些图没有同名 .txt 答案，留在原地没动：{0}" -f ($noAnswer -join '、')) -ForegroundColor Yellow
+    }
     return
 }
 
@@ -152,10 +194,15 @@ if ($Action -eq '实机') {
 # 把某一段的图从图库里整个拿掉（清单条目 + 文件）。
 # 用途：图截错了要重截。不先拿掉的话 add 会存成 2.png、3.png，越堆越多。
 if ($Action -eq 'remove') {
-    if ($Mat -lt 1 -or $Mat -gt 3) { throw '-Mat 必须是 1、2 或 3（对应三份材料）' }
-    if ($Id -notmatch '^[A-Z]\d+$') { throw '-Id 必须是 A1 这种格式（大写字母 + 数字）' }
+    if ($Mat -lt 0 -or $Mat -gt 3) { throw '-Mat 必须是 0（实战图）、1、2 或 3' }
+    if ($Mat -eq 0) {
+        if ($Id -notmatch '^[\w\u4e00-\u9fff\-\. ]{1,40}$') { throw "-Id 只能含中文/字母/数字/连字符，且不超过 40 字：$Id" }
+    } elseif ($Id -notmatch '^[A-Z]\d+$') {
+        throw '-Id 必须是 A1 这种格式（大写字母 + 数字）'
+    }
 
-    $dir = [IO.Path]::GetFullPath((Join-Path $corpus "材料$Mat\$Id"))
+    $segDir = if ($Mat -eq 0) { "实战\$Id" } else { "材料$Mat\$Id" }
+    $dir = [IO.Path]::GetFullPath((Join-Path $corpus $segDir))
     $corpusFull = [IO.Path]::GetFullPath($corpus)
     # 删目录前先确认它真在图库下面（防止 $Mat/$Id 拼出奇怪的路径）
     if (-not $dir.StartsWith($corpusFull + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
@@ -165,13 +212,13 @@ if ($Action -eq 'remove') {
     $items = ReadManifest
     $mine = @($items | Where-Object { $_.mat -eq $Mat -and $_.id -eq $Id })
     if ($mine.Count -eq 0) {
-        Write-Host ("图库里没有这一段：材料{0}\{1}" -f $Mat, $Id) -ForegroundColor Yellow
+        Write-Host ("图库里没有这一段：{0}" -f $segDir) -ForegroundColor Yellow
         return
     }
 
     WriteManifest @($items | Where-Object { -not ($_.mat -eq $Mat -and $_.id -eq $Id) })
     if (Test-Path $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
-    Write-Host ("已从图库移除 材料{0}\{1}（{2} 张图）" -f $Mat, $Id, $mine.Count) -ForegroundColor Green
+    Write-Host ("已从图库移除 {0}（{1} 张图）" -f $segDir, $mine.Count) -ForegroundColor Green
     return
 }
 
@@ -217,6 +264,17 @@ if ($stillWeb.Count -gt 0 -and $stillWeb.Count -le 12) {
 }
 if ($missing.Count -gt 0) {
     Write-Host ("缺图：{0}" -f ($missing -join '、')) -ForegroundColor DarkYellow
+}
+
+# 实战图自成一类，不算进 56 段
+$fights = @($items | Where-Object { $_.mat -eq 0 })
+if ($fights.Count -gt 0) {
+    Write-Host ""
+    Write-Host ("—— 实战图 {0} 张（不计入 56 段，单独判分）——" -f $fights.Count) -ForegroundColor Cyan
+    foreach ($g in ($fights | Group-Object id | Sort-Object Name)) {
+        $ans2 = if ($g.Group[0].answer) { $g.Group[0].answer } else { '（没有答案，不判分）' }
+        Write-Host ("  {0,-24} {1} 张   答案：{2}" -f $g.Name, $g.Count, $ans2) -ForegroundColor Green
+    }
 }
 
 # ---------- 校验：文件在不在、有没有被改过 ----------
