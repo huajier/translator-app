@@ -1688,7 +1688,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
         while (start < text.Length && IsEdgeSymbol(text[start])) start++;
 
         int end = text.Length;
-        while (end > start && IsEdgeSymbol(text[end - 1])) end--;
+        while (end > start && (IsEdgeSymbol(text[end - 1]) || IsTrailingEdgeSymbol(text[end - 1]))) end--;
 
         if (start == 0 && end == text.Length) return text;
         return text.Substring(start, end - start).Trim();
@@ -1698,4 +1698,17 @@ internal sealed partial class OcrTextCapture : ITextCapture
     private static bool IsEdgeSymbol(char c) =>
         c is '•' or '·' or '‘' or '’' or '“' or '”' or '\'' or '：' or '、' or '|'
         || char.IsWhiteSpace(c);
+
+    /// <summary>
+    /// **只在结尾**才当装饰品删的横杠类字符（`-` `–` `—` `_`）。
+    ///
+    /// 【为什么只删结尾，不并进上面那个名单】
+    ///   2026-10-23 扫了三份日志全部 7600 条「最终原文」：
+    ///     以横杠**结尾**的 40 条 → 去重后**只有 `BATTLEBOARD-`** 这一个，
+    ///       就是那张实战图右侧 14px 空白被引擎多认出一个横杠造成的。
+    ///     以横杠**开头**的 18 条 → 是 `- HTTP/2.0 …`、`— =" / The quick brown…`
+    ///       这种**正常内容**，削掉就错。
+    ///   → 所以横杠**只进结尾名单**，开头一律不动。
+    /// </summary>
+    private static bool IsTrailingEdgeSymbol(char c) => c is '-' or '–' or '—' or '_';
 }
