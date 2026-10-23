@@ -257,10 +257,10 @@
      **用户 m00217「都删了，等后面遇到了再说，现阶段没问题」→ 全部从待办删掉，不再跟踪。**
    - ✅ ~~A9 `Ctrl+Alt+D` 存图验收~~ **用户 m00217「我已经验收过了」→ 结清**。
    - ✅ ~~A10 取证截图自动拷到 `tools\`~~ **用户 m00217「不用」→ 不做**（那点风险接受）。
-   - 🔴 **A11 加远程备份（用户 m00217「加」→ 要做，未做）**：`origin` 已配
-     `https://github.com/huajier/translator-app.git`，但**本地领先 5 笔没推**（`origin/master` 停在 `84466d3`）。
-     `git push --dry-run origin master` 试过能通（`84466d3..6ecfc4c master -> master`），说明凭据可用。
-     **等用户拍板后执行 `git push origin master`（含 tag 要不要一起推），属「对外动作」不擅自动手。**
+   - ✅ ~~A11 加远程备份~~ **用户 m00370「推，连带 tag」→ 已推完**：`git push origin master` 输出
+     `84466d3..f60a268 master -> master`；`git push origin --tags` 把 **84 个 tag** 全推上去。
+     核对：本地 `master` = `origin/master` = **`f60a268`**，`origin/master..master` 为空，远程 tag 数 **84 = 本地 84**。
+     远程仓 `https://github.com/huajier/translator-app.git`。**以后改完记得 `git push origin master`。**
    - ✅ ~~A12 删 `tools\临时\`~~ **用户 m00357「A12删」→ 已删**（610K / 26 个文件，全部未跟踪、一次性排查产物；
      删后 `git status` 干净，两个回放脚本会自动重建该目录）。**A11 仍未做，等用户拍板。**
    - **下次开测的标准流程**（已成型）：`& ".\tools\脚本\回放.ps1"` 跑完全部 277 张（约 3 分钟）→ 再 `& ".\tools\脚本\比对回放.ps1"` 看判分和判退步 → 想更新基线加 `-Approve`。
