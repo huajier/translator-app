@@ -512,6 +512,29 @@ internal sealed partial class OcrTextCapture : ITextCapture
                             && planeResult.MinWordConfidence > best.MinWordConfidence + MinWordConfidenceMargin;
 
                         // ==========================================================
+                        // 【2026-10-23 补：字数多的脏版不许压过干净版】
+                        //
+                        //   实战图 13.02（`WISHLIST NOW / ON STEAM`，白字+黄字两行）：
+                        //     基准       0.88、4 词 4/4 全在词典、垫底词分 65.66
+                        //     局部阈值   0.40、8 词 7/8 在词典、垫底词分 0.00（`;`）
+                        //   只因为「25 字 > 19 字」就被采用，接着判乱码，整段取词失败。
+                        //
+                        //   光比分数不行：全天 216 次字数型切换，用「分数差」当闸门
+                        //   会挡掉 35 次，其中 19 个块是**基准本来就不过线、正需要救**
+                        //   （实战 BATTLEBOARD 基准 0.54，靠 0.27 的局部阈值救回来）。
+                        //   真正分得开的是**词**：干净版每个词都是词典里的真词、
+                        //   垫底词分高；碎词版混着 0 分的碎片（`;` `CT` `Ta` `mmr`）。
+                        //
+                        //   所以规矩：**基准是干净版（≥2 词且全在词典）**时，
+                        //   候选的垫底词分低 20 分以上 → 字数多不算数。
+                        //   基准不干净的一律不管，救回逻辑原样保留。
+                        // ==========================================================
+                        bool moreCharsButWordsDirtier =
+                            best.TotalWordCount >= 2
+                            && best.DictWordCount == best.TotalWordCount
+                            && planeResult.MinWordConfidence < best.MinWordConfidence - MinWordConfidenceMargin;
+
+                        // ==========================================================
                         // 【2026-10-20 补：过线的无条件优先】
                         //
                         //   08:11:55 那次 PLAY THE DEMO NOW ON 的实证：
@@ -604,7 +627,8 @@ internal sealed partial class OcrTextCapture : ITextCapture
                             && (best.TotalWordCount == 0 || best.DictWordCount < best.TotalWordCount);
 
                         bool planeClearlyBetter =
-                            moreChars || sameCharsBetterScore || slightlyFewerButClearlyBetterScore
+                            (moreChars && !moreCharsButWordsDirtier)
+                            || sameCharsBetterScore || slightlyFewerButClearlyBetterScore
                             || cleanWordsButFewerChars || candidatePassesButBestDoesNot
                             || dictionaryHitIsBetter || dictionaryWordsAreMore
                             || allWordsInDictionary;
