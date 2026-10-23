@@ -43,6 +43,15 @@ internal static class ReplayRunner
         var results = new List<string>();
         int ok = 0, failed = 0;
 
+        // 进度和单张耗时打到控制台：回放一次要好几分钟，中途没输出会被当成卡死；
+        // 单张耗时也是判断「这次改动有没有拖慢识别」的唯一依据。
+        int total = 0, idx = 0;
+        foreach (string l in lines)
+        {
+            int b = l.IndexOf('|');
+            if (!string.IsNullOrWhiteSpace(l) && b > 0) total++;
+        }
+
         foreach (string line in lines)
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
@@ -50,6 +59,8 @@ internal static class ReplayRunner
             int bar = line.IndexOf('|');
             if (bar <= 0) continue;
 
+            idx++;
+            var itemSw = System.Diagnostics.Stopwatch.StartNew();
             string id = line.Substring(0, bar).Trim();
             string path = line.Substring(bar + 1).Trim();
 
@@ -58,6 +69,7 @@ internal static class ReplayRunner
                 AppLogger.Warn($"回放 {id}：找不到图 {path}");
                 results.Add($"{id}|<缺图>");
                 failed++;
+                Console.WriteLine($"[{idx}/{total}] {id}  缺图  0 ms");
                 continue;
             }
 
@@ -98,13 +110,17 @@ internal static class ReplayRunner
                     .Replace('\r', '⏎');
                 results.Add($"{id}|{oneLine}");
                 if (result.Success) ok++; else failed++;
-                AppLogger.Info($"回放 {id}：{(result.Success ? "成功" : "失败")}，{result.Text.Length} 字");
+                itemSw.Stop();
+                AppLogger.Info($"回放 {id}：{(result.Success ? "成功" : "失败")}，{result.Text.Length} 字，耗时 {itemSw.ElapsedMilliseconds} ms");
+                Console.WriteLine($"[{idx}/{total}] {id}  {result.Text.Length} 字  {itemSw.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)
             {
+                itemSw.Stop();
                 AppLogger.Error(ex, $"回放 {id} 失败");
                 results.Add($"{id}|<异常>");
                 failed++;
+                Console.WriteLine($"[{idx}/{total}] {id}  异常  {itemSw.ElapsedMilliseconds} ms");
             }
             finally
             {
@@ -114,5 +130,6 @@ internal static class ReplayRunner
 
         File.WriteAllLines(outPath, results, new UTF8Encoding(false));
         AppLogger.Info($"========== 图库回放结束：成功 {ok}，失败 {failed}，共 {results.Count} 段 → {outPath} ==========");
+        Console.WriteLine($"========== 结束：成功 {ok}，失败 {failed}，共 {results.Count} 段 ==========");
     }
 }
