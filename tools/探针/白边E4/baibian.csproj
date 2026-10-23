@@ -14,7 +14,6 @@
     <Compile Include="Program.cs" />
     <Compile Include="..\..\..\src\Core\Capture\ImagePreprocessor.cs" Link="ImagePreprocessor.cs" />
     <Compile Include="..\..\..\src\Core\Logging\AppLogger.cs" Link="AppLogger.cs" />
-    <Compile Include="..\..\..\src\Core\Capture\TesseractOcr.cs" Link="TesseractOcr.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Tesseract" Version="5.2.0" />
