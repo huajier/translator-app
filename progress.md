@@ -261,10 +261,8 @@
      `https://github.com/huajier/translator-app.git`，但**本地领先 5 笔没推**（`origin/master` 停在 `84466d3`）。
      `git push --dry-run origin master` 试过能通（`84466d3..6ecfc4c master -> master`），说明凭据可用。
      **等用户拍板后执行 `git push origin master`（含 tag 要不要一起推），属「对外动作」不擅自动手。**
-   - 🔴 **A12 删 `tools\临时\`（用户 m00217「删」→ 要做，未做）**：610K / 26 个文件
-     （一次性排查图、AB 结果、临时 ps1、框对比/裁剪框输出）。**未跟踪、不进 git**。
-     删之前要确认 `tools\脚本\比对回放.ps1` 与 `回放.ps1` **默认就跑这个目录**
-     （`-Result 'tools\临时\回放-结果.txt'`），删完目录会自动重建，不影响脚本。
+   - ✅ ~~A12 删 `tools\临时\`~~ **用户 m00357「A12删」→ 已删**（610K / 26 个文件，全部未跟踪、一次性排查产物；
+     删后 `git status` 干净，两个回放脚本会自动重建该目录）。**A11 仍未做，等用户拍板。**
    - **下次开测的标准流程**（已成型）：`& ".\tools\脚本\回放.ps1"` 跑完全部 277 张（约 3 分钟）→ 再 `& ".\tools\脚本\比对回放.ps1"` 看判分和判退步 → 想更新基线加 `-Approve`。
      ⚠️ 跑 ps1 前先 `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force`；带进程启动的脚本要 `sandbox_permissions=danger-full-access`。
      ⚠️ `回放.ps1` 的 `-Result` 默认值就是 `tools\语料\回放-结果.txt`；单独跑 `比对回放.ps1` 时必须显式传 `-Result "tools\语料\回放-结果.txt"`（它自己的默认值是 `tools\临时\`）。
