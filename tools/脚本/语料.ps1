@@ -13,14 +13,15 @@
 # ============================================================
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('add', 'remove', 'status', '实机', '实战')]
+    [ValidateSet('add', 'remove', 'status', '实机', '实战', '变体')]
     [string]$Action = 'status',
 
     [int]$Mat = 0,
     [string]$Id = '',
     [string]$Img = '',
     [string]$Note = '',
-    [string]$Answer = ''
+    [string]$Answer = '',
+    [int[]]$Shrink = @(3, 6, 9, 12)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -187,6 +188,101 @@ if ($Action -eq '实机') {
         # 「这一段的新图」，先把整段拿掉再只放这一张，把同段其他图全冲掉。
         Remove-Item -LiteralPath $f.FullName -Force
     }
+    return
+}
+
+# =========================== 变体 ===========================
+# 给每张实战图生成「框得比原来更紧」的副本，回答沿用原图。
+# 为什么需要：用户手框时不可能每次都框得跟图库那张一模一样，
+#   而手测报的两个失败（BATTLEBOARD 带标点、WISHLIST 丢词）都是「框紧一点」才复现的。
+#   只收「框得刚好」的图，图库永远 100% 全对，查不出这类问题。
+# 做法：四周各往里缩 $Shrink 里每一个像素数，生成 <序号>.png 追加进同一段，
+#   段名会自然变成 实战-<id>-7、-8……（回放.ps1 按文件序号拼段名，不用改）。
+# 可重复跑：每次先把上一轮的变体（note 以「变体」开头）整个删掉再生成。
+if ($Action -eq '变体') {
+    Add-Type -AssemblyName System.Drawing
+
+    $items = ReadManifest
+
+    # ---- 1. 先清掉上一轮的变体 ----
+    $old = @($items | Where-Object { $_.mat -eq 0 -and $_.note -match '^变体' })
+    foreach ($o in $old) {
+        $p = Join-Path $corpus $o.file
+        if (Test-Path $p) { Remove-Item -LiteralPath $p -Force }
+    }
+    if ($old.Count -gt 0) {
+        $items = @($items | Where-Object { -not ($_.mat -eq 0 -and $_.note -match '^变体') })
+        WriteManifest $items
+        Write-Host ("先清掉上一轮的 {0} 张变体。" -f $old.Count) -ForegroundColor DarkGray
+    }
+
+    # ---- 2. 原图（note 不是变体的那些）逐张生成 ----
+    $orig = @($items | Where-Object { $_.mat -eq 0 -and $_.note -notmatch '^变体' -and $_.answer })
+    if ($orig.Count -eq 0) {
+        Write-Host "清单里没有带答案的实战图，没什么可变的。" -ForegroundColor Yellow
+        return
+    }
+
+    $made = 0
+    $skipped = New-Object System.Collections.ArrayList
+    foreach ($it in $orig) {
+        $srcPath = Join-Path $corpus $it.file
+        if (-not (Test-Path $srcPath)) { [void]$skipped.Add("$($it.file) 不见了"); continue }
+        $segDir = Split-Path -Parent $it.file
+        $dir = Join-Path $corpus $segDir
+
+        # 注意：变量不能叫 $img —— 脚本参数里有个 [string]$Img，
+        # PowerShell 函数/脚本作用域里变量名不分大小写，会被覆盖成字符串，
+        # 后面 $img.Dispose() 就变成「字符串没有 Dispose 方法」。
+        $srcImg = [System.Drawing.Image]::FromFile($srcPath)
+        try {
+            $w = $srcImg.Width; $h = $srcImg.Height
+            foreach ($k in $Shrink) {
+                if ($w - 2 * $k -lt 8 -or $h - 2 * $k -lt 8) {
+                    [void]$skipped.Add("$($it.file) 内缩 ${k}px 后太小，跳过")
+                    continue
+                }
+                # 找第一个空着的序号，别覆盖已有的图
+                $n = 1
+                while (Test-Path (Join-Path $dir "$n.png")) { $n++ }
+                $dst = Join-Path $dir "$n.png"
+
+                $bmp = New-Object System.Drawing.Bitmap ($w - 2 * $k), ($h - 2 * $k)
+                try {
+                    $g = [System.Drawing.Graphics]::FromImage($bmp)
+                    try {
+                        $g.DrawImage($srcImg,
+                            (New-Object System.Drawing.Rectangle 0, 0, ($w - 2 * $k), ($h - 2 * $k)),
+                            (New-Object System.Drawing.Rectangle $k, $k, ($w - 2 * $k), ($h - 2 * $k)),
+                            [System.Drawing.GraphicsUnit]::Pixel)
+                    } finally { $g.Dispose() }
+                    $bmp.Save($dst, [System.Drawing.Imaging.ImageFormat]::Png)
+                } finally { $bmp.Dispose() }
+
+                $rel = "$segDir\$n.png"
+                $items = @($items) + [pscustomobject]@{
+                    file    = $rel
+                    mat     = 0
+                    id      = $it.id
+                    sha256  = (Get-Sha $dst)
+                    bytes   = (Get-Item $dst).Length
+                    addedAt = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+                    note    = "变体 内缩 ${k}px（源自 $($it.file)，$w×$h）"
+                    answer  = $it.answer
+                }
+                $made++
+            }
+        } finally { $srcImg.Dispose() }
+    }
+
+    WriteManifest $items
+    Write-Host ("已生成 {0} 张变体（每张原图内缩 {1} px 四档）。" -f $made, ($Shrink -join '/')) -ForegroundColor Green
+    if ($skipped.Count -gt 0) {
+        Write-Host ("跳过 {0} 项：" -f $skipped.Count) -ForegroundColor Yellow
+        foreach ($s in $skipped) { Write-Host ("  {0}" -f $s) -ForegroundColor DarkYellow }
+    }
+    $total = @($items).Count
+    Write-Host ("图库现在共 {0} 张图（实战 {1} 张）。" -f $total, @($items | Where-Object { $_.mat -eq 0 }).Count) -ForegroundColor Cyan
     return
 }
 

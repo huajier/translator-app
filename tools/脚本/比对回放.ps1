@@ -94,10 +94,14 @@ $ok = 0
 $bad = New-Object System.Collections.ArrayList
 $missing = New-Object System.Collections.ArrayList
 $nowOk = @{}
+# 差多少字符也记下来：只记「过没过」的话，「差 1 个字」恶化成「整行丢了」
+# 两头都是 false，成绩单上看不出变化，等于没报警。
+$nowDist = @{}
 
 foreach ($id in $answers.Keys) {
     if (-not $actual.ContainsKey($id)) { [void]$missing.Add($id); continue }
     $nowOk[$id] = ($actual[$id] -eq $answers[$id])
+    $nowDist[$id] = EditDist $answers[$id] $actual[$id]
     if ($nowOk[$id]) { $ok++ }
     else { [void]$bad.Add([pscustomobject]@{ Id = $id; Want = $answers[$id]; Got = $actual[$id] }) }
 }
@@ -114,6 +118,7 @@ $battleMissing = New-Object System.Collections.ArrayList
 foreach ($k in $battle.Keys) {
     if (-not $actual.ContainsKey($k)) { [void]$battleMissing.Add($k); continue }
     $nowOk[$k] = ($actual[$k] -eq $battle[$k])
+    $nowDist[$k] = EditDist $battle[$k] $actual[$k]
     if ($nowOk[$k]) { $battleOk++ }
     else { [void]$battleBad.Add([pscustomobject]@{ Id = $k; Want = $battle[$k]; Got = $actual[$k] }) }
 }
@@ -192,6 +197,8 @@ if ($Approve) {
         时间 = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
         结果 = $Result
         段   = $nowOk
+        # 差多少字符：只给「本来就错」的段用。它让「错得更厉害」也能报警。
+        差   = $nowDist
     }
     $dir = Split-Path -Parent $baselinePath
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
@@ -210,17 +217,29 @@ if (-not (Test-Path $baselinePath)) {
 $base = Get-Content $baselinePath -Raw -Encoding UTF8 | ConvertFrom-Json
 $baseOk = @{}
 foreach ($p in $base.段.PSObject.Properties) { $baseOk[$p.Name] = [bool]$p.Value }
+# 老基线没有「差」这一栏，读不到就当没有（那几张就只能按老办法，只判过没过）。
+$baseDist = @{}
+if ($base.PSObject.Properties['差']) {
+    foreach ($p in $base.差.PSObject.Properties) { $baseDist[$p.Name] = [int]$p.Value }
+}
 
 $regressed = New-Object System.Collections.ArrayList
 $improved = New-Object System.Collections.ArrayList
 $stillBad = New-Object System.Collections.ArrayList
+# 「一直错」里又错得更厉害的那些：原来差 1 个字，现在整行没了。
+$worsened = New-Object System.Collections.ArrayList
 
 foreach ($id in $nowOk.Keys) {
     if (-not $baseOk.ContainsKey($id)) { continue }
     $was = $baseOk[$id]; $now = $nowOk[$id]
     if ($was -and -not $now) { [void]$regressed.Add($id) }
     elseif (-not $was -and $now) { [void]$improved.Add($id) }
-    elseif (-not $was) { [void]$stillBad.Add($id) }
+    elseif (-not $was) {
+        [void]$stillBad.Add($id)
+        if ($baseDist.ContainsKey($id) -and $nowDist.ContainsKey($id) -and $nowDist[$id] -gt $baseDist[$id]) {
+            [void]$worsened.Add([pscustomobject]@{ Id = $id; Was = $baseDist[$id]; Now = $nowDist[$id] })
+        }
+    }
 }
 
 Write-Host ("=== 与基线对比（基线 {0}）===" -f $base.时间) -ForegroundColor Cyan
@@ -233,8 +252,17 @@ if ($regressed.Count -eq 0) {
 if ($improved.Count -gt 0) {
     Write-Host ("  ✅ 修好 {0} 段：{1}" -f $improved.Count, (($improved | Sort-Object) -join '、')) -ForegroundColor Green
 }
-if ($stillBad.Count -gt 0) {
-    Write-Host ("  ⚪ 一直错 {0} 段：{1}" -f $stillBad.Count, (($stillBad | Sort-Object) -join '、')) -ForegroundColor DarkGray
+if ($worsened.Count -gt 0) {
+    Write-Host ("  ❌ 错得更厉害 {0} 段（本来就是错的，但差得更多了）：" -f $worsened.Count) -ForegroundColor Red
+    foreach ($w in ($worsened | Sort-Object Id)) {
+        Write-Host ("     {0}  差 {1} 字符 → 差 {2} 字符" -f $w.Id, $w.Was, $w.Now) -ForegroundColor Red
+    }
+}
+# 上面已经点过名的，不再重复列进「一直错」，免得同一段出现两遍。
+$worsenedIds = @($worsened | ForEach-Object { $_.Id })
+$stillBadOnly = @($stillBad | Where-Object { $worsenedIds -notcontains $_ })
+if ($stillBadOnly.Count -gt 0) {
+    Write-Host ("  ⚪ 一直错 {0} 段：{1}" -f $stillBadOnly.Count, (($stillBadOnly | Sort-Object) -join '、')) -ForegroundColor DarkGray
 }
 $newSeg = @($nowOk.Keys | Where-Object { -not $baseOk.ContainsKey($_) } | Sort-Object)
 if ($newSeg.Count -gt 0) {
