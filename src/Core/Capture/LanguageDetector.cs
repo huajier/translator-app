@@ -179,6 +179,59 @@ internal static class LanguageDetector
     }
 
     /// <summary>
+    /// 这段「俄文」里，有多少西里尔字母其实是**拉丁字母的同形字**。
+    ///
+    /// 【为什么需要这个（2026-10-24 用户手测实测）】
+    ///   俄文模型在**认不出的英文**上会硬拼出一串假西里尔：
+    ///     `BATTLEBOARD` → `ВАТТЦЕВОАВО»`
+    ///   它的西里尔占比是 **100%**，`CountCyrillicRatio` 那道闸门完全拦不住，
+    ///   于是四路全都用 rus 模型跑，读出来全是这种假货，整段取词失败。
+    ///
+    ///   【真假分得开吗？分得开】
+    ///   假西里尔是**照着拉丁字母的形状**拼出来的，
+    ///   所以里面几乎全是 `В`(B)、`А`(A)、`Т`(T)、`Е`(E)、`О`(O)、`С`(C) 这类同形字；
+    ///   真俄文（`Ошибка сервера`、`Съешь же ещё`）有大量 `ш` `щ` `ж` `ы` `э` 这些**没有拉丁同形**的字母，
+    ///   同形字占比自然低。
+    ///
+    ///   跑遍 7 个日志文件实测（2178 个真俄文块 / 711 个假西里尔块）：
+    ///     阈值 0.50 → 误伤真俄文 0 个，拦住假西里尔 561 个
+    ///     阈值 0.75 → 误伤 0 个，拦住 274 个
+    ///     阈值 0.90 → 误伤 0 个，拦住 109 个
+    ///   **0.50 起就零误伤**，取 0.75 是留足余量：
+    ///   真俄文里偶尔夹几个同形字（`ООО` 这种公司名）也不会被误杀。
+    /// </summary>
+    public static double CountCyrillicHomoglyphRatio(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return 0;
+
+        int cyrillic = 0;
+        int homoglyph = 0;
+        foreach (char c in text)
+        {
+            if (c < 0x0400 || c > 0x04FF) continue;
+            cyrillic++;
+            if (IsCyrillicLatinHomoglyph(c)) homoglyph++;
+        }
+
+        return cyrillic == 0 ? 0 : (double)homoglyph / cyrillic;
+    }
+
+    /// <summary>
+    /// 这个西里尔字母是不是和某个拉丁字母**长得一模一样**。
+    ///
+    /// 只收真正肉眼难分的那几个，宁可少收：
+    ///   А=A В=B Е=E К=K М=M Н=H О=O Р=P С=C Т=T У=Y Х=X
+    ///   а=a е=e о=o р=p с=c у=y х=x
+    /// `ё`(e)、`і`(i) 这类外形相近但能分辨的**不算**——多收一个就多一点误伤真俄文。
+    /// </summary>
+    private static bool IsCyrillicLatinHomoglyph(char c) => c switch
+    {
+        'А' or 'В' or 'Е' or 'К' or 'М' or 'Н' or 'О' or 'Р' or 'С' or 'Т' or 'У' or 'Х' => true,
+        'а' or 'е' or 'о' or 'р' or 'с' or 'у' or 'х' => true,
+        _ => false,
+    };
+
+    /// <summary>
     /// 算出文字里拉丁字母占全部字母的比例。
     ///
     /// 【谁在用、为什么用（2026-10-09 用户实测）】

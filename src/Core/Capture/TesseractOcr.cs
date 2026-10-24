@@ -101,6 +101,15 @@ internal sealed class TesseractOcr
     /// </summary>
     private const string PageSegModeUniformBlock = "6";
 
+    /// <summary>
+    /// **「这个词算认得准」的分数线**（0~100，Tesseract 逐词置信度）。
+    /// 2026-10-24 定 70：实战 -2 的基准（蓝通道 `- WISHLIST NOW ON STEAM`）
+    /// 里 `WISHLIST 91.83` `NOW 96.36` 都在这条线以上，用来判「这一版已经够信，
+    /// 不许被裁边兜底砍词」。取 60 会把 `STEAM 71.19` 之外的弱词也算进来，
+    /// 取 80 会把 `ON 49.67` 这种「内容对但引擎没把握」的词排除掉——70 两头都不误。
+    /// </summary>
+    private const float StrongDictWordConfidence = 70f;
+
     // ⚠️ 【thresholding_method 不能改成 Sauvola（2）——2026-10-13 实测证伪】
     //   V0.3.2.11 曾经在这里设过 thresholding_method = 2，想治 E6「末尾少读」。
     //   结果：E6 修好了（6/6），但**低对比度底色整片报废**——
@@ -198,6 +207,19 @@ internal sealed class TesseractOcr
     ///     **整句分数分不出来，词典命中率一眼分出来。**
     /// </param>
     /// <param name="TotalWordCount">这一版一共认出几个词（配合 DictWordCount 算命中率）。</param>
+    /// <param name="StrongDictWordCount">**词分 ≥70 且词典认得的**词有几个（配合判「这一版已经够信」）。</param>
+    /// <param name="RealWordCount">
+    ///   **真词**有几个：词分 ≥70、词典认得、**且至少含 2 个字母或数字**。
+    ///
+    ///   【和 StrongDictWordCount 差在哪】
+    ///     `|`（91.52）、`~`（78.26）、`3`（79.07）这些符号/单字分数也能很高，
+    ///     会把 StrongDictWordCount 撑起来。判「换不换掉一份两行结果」时不能算它们。
+    ///     2026-10-24 实测：`13.02-16`（373×106）基准 0.88 两行俱全
+    ///     （`WISHLIST 95.24 / NOW 96.16 / IN 76.33 / STEAM 85.53`），
+    ///     局部阈值只出第一行（`WISHLIST 95.04 / NOW 96.06`）却垫底分高 18.71，
+    ///     于是 `cleanWordsButFewerChars` 把两行换成一行的，第二行整行丢失。
+    ///     真词数 4 → 2 一眼看穿；换成 BATTLEBOARD 那些块则是 0 → 0，不受影响。
+    /// </param>
     public readonly record struct Result(
         string? Text,
         double Confidence,
@@ -205,7 +227,9 @@ internal sealed class TesseractOcr
         string? MinWordText = null,
         double SecondMinWordConfidence = 100.0,
         int DictWordCount = 0,
-        int TotalWordCount = 0);
+        int TotalWordCount = 0,
+        int StrongDictWordCount = 0,
+        int RealWordCount = 0);
 
     /// <summary>认一段图，返回文字和置信度；失败返回空结果（不抛异常）。</summary>
     public static Result TryRecognize(System.Drawing.Bitmap bitmap, string language)
@@ -275,7 +299,7 @@ internal sealed class TesseractOcr
             using var pix = Pix.LoadFromMemory(png);
             string text;
             double confidence;
-            (float Lowest, string? LowestWord, float SecondLowest, int DictCount, int TotalCount)? wordReport;
+            (float Lowest, string? LowestWord, float SecondLowest, int DictCount, int TotalCount, int StrongDictCount, int RealWordCount)? wordReport;
 
             // 【2026-10-12 修一个自己挖的坑：必须用大括号把 page 的范围关住】
             //   引擎是**一次只能处理一张图**的（Only one image can be processed at once）。
@@ -341,7 +365,9 @@ internal sealed class TesseractOcr
                     wordReport?.LowestWord,
                     wordReport?.SecondLowest ?? 100.0,
                     wordReport?.DictCount ?? 0,
-                    wordReport?.TotalCount ?? 0);
+                    wordReport?.TotalCount ?? 0,
+                    wordReport?.StrongDictCount ?? 0,
+                    wordReport?.RealWordCount ?? 0);
         }
         catch (Exception ex)
         {
@@ -553,6 +579,43 @@ internal sealed class TesseractOcr
                                    $"{ex.GetType().Name} {ex.Message}");
                 }
 
+                // ==========================================================
+                // 【2026-10-24 关掉版面噪声过滤器：textord_noise_rejrows / rejwords = 0】
+                //
+                //   【它是什么】
+                //     Tesseract 在「切版」阶段会先跑一个噪声过滤器，把「看起来像噪声」的
+                //     整行、整词**悄悄删掉**（直接不参与后面的识别，日志里什么都不说）。
+                //     这两个参数就是那个过滤器的开关，官方默认都是 1（开）。
+                //
+                //   【为什么要关】
+                //     官方 issue #4582（Tesseract 5.5.0，至今 open）实测：
+                //     5 行文字被这个过滤器**吃掉 3 行**，加上
+                //     `-c textord_noise_rejrows=0 -c textord_noise_rejwords=0`
+                //     之后全部找回来；丢的是 layout 阶段，跟模型本身无关。
+                //     issue #1339 / #538 也是同类：图稍微裁一点、某一行就整行不见了。
+                //
+                //   【对上了我们的哪个错例】
+                //     2026-10-24 那份 55 张实战图里，有 5 张是「一整行凭空消失」：
+                //       -16 / -23 / -25：只剩 `WISHLIST NOW`，第二行 ON STEAM 没了
+                //       -18：只剩 `NOW JIN STEAM`，第一行没了
+                //       -22：只剩 `JIN STEAM`
+                //     这 5 张的共同点就是「行被切掉」，正是这个过滤器最典型的症状。
+                //
+                //   【为什么敢关】
+                //     这两个开关只影响「要不要删」，不改变任何像素、不改模型、不改二值化；
+                //     关掉最坏的结果是「多留几行噪声」，而噪声后面还有置信度和词典两道闸。
+                // ==========================================================
+                try
+                {
+                    engine.SetVariable("textord_noise_rejrows", "0");
+                    engine.SetVariable("textord_noise_rejwords", "0");
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warn($"配置项 textord_noise_rejrows/rejwords 设置失败（模型 {language}）：" +
+                                   $"{ex.GetType().Name} {ex.Message}");
+                }
+
                 _engines[language] = engine;
                 AppLogger.Info($"Tesseract 引擎已就绪：模型 {language}，耗时 {Environment.TickCount64 - start} 毫秒");
                 return engine;
@@ -694,13 +757,15 @@ internal sealed class TesseractOcr
     ///   这一句里**分数最低的那个词**是哪个词、多少分、**次低**的多少分（0~100）；
     ///   一个词都没取到、或者中途出错，返回 null（调用方按「没发现问题」处理）。
     /// </returns>
-    private static (float Lowest, string? LowestWord, float SecondLowest, int DictCount, int TotalCount)? LogWordSelfReport(Page page, string language)
+    private static (float Lowest, string? LowestWord, float SecondLowest, int DictCount, int TotalCount, int StrongDictCount, int RealWordCount)? LogWordSelfReport(Page page, string language)
     {
         try
         {
             var report = new System.Text.StringBuilder();
             int count = 0;
             int dictCount = 0;
+            int strongDictCount = 0;
+            int realWordCount = 0;
             float lowest = 100f;
             float secondLowest = 100f;
             string? lowestWord = null;
@@ -726,6 +791,8 @@ internal sealed class TesseractOcr
                 }
 
                 if (inDict) dictCount++;
+                if (inDict && wordConf >= StrongDictWordConfidence) strongDictCount++;
+                if (inDict && wordConf >= StrongDictWordConfidence && HasTwoLetterOrDigit(word)) realWordCount++;
                 if (count > 0) report.Append(" ｜ ");
                 report.Append('【').Append(word.Trim())
                       .Append('】').Append(' ').Append(wordConf.ToString("F2"))
@@ -743,7 +810,7 @@ internal sealed class TesseractOcr
                 AppLogger.Info($"  词级自报（{language}）：**一个词都没取到**（这条诊断本身可能失效了）");
             }
 
-            return count > 0 ? (lowest, lowestWord, secondLowest, dictCount, count) : ((float, string?, float, int, int)?)null;
+            return count > 0 ? (lowest, lowestWord, secondLowest, dictCount, count, strongDictCount, realWordCount) : ((float, string?, float, int, int, int, int)?)null;
         }
         catch (Exception ex)
         {
@@ -773,4 +840,23 @@ internal sealed class TesseractOcr
     //   它是在原来那一趟遍历里顺手取最低分，**不多跑一次识别**，没有速度代价，
     //   而且「某个词分数 0.00 → 那次一定错」这条是用户实测出来的硬事实。
     // ==============================================================
+
+    /// <summary>
+    /// 这个词够不够格算「真词」：至少 2 个字母或数字。
+    ///
+    /// 【为什么加（2026-10-24）】
+    ///   `|`、`~`、`3`、`-` 这种符号在 Tesseract 里也能拿到 70+ 的分，
+    ///   单纯比 `StrongDictWordCount` 会被它们骗过去（BATTLEBOARD 那批就是）。
+    ///   判「要不要把两行结果换成一行的」时候，只有真词才算内容。
+    ///   `A`、`I` 这种单字母词不算——宁可少数，也不让符号撑起词数。
+    /// </summary>
+    private static bool HasTwoLetterOrDigit(string word)
+    {
+        int n = 0;
+        for (int i = 0; i < word.Length; i++)
+        {
+            if (char.IsLetterOrDigit(word[i])) n++;
+        }
+        return n >= 2;
+    }
 }

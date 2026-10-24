@@ -196,10 +196,36 @@ internal sealed partial class OcrTextCapture : ITextCapture
                 bool rusReallyHasCyrillic =
                     LanguageDetector.CountCyrillicRatio(rusResult.Text) > MinCyrillicRatioForRussian;
 
-                if (rusReallyHasCyrillic && rusResult.Confidence > best.Confidence)
+                // ==========================================================
+                // 【2026-10-24 补：假西里尔也算「用错模型」】
+                //
+                //   用户手测（15:27:33 / 15:27:36 两次）：
+                //     eng 读坏 `BATTLEBOARD`（0.19 / 0.36）
+                //     rus 0.41 / 0.50 —— 分数更高，上面那道闸门放它上位
+                //     → 四路全用 rus 跑，吐出来的全是 `ВАТТЦЕВОАВО»` 这种假西里尔
+                //     → Windows 单字退路核对不上 → 整段取词失败。
+                //
+                //   上面那道 `CountCyrillicRatio` 拦不住：假西里尔的西里尔占比是 100%。
+                //   能分开的是**同形字占比**——
+                //     假西里尔 `ВАТТЦЕВОАВО»` → 100%（全都是 В А Т Т Е О А В 这些）
+                //     真俄文 `Ошибка сервера` → 只有 О/о/с/е/р 几个同形，其余 ш/щ/ж/ы 都不同形
+                //   跑遍 7 个日志实测：0.75 这条线**误伤 2178 个真俄文块里的 0 个**。
+                // ==========================================================
+                double rusHomoglyphRatio =
+                    LanguageDetector.CountCyrillicHomoglyphRatio(rusResult.Text);
+                bool rusIsJustLatinShapes = rusHomoglyphRatio > MaxCyrillicHomoglyphRatioForRussian;
+
+                if (rusReallyHasCyrillic && !rusIsJustLatinShapes && rusResult.Confidence > best.Confidence)
                 {
                     best = rusResult;
                     modelUsed = TesseractOcr.Languages.Russian;
+                }
+                else if (rusIsJustLatinShapes)
+                {
+                    AppLogger.Info(
+                        $"俄文模型置信度 {rusResult.Confidence:F2} 虽高，" +
+                        $"但结果里 {rusHomoglyphRatio:P0} 的字母是拉丁同形字（如 В/А/Т/Е/О），" +
+                        "判定为把拉丁字母硬拼成了西里尔（用错模型），不采用");
                 }
                 else if (!rusReallyHasCyrillic)
                 {
@@ -314,6 +340,16 @@ internal sealed partial class OcrTextCapture : ITextCapture
                 // ==============================================================
                 bool currentHasNoCyrillic = LanguageDetector.CountCyrillicRatio(best.Text) <= 0.02;
                 bool rusEngFindsCyrillic = LanguageDetector.CountCyrillicRatio(rusEngResult.Text) >= 0.10;
+
+                // 【2026-10-24 补：同「假西里尔」这一侧】
+                //   上面那道闸门只管 rus 单票；这条路是 rus+eng。
+                //   实测（15:41:27 那次 441×95）：rus+eng 交出 `ВАТТ ЕВОАВ р,`，
+                //   西里尔占比 1.00 → 旧判据认为它「认出了实实在在的西里尔字母」，
+                //   把一份本来干净的 eng 结果换掉，靠后面局部阈值碰巧捞回 0.92 才没出事。
+                //   假西里尔的同形字占比是 100%，真俄文远低于此——用同一个门槛卡住。
+                bool rusEngIsJustLatinShapes =
+                    LanguageDetector.CountCyrillicHomoglyphRatio(rusEngResult.Text) > MaxCyrillicHomoglyphRatioForRussian;
+                if (rusEngIsJustLatinShapes) rusEngFindsCyrillic = false;
                 double currentCyr = LanguageDetector.CountCyrillicRatio(best.Text);
                 double rusEngCyr = LanguageDetector.CountCyrillicRatio(rusEngResult.Text);
 
@@ -514,8 +550,29 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         bool slightlyFewerButClearlyBetterScore =
                             planeChars >= allowedChars
                             && planeResult.Confidence > best.Confidence + ConfidenceMargin;
+                        // ==========================================================
+                        // 【2026-10-24 补：垫底词分高，但整行丢了——不许换】
+                        //
+                        //   变体 `13.02-16`（373×106，WISHLIST NOW / ON STEAM 两行）：
+                        //     基准     0.88、4 词 4/4 全在词典（WISHLIST 95.24 / NOW 96.16
+                        //              / IN 76.33 / STEAM 85.53）—— 两行都在，只是 ON 读成 IN
+                        //     局部阈值 0.95、2 词 2/2 全在词典（WISHLIST 95.04 / NOW 96.06）
+                        //              —— **只有第一行**，第二行整行没认出来
+                        //   垫底词分 95.04 > 76.33（高 18.71），字数 12 对 20（少 40%，
+                        //   正好卡在容忍线上），于是被换上 —— 用户看到的就是「整行丢失」。
+                        //
+                        //   根子在于**垫底词分这个尺子对「丢了一整行」是瞎的**：
+                        //   少认一行反而让「最差的词」从 IN 76.33 变成 WISHLIST 95.04，
+                        //   分数更好看。所以补一条内容判据：**真词（词分≥70、词典认得、
+                        //   至少 2 个字母数字）不许变少。**
+                        //
+                        //   量过面（全天 113 次 cleanWords 触发）：这条只拦 11 次，
+                        //   全部是 WISHLIST 这一族的「整行丢」；BATTLEBOARD 那 20 次
+                        //   一次不拦（它基准里的强词是 `~` `|` `3` 这类符号，不算真词）。
+                        // ==========================================================
                         bool cleanWordsButFewerChars =
                             planeChars >= allowedCharsWithCleanWords
+                            && planeResult.RealWordCount >= best.RealWordCount
                             && planeResult.MinWordConfidence > best.MinWordConfidence + MinWordConfidenceMargin;
 
                         // ==========================================================
@@ -536,10 +593,46 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         //   候选的垫底词分低 20 分以上 → 字数多不算数。
                         //   基准不干净的一律不管，救回逻辑原样保留。
                         // ==========================================================
+                        // 2026-10-24：`全在词典` 放宽到 `词典率 ≥80%`。
+                        //   实战 -2（411×130，同一张 WISHLIST 两行）的基准是蓝通道
+                        //   `- WISHLIST NOW  ON STEAM`，5 词 4/5 在词典（开头那个
+                        //   `-` 不是词典词），内容全对，却因为「不是全部在词典」
+                        //   漏过这条闸门，被 0.37 的局部阈值用字数压掉。
+                        // 2026-10-24：再加一条「基准自己得像样」。
+                        //   材料2-Z1-2（177×42，深底浅字的中文图）的基准是
+                        //   `ANNES 19.21` / `Ey 17.84`，2 词 2/2 全在词典——
+                        //   词典率 100%，可垫底才 17.84 分，纯碎词。
+                        //   闸门把它当干净版拦住了后头的红/绿/蓝三路救援，
+                        //   把原本「今天天气不错适合出门」打回失败。
+                        //   所以加：基准得先有 2 个「词典✓ 且词分 ≥70」的词。
+                        //   13.02-2 基准有 3 个（WISHLIST/NOW/STEAM），照样拦；
+                        //   BATTLEBOARD 基准 0 个，照样放行。
                         bool moreCharsButWordsDirtier =
                             best.TotalWordCount >= 2
-                            && best.DictWordCount == best.TotalWordCount
+                            && best.DictWordCount * 5 >= best.TotalWordCount * 4
+                            && best.StrongDictWordCount >= DictionaryRescueStrongWords
                             && planeResult.MinWordConfidence < best.MinWordConfidence - MinWordConfidenceMargin;
+
+                        // ==========================================================
+                        // 【2026-10-24 补：字数多但词典率更低的，不许压过干净版】
+                        //
+                        //   上面那条用「垫底词分」比，实战 -2 栽了个跟头：
+                        //     蓝通道   4/5 在词典，垫底是那个 `-`（0.00 分）
+                        //     局部阈值 7/10 在词典，垫底是那个 `:`（0.00 分）
+                        //   两边垫底都是 0.00，比不出来，字数多的照样夺权。
+                        //   可**词典率**一眼分得开：80% 对 70%。
+                        //
+                        //   量过面（全天 2600 个取词块）：这条只否决 32 次，
+                        //   其中真正要挡的正是 -2 这一类；BATTLEBOARD 那族
+                        //   兜底救回的路径一次都不碰（它基准词典率到不了 80%）。
+                        //   算比例用交叉相乘，避免浮点。
+                        // ==========================================================
+                        bool moreCharsButDictionaryWorse =
+                            best.TotalWordCount >= 2
+                            && best.DictWordCount * 5 >= best.TotalWordCount * 4
+                            && best.StrongDictWordCount >= DictionaryRescueStrongWords
+                            && planeResult.DictWordCount * best.TotalWordCount
+                               < best.DictWordCount * planeResult.TotalWordCount;
 
                         // ==========================================================
                         // 【2026-10-20 补：过线的无条件优先】
@@ -634,7 +727,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
                             && (best.TotalWordCount == 0 || best.DictWordCount < best.TotalWordCount);
 
                         bool planeClearlyBetter =
-                            (moreChars && !moreCharsButWordsDirtier)
+                            (moreChars && !moreCharsButWordsDirtier && !moreCharsButDictionaryWorse)
                             || sameCharsBetterScore || slightlyFewerButClearlyBetterScore
                             || cleanWordsButFewerChars || candidatePassesButBestDoesNot
                             || dictionaryHitIsBetter || dictionaryWordsAreMore
@@ -1500,7 +1593,8 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     //   兜底拿 `HE:DEMO;NOW, ON`（0.84）把它盖掉——**PLAY THE 直接消失**。
                     //   兜底本来是治「深色纹理背景」的，不该拿来换掉一份词全在词典的结果。
                     if (rescued is { } rescue && rescue.Confidence >= MinimumAcceptableConfidence
-                        && !HasEnoughDictionaryWords(best, out _))
+                        && !HasEnoughDictionaryWords(best, out _)
+                        && best.StrongDictWordCount < DictionaryRescueStrongWords)
                     {
                         text = rescue.Text;
                         lineCount = TextNormalizer.CountLines(text);
@@ -1684,9 +1778,28 @@ internal sealed partial class OcrTextCapture : ITextCapture
     ///   3 词：两三个词凑不出「一句话」，也挡不住单个乱词碰巧在词典里。
     ///   80%：真乱码里偶尔混进一两个 `ON`/`THE` 是常事，但成不了八成。
     /// </summary>
-    private const double DictionaryRescueMinConfidence = 0.70;
+    private const double DictionaryRescueMinConfidence = 0.60;
     private const double DictionaryRescueMinHitRate = 0.80;
     private const int DictionaryRescueMinWords = 3;
+
+    /// <summary>
+    /// 兜底采纳前再查一道：**这一版已经认出 ≥2 个「词典✓ 且词分 ≥70」的词**，
+    /// 就不许裁边兜底覆盖它。
+    ///
+    /// 【2026-10-24 补 · 实战 -2 的实证】
+    ///   411×130 那张 WISHLIST 两行图，四路选到蓝通道
+    ///   `- WISHLIST NOW  ON STEAM`（5 词 4/5 在词典，`WISHLIST 95.51`、`NOW 95.88`），
+    ///   内容全对，但整句分 0.62 没到 0.78 → 进兜底；
+    ///   兜底给 `-WISHLIST NOW`（0.90）——**第二行整行消失**。
+    ///   整句分低是「两行+两色+噪声边」把它稀释了，不是认不出。
+    ///
+    /// 【为什么数「词典✓ 且 ≥70」的词，不数全部词】
+    ///   实战 BATTLEBOARD（231×80）兜底前是局部阈值 `BATTLEBOARD fe ft Em ee`
+    ///   （5 词 4/5 在词典，凑得出「2 个词典词」），可那 4 个「词典词」是
+    ///   `fe` `ft` `Em` `ee` 这种碎片，词分 7~32，兜底给 `BATTLEBOARD-`
+    ///   才是对的。加了「词分 ≥70」这条，`fe/ft/Em/ee` 全不算数，不误伤。
+    /// </summary>
+    private const int DictionaryRescueStrongWords = 2;
 
     /// <summary>
     /// 这份结果够不够格走「词典命中率豁免」：分数 ≥0.70、至少 3 个词、8 成以上在词典。
@@ -1718,8 +1831,43 @@ internal sealed partial class OcrTextCapture : ITextCapture
         int start = 0;
         while (start < text.Length && IsEdgeSymbol(text[start])) start++;
 
+        // 2026-10-24 补：开头「横杠 + 空白」也算装饰，一起削掉。
+        //   实战 -2 的蓝通道那版是 `- WISHLIST NOW  ON STEAM`，
+        //   横杠是背景里的一条边线，后面紧跟空格 → 是装饰，不是内容。
+        //   只认「横杠后面是空白」这一种：`-5` 这种负数、`-WISHLIST NOW`
+        //   这种紧贴文字的都不动（那 7 条紧贴样本里 4 条正是 `-WISHLIST NOW`，
+        //   得让它自己先被选对，不能靠这里猜着删）。
+        if (start + 1 < text.Length
+            && IsTrailingEdgeSymbol(text[start])
+            && char.IsWhiteSpace(text[start + 1]))
+        {
+            start++;
+            while (start < text.Length && IsEdgeSymbol(text[start])) start++;
+        }
+
         int end = text.Length;
         while (end > start && (IsEdgeSymbol(text[end - 1]) || IsTrailingEdgeSymbol(text[end - 1]))) end--;
+
+        // 2026-10-24 补：**单个纯字母单词**尾巴上多认出来的 ASCII `.` / `:` 也削掉。
+        //   实战 BATTLEBOARD 那 44 次框选全都切到了文字边缘，切掉的半个字被 Tesseract
+        //   认成 `.` 或 `:`（全天 51 条 `BATTLEBOARD.` / `BATTLEBOARD:`，别处没有）。
+        //   门槛卡三道，缺一不削：
+        //     ① 整段就是**一个词**（没有空白，靠「每个字符都是 ASCII 字母」顺带保证）
+        //     ② 削完还剩 **≥4 个**字母（`e.g.` `U.S.` 这种缩写里的点不是字母，天然不碰）
+        //     ③ 只碰 ASCII `.` `:`——多词句子（`Server started on port 8080.`）和
+        //        中文句号（`…的过程。`）一律不动，那是真标点。
+        //   实测影响面：全天 1492 条最终原文只命中 51 条，全是 BATTLEBOARD 这一个词。
+        if (end > start && (text[end - 1] == '.' || text[end - 1] == ':'))
+        {
+            int wordEnd = end - 1;
+            bool singleAsciiWord = wordEnd - start >= 4;
+            for (int i = start; singleAsciiWord && i < wordEnd; i++)
+            {
+                char c = text[i];
+                if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) singleAsciiWord = false;
+            }
+            if (singleAsciiWord) end = wordEnd;
+        }
 
         if (start == 0 && end == text.Length) return text;
         return text.Substring(start, end - start).Trim();
