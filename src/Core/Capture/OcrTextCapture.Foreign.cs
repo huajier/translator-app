@@ -491,7 +491,14 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         //   字少太多的仍然否决（F5：19/55 → 19 < 33，照样挡住）。
                         // ==========================================================
                         const double CharDeficitToleranceWithCleanWords = 0.40;
-                        const double MinWordConfidenceMargin = 20.0;
+                        // 2026-10-24：20 → 10。实战 -5（`WISHLIST NOW / ON STEAM`，
+                        // 393×119）基准 0.80、垫底词分 36.17（`LON` 恰好在词典里），
+                        // 蓝通道 0.76、垫底词分 49.67（`ON` 才是对的）。
+                        // 差 13.5 分，够不到 20 的门槛，于是「整句分低 0.04」把
+                        // 内容全对的一版压掉了。门槛降到 10，这一版就换得回来。
+                        // 面已量：2600 个取词块里只多触发 5 次（2 次修好 -5，
+                        // 2 次是本来就对的段换了也无害，1 次无益）。
+                        const double MinWordConfidenceMargin = 10.0;
 
                         int allowedChars = bestChars <= 0
                             ? 0
