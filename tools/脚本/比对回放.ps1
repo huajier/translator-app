@@ -2,12 +2,20 @@
 # 用法：& ".\tools\脚本\比对回放.ps1" -Result "tools\临时\回放-结果.txt"
 #
 # 归一化、编辑距离、读答案的规则与 比对成绩.ps1 完全一致，保证两把尺子量出来一样。
+#
+# 【按行（S0，2026-10-26）】段级 = 整段一字不差；行级 = 这一行一字不差。用户真实用法是
+# 框一行或框一块面板，所以阶段三主指标换成行级（见 tools\阶段三-方案.md）。
+#   跑行级成绩：& ".\tools\脚本\比对回放.ps1" -按行 -Result "tools\语料\回放-结果.txt"
+#   验量具自检：& ".\tools\脚本\比对回放.ps1" -自检      ← 不过 = 尺子坏，停，不许改识别代码
 
 param(
     [string]$Result = 'tools\临时\回放-结果.txt',
     [switch]$All,
     [switch]$Approve,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$按行,
+    [switch]$自检,
+    [string]$行真值 = 'tools\语料\行真值.json'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,6 +52,211 @@ function EditDist([string]$a, [string]$b) {
         $t = $prev; $prev = $cur; $cur = $t
     }
     return $prev[$n]
+}
+
+# ---------- 行级量具（S0）----------
+# 回放结果把换行折成了 ⏎（ReplayRunner.cs:107），所以先按 ⏎ 拆行，再逐行用同一个 Norm()。
+# 不新建第二套归一化：段级和行级必须说同一种「算不算一样」。
+function Split-Lines([string]$raw) {
+    if ([string]::IsNullOrEmpty($raw)) { return @() }
+    $out = New-Object System.Collections.ArrayList
+    foreach ($p in ($raw -split ([string][char]0x23CE))) {
+        $t = Norm $p
+        if ($t -ne '') { [void]$out.Add($t) }
+    }
+    return @($out)
+}
+
+# 按行对齐：真值行序列 vs 实得行序列做行级编辑距离。
+# 为什么不能按位置硬比：少认一行时，后面每一行都会错位，报出来是「错 N-1 行」——
+# 那会把「漏了一行」谎报成「全崩了」，正是本项目量具骗人的老毛病。
+function Align-Lines([string[]]$want, [string[]]$got) {
+    $n = $want.Count; $m = $got.Count
+    $d = New-Object 'int[,]' ($n + 1), ($m + 1)
+    for ($i = 0; $i -le $n; $i++) { $d[$i, 0] = $i }
+    for ($j = 0; $j -le $m; $j++) { $d[0, $j] = $j }
+    for ($i = 1; $i -le $n; $i++) {
+        for ($j = 1; $j -le $m; $j++) {
+            $cost = if ($want[$i - 1] -eq $got[$j - 1]) { 0 } else { 1 }
+            # 二维数组下标里的算式必须加括号：$d[$i - 1, $j - 1] 会被当成「两个下标」各减 1。
+            $v = $d[($i - 1), ($j - 1)] + $cost
+            if (($d[($i - 1), $j] + 1) -lt $v) { $v = $d[($i - 1), $j] + 1 }
+            if (($d[$i, ($j - 1)] + 1) -lt $v) { $v = $d[$i, ($j - 1)] + 1 }
+            $d[$i, $j] = $v
+        }
+    }
+    $ops = New-Object System.Collections.ArrayList
+    $i = $n; $j = $m
+    while ($i -gt 0 -or $j -gt 0) {
+        if ($i -gt 0 -and $j -gt 0 -and $want[$i - 1] -eq $got[$j - 1] -and $d[$i, $j] -eq $d[($i - 1), ($j - 1)]) {
+            [void]$ops.Insert(0, [pscustomobject]@{ Kind = '对'; Want = $want[$i - 1]; Got = $got[$j - 1] }); $i--; $j--; continue
+        }
+        if ($i -gt 0 -and $j -gt 0 -and $d[$i, $j] -eq $d[($i - 1), ($j - 1)] + 1) {
+            [void]$ops.Insert(0, [pscustomobject]@{ Kind = '改'; Want = $want[$i - 1]; Got = $got[$j - 1] }); $i--; $j--; continue
+        }
+        if ($i -gt 0 -and $d[$i, $j] -eq $d[($i - 1), $j] + 1) {
+            [void]$ops.Insert(0, [pscustomobject]@{ Kind = '丢'; Want = $want[$i - 1]; Got = $null }); $i--; continue
+        }
+        [void]$ops.Insert(0, [pscustomobject]@{ Kind = '多'; Want = $null; Got = $got[$j - 1] }); $j--
+    }
+    return @($ops)
+}
+
+# 一张图一条真值记录：{ id, mode, lines[] }。返回总行数/对/错（错 = 改+丢+多）。
+# 缺测不算「0 行」：那会把没跑的图洗成满分，按整行丢计。
+function Get-LineReport($entries, [hashtable]$actualRaw) {
+    $rows = New-Object System.Collections.ArrayList
+    $missing = New-Object System.Collections.ArrayList
+    $modes = @{}
+    $total = 0; $ok = 0; $changed = 0; $lost = 0; $extra = 0
+
+    foreach ($e in $entries) {
+        $mode = if ($e.mode) { [string]$e.mode } else { '未标' }
+        if (-not $modes.ContainsKey($mode)) {
+            $modes[$mode] = [pscustomobject]@{ 总 = 0; 对 = 0; 改 = 0; 丢 = 0; 多 = 0 }
+        }
+        $st = $modes[$mode]
+        $want = @($e.lines | ForEach-Object { Norm ([string]$_) } | Where-Object { $_ -ne '' })
+        $total += $want.Count
+        $st.总 += $want.Count
+
+        if (-not $actualRaw.ContainsKey([string]$e.id)) {
+            [void]$missing.Add([string]$e.id)
+            $lost += $want.Count
+            $st.丢 += $want.Count
+            foreach ($w in $want) {
+                [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '丢'; Want = $w; Got = '<缺测>'; Dist = $w.Length })
+            }
+            continue
+        }
+
+        foreach ($op in (Align-Lines $want (Split-Lines $actualRaw[[string]$e.id]))) {
+            switch ($op.Kind) {
+                '对' { $ok++; $st.对++ }
+                '改' {
+                    $changed++; $st.改++
+                    [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '改'; Want = $op.Want; Got = $op.Got; Dist = (EditDist $op.Want $op.Got) })
+                }
+                '丢' {
+                    $lost++; $st.丢++
+                    [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '丢'; Want = $op.Want; Got = '<没认出来>'; Dist = $op.Want.Length })
+                }
+                '多' {
+                    $extra++; $st.多++
+                    [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '多'; Want = '<无此行>'; Got = $op.Got; Dist = $op.Got.Length })
+                }
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Total = $total; Ok = $ok; Changed = $changed; Lost = $lost; Extra = $extra
+        Bad = ($changed + $lost + $extra)
+        Rows = @($rows); Missing = @($missing); Modes = $modes
+    }
+}
+
+function Show-LineReport($r) {
+    $pct = if ($r.Total -gt 0) { 100.0 * $r.Ok / $r.Total } else { 0 }
+    Write-Host ""
+    Write-Host "=== 行级成绩（按行）===" -ForegroundColor Cyan
+    Write-Host ("  真值 {0} 行：对 {1} / 错 {2}（改 {3}、丢 {4}、多 {5}）→ 全量 {6:N1}%" -f `
+        $r.Total, $r.Ok, $r.Bad, $r.Changed, $r.Lost, $r.Extra, $pct) -ForegroundColor $(if ($r.Bad -eq 0) { 'Green' } else { 'Yellow' })
+
+    foreach ($mode in ($r.Modes.Keys | Sort-Object)) {
+        $st = $r.Modes[$mode]
+        $p = if ($st.总 -gt 0) { 100.0 * $st.对 / $st.总 } else { 0 }
+        $label = switch ($mode) { '单行' { 'L_行' } '整块' { 'L_整块' } default { $mode } }
+        Write-Host ("  {0}（{1}）：对 {2} / 错 {3}（改 {4}、丢 {5}、多 {6}）→ {0} {7:N1}%" -f `
+            $label, $mode, $st.对, ($st.改 + $st.丢 + $st.多), $st.改, $st.丢, $st.多, $p)
+    }
+
+    if ($r.Bad -gt 0) {
+        $sum = [double]$r.Bad
+        Write-Host ("  错法归类：改字 {0} 例（{1:N0}%）、整行丢 {2} 例（{3:N0}%）、多出行 {4} 例（{5:N0}%）" -f `
+            $r.Changed, (100 * $r.Changed / $sum), $r.Lost, (100 * $r.Lost / $sum), $r.Extra, (100 * $r.Extra / $sum)) -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  逐行明细：" -ForegroundColor Yellow
+        foreach ($row in $r.Rows) {
+            Write-Host ("    [{0}][{1}] {2}  差 {3}" -f $row.Id, $row.Mode, $row.Kind, $row.Dist) -ForegroundColor Yellow
+            Write-Host ("      答案：{0}" -f $row.Want)
+            Write-Host ("      实得：{0}" -f $row.Got)
+        }
+    }
+    if ($r.Missing.Count -gt 0) {
+        Write-Host ""
+        Write-Host ("  缺测（按整行丢计）：{0}" -f ($r.Missing -join '、')) -ForegroundColor Red
+    }
+    Write-Host ""
+}
+
+# 量具自检：注入「改 1 字 / 删 1 行 / 加 1 行」，必须各报 1 错；恢复后必须 0 错。
+# 这是 S0 的闸门：自检不过 = 尺子坏，停，不许改识别代码（方案第 4 节 S0）。
+function Invoke-LineSelfCheck {
+    Write-Host ""
+    Write-Host "=== 行级量具自检（S0）===" -ForegroundColor Cyan
+    $fixture = @(
+        [pscustomobject]@{ id = '自检-单行-1'; mode = '单行'; lines = @('STRE', 'ATTRIBUTES') },
+        [pscustomobject]@{ id = '自检-整块-1'; mode = '整块'; lines = @('Name: Barony', 'Level 3', 'HP 20/20') }
+    )
+    $base = @{
+        '自检-单行-1' = 'STRE⏎ATTRIBUTES'
+        '自检-整块-1' = 'Name: Barony⏎Level 3⏎HP 20/20'
+    }
+    $cases = @(
+        [pscustomobject]@{ Name = '基准（无注入）'; Expect = 0; Kind = ''; Map = $base },
+        [pscustomobject]@{ Name = '改 1 字（Level 3 → Level 8）'; Expect = 1; Kind = '改'; Map = @{
+                '自检-单行-1' = 'STRE⏎ATTRIBUTES'
+                '自检-整块-1' = 'Name: Barony⏎Level 8⏎HP 20/20'
+            } },
+        [pscustomobject]@{ Name = '删 1 行（删掉 ATTRIBUTES）'; Expect = 1; Kind = '丢'; Map = @{
+                '自检-单行-1' = 'STRE'
+                '自检-整块-1' = 'Name: Barony⏎Level 3⏎HP 20/20'
+            } },
+        [pscustomobject]@{ Name = '加 1 行（多出 EXTRA LINE）'; Expect = 1; Kind = '多'; Map = @{
+                '自检-单行-1' = 'STRE⏎ATTRIBUTES'
+                '自检-整块-1' = 'Name: Barony⏎Level 3⏎EXTRA LINE⏎HP 20/20'
+            } },
+        [pscustomobject]@{ Name = '恢复（改回原样）'; Expect = 0; Kind = ''; Map = $base }
+    )
+
+    $fail = 0
+    $n = 0
+    foreach ($c in $cases) {
+        $n++
+        $r = Get-LineReport $fixture $c.Map
+        $badOk = ($r.Bad -eq $c.Expect)
+        $kindOk = $true
+        if ($c.Kind -ne '') {
+            $kindCount = switch ($c.Kind) { '改' { $r.Changed } '丢' { $r.Lost } '多' { $r.Extra } }
+            $kindOk = ($kindCount -eq 1)
+        }
+        $totalOk = ($r.Total -eq 5)
+        if ($badOk -and $kindOk -and $totalOk) {
+            Write-Host ("  [{0}] {1}：真值 {2} 行、错 {3}（改 {4}/丢 {5}/多 {6}）→ PASS" -f `
+                $n, $c.Name, $r.Total, $r.Bad, $r.Changed, $r.Lost, $r.Extra) -ForegroundColor Green
+        } else {
+            $fail++
+            Write-Host ("  [{0}] {1}：真值 {2} 行、错 {3}（改 {4}/丢 {5}/多 {6}）→ FAIL（期望错 {7}）" -f `
+                $n, $c.Name, $r.Total, $r.Bad, $r.Changed, $r.Lost, $r.Extra, $c.Expect) -ForegroundColor Red
+        }
+    }
+
+    Write-Host ""
+    if ($fail -eq 0) {
+        Write-Host ("  自检 {0}/{0} PASS：行级尺子能用" -f $n) -ForegroundColor Green
+        Write-Host ""
+        return $true
+    }
+    Write-Host ("  自检 {0}/{1} PASS —— 量具坏，停，不许改识别代码" -f ($n - $fail), $n) -ForegroundColor Red
+    Write-Host ""
+    return $false
+}
+
+# 自检只用量具本身，不依赖语料/答案文件 —— 放在最前面，语料还没造也能验尺子。
+if ($自检) {
+    if (-not (Invoke-LineSelfCheck)) { exit 1 }
+    return
 }
 
 # ---------- 读标准答案 ----------
@@ -86,8 +299,50 @@ if (Test-Path $corpusManifest) {
 }
 
 $actual = @{}
+$actualRaw = @{}
 foreach ($l in [System.IO.File]::ReadAllLines($resultPath, [System.Text.Encoding]::UTF8)) {
-    if ($l -match '^([^|]+)\|(.*)$') { $actual[$Matches[1]] = Norm $Matches[2] }
+    if ($l -match '^([^|]+)\|(.*)$') {
+        $actualRaw[$Matches[1]] = $Matches[2]
+        $actual[$Matches[1]] = Norm $Matches[2]
+    }
+}
+
+# ---------- 按行判分（-按行）----------
+# 真值文件：tools\语料\行真值.json，每张图一条 { file, mode, lines[], 游戏, 档, 极性 }。
+# 图用「回放清单（id|路径）」对到结果上的 id —— 真值按图存，不跟回放命名绑死。
+if ($按行) {
+    $truthPath = if ([IO.Path]::IsPathRooted($行真值)) { $行真值 } else { Join-Path $root $行真值 }
+    if (-not (Test-Path $truthPath)) { throw "找不到行真值：$truthPath（S1 才会填）" }
+    $truthDoc = [System.IO.File]::ReadAllText($truthPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+    if (@($truthDoc.images).Count -eq 0) {
+        Write-Host ("  行真值还是空的（S1 才填）：{0}" -f $truthPath) -ForegroundColor Yellow
+        Write-Host ""
+        return
+    }
+
+    $corpus = Join-Path $root 'tools\语料'
+    $pathToId = @{}
+    $listPath = Join-Path $corpus '回放-清单.txt'
+    if (Test-Path $listPath) {
+        foreach ($l in [System.IO.File]::ReadAllLines($listPath, [System.Text.Encoding]::UTF8)) {
+            if ($l -match '^([^|]+)\|(.*)$') {
+                $pathToId[([IO.Path]::GetFullPath($Matches[2].Trim())).ToLowerInvariant()] = $Matches[1].Trim()
+            }
+        }
+    }
+
+    $entries = foreach ($e in @($truthDoc.images)) {
+        $id = [string]$e.id
+        if (-not $id) {
+            $full = [IO.Path]::GetFullPath((Join-Path $corpus ([string]$e.file)))
+            $key = $full.ToLowerInvariant()
+            $id = if ($pathToId.ContainsKey($key)) { $pathToId[$key] } else { "未入清单:$($e.file)" }
+        }
+        [pscustomobject]@{ id = $id; mode = [string]$e.mode; lines = @($e.lines) }
+    }
+
+    Show-LineReport (Get-LineReport @($entries) $actualRaw)
+    return
 }
 
 # ---------- 比对 ----------
