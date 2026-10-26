@@ -15,7 +15,7 @@ param(
     [switch]$Force,
     [switch]$按行,
     [switch]$自检,
-    [string]$行真值 = 'tools\语料\行真值.json'
+    [string]$行真值 = 'tools\素材\行真值.json'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -308,7 +308,7 @@ foreach ($l in [System.IO.File]::ReadAllLines($resultPath, [System.Text.Encoding
 }
 
 # ---------- 按行判分（-按行）----------
-# 真值文件：tools\语料\行真值.json，每张图一条 { file, mode, lines[], 游戏, 档, 极性 }。
+# 真值文件：tools\素材\行真值.json，每张图一条 { file, mode, lines[], 游戏, 档, 极性 }。
 # 图用「回放清单（id|路径）」对到结果上的 id —— 真值按图存，不跟回放命名绑死。
 if ($按行) {
     $truthPath = if ([IO.Path]::IsPathRooted($行真值)) { $行真值 } else { Join-Path $root $行真值 }
