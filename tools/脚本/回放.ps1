@@ -19,7 +19,8 @@ param(
     [string]$Exe = '',
     [string]$Result = 'tools\语料\回放-结果.txt',
     [string]$List = 'tools\语料\回放-清单.txt',
-    [switch]$Approve
+    [switch]$Approve,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -89,5 +90,5 @@ if (-not (Test-Path $resultPath)) { throw "没有生成回放结果：$resultPat
 #   那时 $LASTEXITCODE 还留着上一条外部命令的值（调用方可能刚跑过 dotnet），
 #   不先清零就会把不相干的旧退出码当成本次结果。
 $LASTEXITCODE = 0
-& (Join-Path $PSScriptRoot '比对回放.ps1') -Result $resultPath -Approve:$Approve
+& (Join-Path $PSScriptRoot '比对回放.ps1') -Result $resultPath -Approve:$Approve -Force:$Force
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
