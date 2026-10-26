@@ -6,7 +6,8 @@
 param(
     [string]$Result = 'tools\临时\回放-结果.txt',
     [switch]$All,
-    [switch]$Approve
+    [switch]$Approve,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -188,6 +189,30 @@ if ($Approve) {
         Write-Host ""
         return
     }
+
+    # ---------- 写基线前的闸门：有退步就不许写 ----------
+    # 为什么要有这一关：-Approve 是整个流程里唯一会「写标准」的操作。
+    # 这轮要是跑得比上次差，按下去就等于把退步洗白成「本来就这样」，从此再也不报警。
+    # 这一关不许靠人记得查 —— 让工具自己拒绝。逃生门是 -Force（明知会掉几段也要接受时用）。
+    if (Test-Path $baselinePath) {
+        $oldBase = Get-Content $baselinePath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $oldOk = @{}
+        foreach ($p in $oldBase.段.PSObject.Properties) { $oldOk[$p.Name] = [bool]$p.Value }
+        $wouldRegress = @(
+            $nowOk.Keys | Where-Object { $oldOk.ContainsKey($_) -and $oldOk[$_] -and -not $nowOk[$_] } | Sort-Object
+        )
+        if ($wouldRegress.Count -gt 0 -and -not $Force) {
+            Write-Host ("  拒绝写新基线：这轮比旧基线退步 {0} 段（{1}）。" -f $wouldRegress.Count, ($wouldRegress -join '、')) -ForegroundColor Red
+            Write-Host "  退步不该被写成标准。先修好再 -Approve；确实要接受这个退步，加 -Force。" -ForegroundColor Red
+            Write-Host ("  基线文件没有改动：{0}" -f $baselinePath) -ForegroundColor DarkGray
+            Write-Host ""
+            exit 1
+        }
+        if ($wouldRegress.Count -gt 0 -and $Force) {
+            Write-Host ("  ⚠️ -Force：明知这轮比旧基线退步 {0} 段（{1}），照样写。" -f $wouldRegress.Count, ($wouldRegress -join '、')) -ForegroundColor Yellow
+        }
+    }
+
     $obj = [ordered]@{
         时间 = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
         结果 = $Result
