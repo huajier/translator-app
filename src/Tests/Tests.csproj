@@ -37,6 +37,15 @@
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <!-- Core 里 OcrExperiment 的锐化算法用了指针，编同一批源码必须放开。 -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!--
+      默认不跑回放回归。
+        Trait("Category","回放") 只是标签，xUnit 不会自动排除它；
+        不写这一行，普通 dotnet test 会把 280 秒的真机回放一起跑掉。
+        这里给 VSTest 一个默认过滤器，命令行的 filter 参数会覆盖它：
+          dotnet test                       只跑纯函数测试（毫秒级）
+          加 Category=回放 参数               只跑图库回放
+    -->
+    <VSTestTestCaseFilter>Category!=回放</VSTestTestCaseFilter>
   </PropertyGroup>
 
   <ItemGroup>
