@@ -241,3 +241,8 @@ if ($newSeg.Count -gt 0) {
     Write-Host ("  🆕 基线里没有的新段 {0} 段：{1}" -f $newSeg.Count, ($newSeg -join '、')) -ForegroundColor DarkGray
 }
 Write-Host ""
+
+# 有退步就以非 0 退出，让自动化（dotnet test / CI）能感知。
+# 注意：没有基线、以及 -Approve 建基线这两种情况前面已经 return，走不到这里 —— 它们不算退步。
+# 「❌ 错得更厉害」只是比上一轮更糟，段本身可能两轮都是错的，不算退步，不在这里退出。
+if ($regressed.Count -gt 0) { exit 1 }

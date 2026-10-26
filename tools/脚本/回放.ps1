@@ -82,4 +82,12 @@ Write-Host ("程序跑完，用时 {0:N1} 秒" -f $sw.Elapsed.TotalSeconds) -For
 
 if (-not (Test-Path $resultPath)) { throw "没有生成回放结果：$resultPath（程序可能没构建 --回放 模式）" }
 
+# 调比对脚本并带出退出码。比对脚本里「有退步」会 exit 1。
+#
+# 【为什么要先 $LASTEXITCODE = 0】$LASTEXITCODE 只在「外部程序退出」或「被调脚本里 exit」时被设置。
+#   「没有基线」「-Approve 建基线」这两条路上，比对脚本是 return、不会设置它，
+#   那时 $LASTEXITCODE 还留着上一条外部命令的值（调用方可能刚跑过 dotnet），
+#   不先清零就会把不相干的旧退出码当成本次结果。
+$LASTEXITCODE = 0
 & (Join-Path $PSScriptRoot '比对回放.ps1') -Result $resultPath -Approve:$Approve
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
