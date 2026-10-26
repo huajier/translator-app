@@ -1,0 +1,148 @@
+﻿# 阶段三 S0 量具自检记录（2026-10-26 16:12:30）
+# 量具：tools\脚本\比对回放.ps1 -按行 / -自检 ；真值：tools\语料\行真值.json
+
+## 1) 行级自检：改1字/删1行/加1行 各须报 1 错，恢复须 0 错
+
+=== 行级量具自检（S0）===
+  [1] 基准（无注入）：真值 5 行、错 0（改 0/丢 0/多 0）→ PASS
+  [2] 改 1 字（Level 3 → Level 8）：真值 5 行、错 1（改 1/丢 0/多 0）→ PASS
+  [3] 删 1 行（删掉 ATTRIBUTES）：真值 5 行、错 1（改 0/丢 1/多 0）→ PASS
+  [4] 加 1 行（多出 EXTRA LINE）：真值 5 行、错 1（改 0/丢 0/多 1）→ PASS
+  [5] 恢复（改回原样）：真值 5 行、错 0（改 0/丢 0/多 0）→ PASS
+
+  自检 5/5 PASS：行级尺子能用
+
+## 2) 旧尺子（段级）不许被改坏：同一份回放结果，段级判分照旧（额外图明细已省略）
+
+=== 图库回放成绩 ===
+  应测 56 段，判对 56 段，判错 0 段，缺 0 段
+  实战图 55 张：对 35，错 20，缺 0
+    [实战-2026.10.22-16.06-6] 差 11 字符
+      答案：BATTLEBOARD
+      实得：
+    [实战-2026.10.23-13.02-7] 差 4 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：Wis HLIST NOW | ON STEAL
+    [实战-2026.10.23-13.02-9] 差 7 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW д " ГУМ STEAM
+    [实战-2026.10.23-13.02-10] 差 5 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW "AWN STL AM
+    [实战-2026.10.23-13.02-13] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW DN STEAM
+    [实战-2026.10.23-13.02-14] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW DN STEAM
+    [实战-2026.10.23-13.02-15] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW DON STEAM
+    [实战-2026.10.23-13.02-16] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW IN STEAM
+    [实战-2026.10.23-13.02-17] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW (ON STEAM
+    [实战-2026.10.23-13.02-18] 差 11 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：NOW JIN STEAM
+    [实战-2026.10.23-13.02-19] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW DON STEAM
+    [实战-2026.10.23-13.02-20] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW IN STEAM
+    [实战-2026.10.23-13.02-21] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW (ON STEAM
+    [实战-2026.10.23-13.02-22] 差 13 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：JIN STEAM
+    [实战-2026.10.23-13.02-23] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW DN STEAM
+    [实战-2026.10.23-13.02-24] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW OM STEAM
+    [实战-2026.10.23-13.02-25] 差 9 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW
+    [实战-2026.10.23-13.02-26] 差 4 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW Ad STE AMS
+    [实战-2026.10.23-13.02-29] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW DN STEAM
+    [实战-2026.10.23-13.02-30] 差 1 字符
+      答案：WISHLIST NOW ON STEAM
+      实得：WISHLIST NOW OM STEAM
+
+  额外图（不计入成绩，供参考）：
+age to another by means of a computer program without the need of a human translator. Modern systems rely on large neur
+al networks that were trained on millions of parallel sentences collected from the internet.
+age to another by means of a computer program without the need of a human translator. Modern systems rely on large neur
+al networks that were trained on millions of parallel sentences collected from the internet.
+age to another by means of a computer program without the need of a human translator. Modern systems rely on large neur
+al networks that were trained on millions of parallel sentences collected from the internet.
+0% off)
+0% off)
+0% off)
+0% off)
+ter recognition usually struggles the most.
+ter recognition usually struggles the most.
+ter recognition usually struggles the most.
+ на другой с помощью компьютерной программы.
+ на другой с помощью компьютерной программы.
+ на другой с помощью компьютерной программы.
+ на другой с помощью компьютерной программы.
+age to another.
+age to another.
+age to another.
+age to another.
+ecognition engine.
+ecognition engine.
+ecognition engine.
+ecognition engine.
+ на другой.
+ на другой.
+ на другой.
+ на другой.
+uments and screenshots automatically.
+uments and screenshots automatically.
+uments and screenshots automatically.
+uments and screenshots automatically.
+=== 与基线对比（基线 2026-10-26 13:04:42）===
+  ✅ 没有退步：基线里对的段，这轮还都对
+  ⚪ 一直错 20 段：实战-2026.10.22-16.06-6、实战-2026.10.23-13.02-10、实战-2026.10.23-13.02-13、实战-2026.10.23-13.02-14、实战-2026.10.23-1
+3.02-15、实战-2026.10.23-13.02-16、实战-2026.10.23-13.02-17、实战-2026.10.23-13.02-18、实战-2026.10.23-13.02-19、实战-2026.10.23-13.02
+-20、实战-2026.10.23-13.02-21、实战-2026.10.23-13.02-22、实战-2026.10.23-13.02-23、实战-2026.10.23-13.02-24、实战-2026.10.23-13.02-25、
+实战-2026.10.23-13.02-26、实战-2026.10.23-13.02-29、实战-2026.10.23-13.02-30、实战-2026.10.23-13.02-7、实战-2026.10.23-13.02-9
+
+## 3) 行真值为空时的提示（S1 才填）
+  行真值还是空的（S1 才填）：D:\111Desktop\deepseek\翻译软件\tools\语料\行真值.json
+
+## 4) 真变异验证：把拆行标记从 ⏎ 改成逗号，自检必须变红（证明不是假绿）
+
+=== 行级量具自检（S0）===
+  [1] 基准（无注入）：真值 5 行、错 5（改 2/丢 3/多 0）→ FAIL（期望错 0）
+  [2] 改 1 字（Level 3 → Level 8）：真值 5 行、错 5（改 2/丢 3/多 0）→ FAIL（期望错 1）
+  [3] 删 1 行（删掉 ATTRIBUTES）：真值 5 行、错 4（改 1/丢 3/多 0）→ FAIL（期望错 1）
+  [4] 加 1 行（多出 EXTRA LINE）：真值 5 行、错 5（改 2/丢 3/多 0）→ FAIL（期望错 1）
+  [5] 恢复（改回原样）：真值 5 行、错 5（改 2/丢 3/多 0）→ FAIL（期望错 0）
+
+  自检 0/5 PASS —— 量具坏，停，不许改识别代码
+
+exit=1
+
+## 5) 真值按图路径对到回放 id 的冒烟（S1 要用这条）：第 2 行故意写成 BATTLEBOARD- 应判 1 错
+
+=== 行级成绩（按行）===
+  真值 2 行：对 1 / 错 1（改 1、丢 0、多 0）→ 全量 50.0%
+  L_行（单行）：对 1 / 错 1（改 1、丢 0、多 0）→ L_行 50.0%
+  错法归类：改字 1 例（100%）、整行丢 0 例（0%）、多出行 0 例（0%）
+
+  逐行明细：
+    [实战-2026.10.22-16.06-2][单行] 改  差 1
+      答案：BATTLEBOARD-
+      实得：BATTLEBOARD
