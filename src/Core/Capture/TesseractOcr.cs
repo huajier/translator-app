@@ -579,42 +579,25 @@ internal sealed class TesseractOcr
                                    $"{ex.GetType().Name} {ex.Message}");
                 }
 
-                // ==========================================================
-                // 【2026-10-24 关掉版面噪声过滤器：textord_noise_rejrows / rejwords = 0】
+                // 【2026-10-26 撤掉了 textord_noise_rejrows / rejwords = 0】
                 //
-                //   【它是什么】
-                //     Tesseract 在「切版」阶段会先跑一个噪声过滤器，把「看起来像噪声」的
-                //     整行、整词**悄悄删掉**（直接不参与后面的识别，日志里什么都不说）。
-                //     这两个参数就是那个过滤器的开关，官方默认都是 1（开）。
+                //   2026-10-24 曾照着官方 issue #4582 把这两个版面噪声过滤器关掉，
+                //   想救「一整行凭空消失」的 5 张实战图（-16 / -23 / -25 / -18 / -22）。
                 //
-                //   【为什么要关】
-                //     官方 issue #4582（Tesseract 5.5.0，至今 open）实测：
-                //     5 行文字被这个过滤器**吃掉 3 行**，加上
-                //     `-c textord_noise_rejrows=0 -c textord_noise_rejwords=0`
-                //     之后全部找回来；丢的是 layout 阶段，跟模型本身无关。
-                //     issue #1339 / #538 也是同类：图稍微裁一点、某一行就整行不见了。
+                //   实测：331 张全量回放，20 个错题的差值逐个与关闭前**完全相同**，
+                //   一行都没救回来。查了源码，原因也清楚了——
+                //     src/textord/textord.cpp:248  cleanup_blocks(PSM_WORD_FIND_ENABLED(...))
+                //     src/textord/tordmain.cpp:406 cleanup_blocks(bool clean_noise, ...)
+                //     src/textord/tordmain.cpp:463 clean_noise_from_row(...)
+                //   这两个开关确实在跑（psm=6 落在区间内），但它的判据是
+                //   「小斑点数量占比」，管不着我们这种「整行被认成垃圾」。
                 //
-                //   【对上了我们的哪个错例】
-                //     2026-10-24 那份 55 张实战图里，有 5 张是「一整行凭空消失」：
-                //       -16 / -23 / -25：只剩 `WISHLIST NOW`，第二行 ON STEAM 没了
-                //       -18：只剩 `NOW JIN STEAM`，第一行没了
-                //       -22：只剩 `JIN STEAM`
-                //     这 5 张的共同点就是「行被切掉」，正是这个过滤器最典型的症状。
+                //   我们的「整行丢」真凶在自己代码里：`cleanWordsButFewerChars`
+                //   拿垫底词分当尺子，少认一行反而让最差的词从 76.33 涨到 95.04，
+                //   于是把「两行 0.88」换成了「一行 0.95」——那条已用
+                //   `planeResult.RealWordCount >= best.RealWordCount` 补上。
                 //
-                //   【为什么敢关】
-                //     这两个开关只影响「要不要删」，不改变任何像素、不改模型、不改二值化；
-                //     关掉最坏的结果是「多留几行噪声」，而噪声后面还有置信度和词典两道闸。
-                // ==========================================================
-                try
-                {
-                    engine.SetVariable("textord_noise_rejrows", "0");
-                    engine.SetVariable("textord_noise_rejwords", "0");
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.Warn($"配置项 textord_noise_rejrows/rejwords 设置失败（模型 {language}）：" +
-                                   $"{ex.GetType().Name} {ex.Message}");
-                }
+                //   结论：这两行没用，撤掉，别再留着误导下一个看代码的人。
 
                 _engines[language] = engine;
                 AppLogger.Info($"Tesseract 引擎已就绪：模型 {language}，耗时 {Environment.TickCount64 - start} 毫秒");
