@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tests.csproj —— Core 的单元测试（2026-10-26 建）
+
+    【为什么用通配符把 Core 编进来，而不是 ProjectReference】
+      src\Core\ 和 src\UI\ 不是独立项目、没有自己的 .csproj，
+      它们是被 src\TranslatorApp\TranslatorApp.csproj 用
+        <Compile Include="..\Core\**\*.cs" LinkBase="Core" />
+      吞进同一个 exe 的（阶段 10 才会拆）。
+      所以这里用同样的通配符把同一批源码编进测试程序集 ——
+      拆类库是大改，本轮不碰。
+
+    【附带好处】
+      Core 里的类型大多是 internal（例如 LanguageDetector）。
+      同一程序集内编进来就能直接测，不需要 InternalsVisibleTo。
+
+    【为什么必须开 WPF + WinForms】
+      Core 用了 System.Drawing（Bitmap）和 System.Windows.Forms（Screen 等），
+      这两个都需要 UseWindowsForms；UI 侧的 WPF 类型同理。
+
+    【只编 Core，不编 UI】
+      UI 依赖 XAML 与真实屏幕，本轮不测。
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!--
+      和 TranslatorApp 保持一致：UseWindowsForms 打开时 WinForms 分析器会报 WFO0003
+      （要求别用 manifest 声明 DPI）。测试项目没有 manifest，这条对本项目无意义，直接静音。
+    -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+    <!-- Core 里 OcrExperiment 的锐化算法用了指针，编同一批源码必须放开。 -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Core\**\*.cs" LinkBase="Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core\Capture\TesseractOcr.cs 等直接 using Tesseract，版本必须和主工程一致。 -->
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
