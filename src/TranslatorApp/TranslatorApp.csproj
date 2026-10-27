@@ -135,6 +135,13 @@
   -->
   <ItemGroup>
     <PackageReference Include="Tesseract" Version="5.2.0" />
+    <!--
+      2026-10-27 阶段三 S3：外文主通道换成 RapidOCR（PP-OCRv5 + ONNX Runtime）。
+      选型对照与体积/耗时实测见 tools\日志\阶段3-S3-第三引擎选型.md。
+      包自带 models\v5\（det + cls + latin rec + 字典），构建时由包的 .targets 拷到 exe 旁边。
+      旧引擎（Windows OCR / Tesseract）**没有删**，settings.json 里 rapidOcrPrimary=false 即可整条退回。
+    -->
+    <PackageReference Include="RapidOcrNet" Version="4.2.0" />
   </ItemGroup>
 
   <!--

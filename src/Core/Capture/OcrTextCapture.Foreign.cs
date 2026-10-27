@@ -19,6 +19,48 @@ internal sealed partial class OcrTextCapture : ITextCapture
         string channelUsed, string scoreNote, bool rejectedAsGarbage,
         bool windowsSaysChinese, int windowsCharsForCompare, int windowsScoreForCompare)
     {
+        // ==========================================================
+        // 【2026-10-27 阶段三 S3：新引擎主通道（RapidOCR / PP-OCRv5）】
+        //
+        //   位置：**外文那条路的最前面**，Tesseract 多路之前。
+        //   为什么在这儿：
+        //     · 中文走的是 RunChinesePath，根本进不来这里，**中文一个字没动**；
+        //     · 拿的是 `raw` 原图（新引擎自带 DBNet 检测 + 二值化），
+        //       旧通道的 UpscaleForForeign / 五路二值化照旧只服务旧通道，
+        //       **旧预处理参数一个没改**；
+        //     · 认到了就直接返回，不再花时间跑 eng/rus/第二票/四路/红通道。
+        //
+        //   什么时候回退：没认出字、或平均分不到 RapidOcrMinScore（Tuning 里），
+        //   或者用户在 settings.json 里把 rapidOcrPrimary 关了 —— 三种情况都走下面老路。
+        //   回退时**旧代码一行没少**，行为与 V0.3.4.3 完全一致。
+        // ==========================================================
+        if (AppSettings.RapidOcrPrimary)
+        {
+            string? rapidText = RapidOcrEngine.TryRecognize(raw, out double rapidScore, out string rapidNote);
+
+            if (rapidText is not null && rapidScore >= RapidOcrMinScore)
+            {
+                string trimmed = TrimEdgeSymbols(rapidText);
+                if (trimmed.Length > 0) rapidText = trimmed;
+
+                AppLogger.Info(
+                    $"【RapidOCR 主通道】认到 {TextNormalizer.CountMeaningfulChars(rapidText)} 个有效字符，" +
+                    $"平均分 {rapidScore:F2}，不再跑 Tesseract 多路");
+
+                return new ForeignOutcome(
+                    rapidText,
+                    TextNormalizer.CountLines(rapidText),
+                    "RapidOCR",
+                    $"RapidOCR 平均分 {rapidScore:F2}",
+                    false);
+            }
+
+            AppLogger.Info(
+                $"【RapidOCR 主通道】没拿到可用结果（{rapidNote}" +
+                (rapidText is null ? "）" : $"，平均分 {rapidScore:F2} 低于 {RapidOcrMinScore:F2}）") +
+                "，回退旧通道");
+        }
+
         TesseractOcr.EnsureInitialized();
 
         if (TesseractOcr.IsAvailable)

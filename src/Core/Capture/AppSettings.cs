@@ -44,6 +44,26 @@ internal static class AppSettings
     /// </summary>
     public static bool WindowsOnly { get; private set; } = false;
 
+    /// <summary>
+    /// 外文主通道是否用 RapidOCR（PP-OCRv5）。**默认 false（已按止损回退）**。
+    ///
+    /// 【2026-10-27 阶段三 S3：为什么最后是 false，而不是原计划的 true】
+    ///   集成后按用户 m01422 第 4 条跑 121 行全量 A/B，结果触发了止损线：
+    ///     L_行 50.7% → 58.0%（+7.3pp，但门槛是 +8pp = 58.7%，差 0.7pp）
+    ///     Barony 17.6% → 14.7%（-2.9pp，超过「单游戏掉 2pp」红线）
+    ///   所以按同一条规则「回退，保留开关，不硬上」：代码全留，默认关。
+    ///   完整数据见 tools\日志\阶段3-S3-集成AB.md。
+    ///
+    /// 【什么时候值得再打开】
+    ///   只有当形近字问题有解（专属识别器 / 后处理词典）之后再来跑同一批 121 行，
+    ///   过线了才改回 true。现在打开它等于让成绩从 50.7% 变成 58.0% 却把
+    ///   Barony 这个最难的像素字体样本拖得更差。
+    ///
+    /// 打开方式：settings.json 里写 `"rapidOcrPrimary": true`，不用重新发版。
+    /// 旧通道（Windows OCR / Tesseract 多路）一个字没删，关掉就是 V0.3.4.3 的老行为。
+    /// </summary>
+    public static bool RapidOcrPrimary { get; private set; } = false;
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -70,15 +90,30 @@ internal static class AppSettings
 
                 using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(ConfigPath));
 
+                bool any = false;
+
                 if (doc.RootElement.TryGetProperty("windowsOnly", out var v)
                     && v.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
                 {
                     WindowsOnly = v.GetBoolean();
-                    AppLogger.Info($"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}（来自 {ConfigPath}）");
-                    return;
+                    any = true;
                 }
 
-                AppLogger.Info($"设置文件里没有 windowsOnly 这一项，按默认（新分工）处理：{ConfigPath}");
+                // 2026-10-27 阶段三 S3：新引擎主通道的退路开关
+                if (doc.RootElement.TryGetProperty("rapidOcrPrimary", out var r)
+                    && r.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    RapidOcrPrimary = r.GetBoolean();
+                    any = true;
+                }
+
+                AppLogger.Info(
+                    $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
+                    $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
+
+                if (any) return;
+
+                AppLogger.Info($"设置文件里没有认识的项，按默认（新分工 + RapidOCR 主通道）处理：{ConfigPath}");
             }
             catch (Exception ex)
             {
@@ -89,6 +124,9 @@ internal static class AppSettings
 
     /// <summary>
     /// 写设置。用户想开/关时调它。
+    ///
+    /// 【两个键都要写】只写 windowsOnly 会把 rapidOcrPrimary 抹掉，
+    /// 下次启动就悄悄回到默认值，排查时会以为「开关没生效」。
     /// </summary>
     public static void Save(bool windowsOnly)
     {
@@ -97,7 +135,7 @@ internal static class AppSettings
             Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath)!);
             File.WriteAllText(ConfigPath,
                 System.Text.Json.JsonSerializer.Serialize(
-                    new { windowsOnly },
+                    new { windowsOnly, rapidOcrPrimary = RapidOcrPrimary },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
             WindowsOnly = windowsOnly;

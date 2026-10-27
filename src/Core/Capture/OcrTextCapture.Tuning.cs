@@ -19,6 +19,22 @@ internal sealed partial class OcrTextCapture : ITextCapture
     private const double GoodConfidence = 0.75;
 
     /// <summary>
+    /// 【2026-10-27 阶段三 S3】RapidOCR 主通道的及格线：各检测行的平均字置信度。
+    ///
+    ///   低于它就**不信新引擎**，整条回退旧通道（Windows OCR + Tesseract 多路）。
+    ///   为什么要有这道线：新引擎「几乎不再整行丢」，但它对**纯噪声/半截字**
+    ///   同样会吐出一行低分文字；没有这道线，那种垃圾会被当成结果交出去。
+    ///
+    ///   【0.55 怎么来的】
+    ///     引擎自己默认 TextScore=0.5 已经把整行平均分低于 0.5 的行丢掉；
+    ///     0.55 只比它高一点点，含义是「引擎留下了，而且不像噪声」。
+    ///     首轮 121 行 A/B 的实测分布见 tools\日志\阶段3-S3-集成AB.md。
+    ///
+    ///   ponytail: 单一阈值，没按游戏/极性分档；样本够了再拆。
+    /// </summary>
+    private const double RapidOcrMinScore = 0.55;
+
+    /// <summary>
     /// 「兜底尝试」的门槛，**比择优门槛更保守（更高）**。
     ///
     /// 【为什么不能两个都用 0.75（用户实测踩出来的）】
