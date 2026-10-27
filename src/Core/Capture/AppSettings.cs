@@ -64,6 +64,23 @@ internal static class AppSettings
     /// </summary>
     public static bool RapidOcrPrimary { get; private set; } = false;
 
+    /// <summary>
+    /// RapidOCR 用哪套识别模型：`en`（英文专用，默认）/ `latin`（NuGet 包自带）。
+    ///
+    /// 【2026-10-27 阶段三 S3 第 2 步：为什么默认换成 en】
+    ///   同一批 80 张裁样、同一套 det/cls，只换 rec + dict，裸引擎成绩：
+    ///     latin  L_行 44/69 = 63.8%   L_整块 30/52 = 57.7%   改字 44 例
+    ///     en     L_行 54/69 = 78.3%   L_整块 32/52 = 61.5%   改字 32 例
+    ///   体积：en rec 7.51MB + dict 1.4KB，比 latin（7.54MB + 2.1KB）**净减 0.03MB**。
+    ///   两个 dict 都含 `0-9 / % . , - ' ! : ( )`，所以空格丢失不是字典缺字符。
+    ///   v6 tiny/small 实测更差（30.4% / 69.6%，且小模型慢 15~30 倍、多出行严重），已排除。
+    ///
+    /// en 模型文件不进 git（二进制），由 tools\脚本\装模型.ps1 拷到 release 目录；
+    /// 缺文件时引擎自动退回 latin 并记一条警告，不会让主通道整个失效。
+    /// 切换方式：settings.json 里写 `"rapidOcrRec": "latin"`。
+    /// </summary>
+    public static string RapidOcrRec { get; private set; } = "en";
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -107,6 +124,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-10-27 阶段三 S3 第 2 步：换识别模型（en / latin）
+                if (doc.RootElement.TryGetProperty("rapidOcrRec", out var rr)
+                    && rr.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    var s = (rr.GetString() ?? "").Trim().ToLowerInvariant();
+                    if (s == "latin" || s == "en") { RapidOcrRec = s; any = true; }
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
@@ -125,7 +150,7 @@ internal static class AppSettings
     /// <summary>
     /// 写设置。用户想开/关时调它。
     ///
-    /// 【两个键都要写】只写 windowsOnly 会把 rapidOcrPrimary 抹掉，
+    /// 【三个键都要写】只写 windowsOnly 会把 rapidOcrPrimary / rapidOcrRec 抹掉，
     /// 下次启动就悄悄回到默认值，排查时会以为「开关没生效」。
     /// </summary>
     public static void Save(bool windowsOnly)
@@ -135,7 +160,7 @@ internal static class AppSettings
             Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath)!);
             File.WriteAllText(ConfigPath,
                 System.Text.Json.JsonSerializer.Serialize(
-                    new { windowsOnly, rapidOcrPrimary = RapidOcrPrimary },
+                    new { windowsOnly, rapidOcrPrimary = RapidOcrPrimary, rapidOcrRec = RapidOcrRec },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
             WindowsOnly = windowsOnly;
