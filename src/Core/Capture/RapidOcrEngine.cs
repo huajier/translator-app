@@ -41,6 +41,23 @@ internal static class RapidOcrEngine
     /// <summary>识别要串行：一个引擎实例带三份 ONNX 会话，并发调用没有意义也不保证安全。</summary>
     private static readonly object RunGate = new();
 
+    // 【2026-10-27 实验 C】预跑结果（只存一条，认一次用一次）
+    private static Bitmap? _primedBitmap;
+    private static string? _primedText;
+    private static double _primedScore;
+    private static string _primedNote = string.Empty;
+
+    /// <summary>
+    /// 实验 C 用：把刚认过的结果暂存起来，等外文主通道按同一张图来取，避免认两遍。
+    /// </summary>
+    public static void Prime(Bitmap bitmap, string? text, double score, string note)
+    {
+        _primedBitmap = bitmap;
+        _primedText = text;
+        _primedScore = score;
+        _primedNote = note ?? string.Empty;
+    }
+
     /// <summary>模型目录（跟着 exe 走）。</summary>
     private static string ModelDir => Path.Combine(AppContext.BaseDirectory, "models", "v5");
 
@@ -124,6 +141,17 @@ internal static class RapidOcrEngine
         {
             note = "引擎不可用";
             return null;
+        }
+
+        // 【2026-10-27 实验 C】预跑结果一次性复用：
+        //   跳过第一遍时，同一张 Bitmap 已经认过一次，这里直接交回结果，**不重复识别**。
+        //   只认同一个 Bitmap 实例（引用相等），别的情况一律照常识别。
+        if (_primedBitmap is not null && ReferenceEquals(_primedBitmap, bitmap))
+        {
+            averageScore = _primedScore;
+            note = _primedNote;
+            _primedBitmap = null;
+            return _primedText;
         }
 
         DumpIfAsked(bitmap);
