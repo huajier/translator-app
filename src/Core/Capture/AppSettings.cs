@@ -123,15 +123,6 @@ internal static class AppSettings
     /// </summary>
     public static bool RapidOcrKeepTrailingPunct { get; private set; } = true;
 
-    /// <summary>
-    /// 【2026-10-27 阶段三 S3 实验 C】跳过第一遍（Windows 自带引擎那次）。
-    ///   true  = 先让新通道认；认到且不像中文就直接交付，**第一遍与老通道都不跑**；
-    ///           认不到 / 像中文 / 平均分不够 → 老老实实跑第一遍，走原来的中文·外文路由（回退完整保留）。
-    ///   false = 现状（先跑第一遍，再按语种分岔）。
-    ///   目的：量第一遍在总耗时里到底占多少（日志里它只要 16~31ms，先证伪或证实）。
-    /// </summary>
-    public static bool RapidOcrSkipFirstPass { get; private set; } = false;
-
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -207,14 +198,6 @@ internal static class AppSettings
                     any = true;
                 }
 
-                // 2026-10-27 阶段三 S3 实验 C：跳过第一遍（先试新通道，认不到才回退老路）
-                if (doc.RootElement.TryGetProperty("rapidOcrSkipFirstPass", out var sf)
-                    && sf.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
-                {
-                    RapidOcrSkipFirstPass = sf.GetBoolean();
-                    any = true;
-                }
-
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
@@ -251,7 +234,6 @@ internal static class AppSettings
                         rapidOcrDumpDir = RapidOcrDumpDir,
                         rapidOcrUseOriginal = RapidOcrUseOriginal,
                         rapidOcrKeepTrailingPunct = RapidOcrKeepTrailingPunct,
-                        rapidOcrSkipFirstPass = RapidOcrSkipFirstPass,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 

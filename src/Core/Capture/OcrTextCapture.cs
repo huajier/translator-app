@@ -207,36 +207,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
         try
         {
             // 4) 第一遍识别（原生大小）
-            //
-            // 【2026-10-27 阶段三 S3 实验 C】开关打开时先试新通道，命中就直接跳过第一遍与老通道：
-            //   · 认不到 / 平均分不够 / 结果像中文 → 照旧跑第一遍，中文·俄文回退一条不少；
-            //   · 命中时把结果 Prime 给外文主通道，那边按同一张图取，**不会重复识别**。
-            //   目的只有一个：量出第一遍在总耗时里到底占多少。
-            FirstPassOutcome firstPass;
-            if (AppSettings.RapidOcrSkipFirstPass && AppSettings.RapidOcrPrimary && RapidOcrEngine.IsAvailable)
-            {
-                Bitmap rapidInput = AppSettings.RapidOcrUseOriginal ? captured : raw;
-                string? preText = RapidOcrEngine.TryRecognize(rapidInput, out double preScore, out string preNote);
-                RapidOcrEngine.Prime(rapidInput, preText, preScore, preNote);
-
-                if (preText is not null && preScore >= RapidOcrMinScore
-                    && !LanguageDetector.IsMostlyChinese(preText))
-                {
-                    AppLogger.Info($"【实验 C】新通道先认到了（平均分 {preScore:F2}），跳过第一遍与老通道");
-                    firstPass = new FirstPassOutcome(
-                        new PassResult(string.Empty, 0, 0), string.Empty, 0, 0, "跳过第一遍（实验 C）", null);
-                }
-                else
-                {
-                    AppLogger.Info("【实验 C】新通道没认到或像中文，照旧跑第一遍与老通道");
-                    firstPass = await RunFirstPassAsync(plain, raw, engine, cancellationToken).ConfigureAwait(false);
-                }
-            }
-            else
-            {
-                firstPass = await RunFirstPassAsync(plain, raw, engine, cancellationToken).ConfigureAwait(false);
-            }
-
+            FirstPassOutcome firstPass = await RunFirstPassAsync(plain, raw, engine, cancellationToken).ConfigureAwait(false);
             PassResult first = firstPass.First;
             string text = firstPass.Text;
             int lineCount = firstPass.LineCount;
