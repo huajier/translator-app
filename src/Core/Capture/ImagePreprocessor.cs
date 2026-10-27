@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using TranslatorApp.Core.Logging;
 
 namespace TranslatorApp.Core.Capture;
@@ -63,6 +64,9 @@ internal static class ImagePreprocessor
     /// <summary>放大后的尺寸上限，防止超大区域把内存吃光。</summary>
     private const int MaxOutputPixels = 4096;
 
+    /// <summary>目标字高（像素）：Tesseract 建议 x 高度 ≥30px，见 <see cref="UpscaleForForeign"/>。</summary>
+    private const int TargetTextHeight = 30;
+
     // =====================================================================
     //  外文专用预处理：给「彩色字压彩色底」用的
     // =====================================================================
@@ -89,7 +93,22 @@ internal static class ImagePreprocessor
 
         int w = source.Width, h = source.Height;
 
-        double scale = ForeignScaleFactor;
+        // 【为什么按字高定倍数，而不是按选区宽高】（2026-10-27 S3-B）
+        //   旧逻辑死守 4 倍、只按宽度回收：862×52 的框先被拉到 3448×208，
+        //   进 Preprocess 再被 4096 压成 1.19 倍 —— 两次 bicubic 合计 4.75 倍，
+        //   像素字糊成一团（damage → do.moge），两路都取不到字，整行被丢弃。
+        //   改成先量字高：字高够了就原样送识别，不再重采样。
+        int textHeight = EstimateLineHeight(source);
+        double scale = textHeight > 0
+            ? Math.Clamp((double)TargetTextHeight / textHeight, 1.0, ForeignScaleFactor)
+            : ForeignScaleFactor;
+
+        if (scale <= 1.0)
+        {
+            AppLogger.Info($"字高 {textHeight}px 已够 {TargetTextHeight}px，不放大（{w}×{h} 原样送识别）");
+            return new Bitmap(source);
+        }
+
         int maxSide = Math.Max(w, h);
         if (maxSide * scale > MaxOutputPixels)
         {
@@ -106,6 +125,88 @@ internal static class ImagePreprocessor
         g.PixelOffsetMode = PixelOffsetMode.HighQuality;
         g.DrawImage(source, new Rectangle(0, 0, nw, nh));
         return dst;
+    }
+
+    /// <summary>
+    /// 估计选区里「一行字」的实际高度（像素），用于决定放大倍数。
+    /// </summary>
+    /// <remarks>
+    /// 【做法】LockBits 取灰度 → 逐行统计亮/暗两侧，取**少数派**当墨迹
+    ///   （浅字深底、深字浅底都适用）→ 把连续有墨的行切成段 → 取段高的**中位数**。
+    ///   取中位数是为了多行整块也只拿到「单行高」，不被整块高度带偏。
+    /// 【认不出字时返回 0】纯色/渐变底没有明显明暗对比，返回 0 让调用方退回旧的 4 倍逻辑。
+    /// </remarks>
+    private static int EstimateLineHeight(Bitmap source)
+    {
+        int w = source.Width, h = source.Height;
+        if (w < 4 || h < 4) return 0;
+
+        var rect = new Rectangle(0, 0, w, h);
+        BitmapData bd = source.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        byte[] buf;
+        int stride;
+        try
+        {
+            stride = bd.Stride;
+            buf = new byte[stride * h];
+            Marshal.Copy(bd.Scan0, buf, 0, buf.Length);
+        }
+        finally
+        {
+            source.UnlockBits(bd);
+        }
+
+        // 灰度 + 全局明暗范围
+        var gray = new byte[w * h];
+        int min = 255, max = 0;
+        for (int y = 0; y < h; y++)
+        {
+            int off = y * stride;
+            int row = y * w;
+            for (int x = 0; x < w; x++)
+            {
+                int i = off + (x << 2);
+                byte v = (byte)((buf[i + 2] * 77 + buf[i + 1] * 151 + buf[i] * 28) >> 8);
+                gray[row + x] = v;
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
+        }
+
+        // 对比度太低 = 没字（纯色底、渐变底），交回旧逻辑
+        if (max - min < 24) return 0;
+
+        int threshold = (min + max) / 2;
+        int darkCount = 0;
+        for (int i = 0; i < gray.Length; i++)
+        {
+            if (gray[i] < threshold) darkCount++;
+        }
+
+        // 少数派才是墨迹：浅字深底 → 亮的是墨；深字浅底 → 暗的是墨
+        bool inkIsLight = darkCount > gray.Length / 2;
+        int minInk = Math.Max(2, w / 50);
+
+        var segments = new System.Collections.Generic.List<int>();
+        int run = 0;
+        for (int y = 0; y < h; y++)
+        {
+            int row = y * w;
+            int ink = 0;
+            for (int x = 0; x < w; x++)
+            {
+                bool isInk = inkIsLight ? gray[row + x] >= threshold : gray[row + x] < threshold;
+                if (isInk && ++ink >= minInk) break;
+            }
+
+            if (ink >= minInk) run++;
+            else if (run > 0) { if (run >= 3) segments.Add(run); run = 0; }
+        }
+        if (run >= 3) segments.Add(run);
+        if (segments.Count == 0) return 0;
+
+        segments.Sort();
+        return segments[segments.Count / 2];
     }
 
     /// <summary>
