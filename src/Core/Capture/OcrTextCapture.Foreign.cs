@@ -49,7 +49,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
 
             if (rapidText is not null && rapidScore >= RapidOcrMinScore)
             {
-                string trimmed = TrimEdgeSymbols(rapidText);
+                string trimmed = TrimEdgeSymbols(rapidText, AppSettings.RapidOcrKeepTrailingPunct);
                 if (trimmed.Length > 0) rapidText = trimmed;
 
                 AppLogger.Info(
@@ -1877,7 +1877,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
     ///   中间的撇号可能是 `don't` / `it's` 这种真缩写，删了就把词弄坏了。
     ///   句尾的 `.` `,` `!` `?` 是正常标点，**不在这个名单里**，一律保留。
     /// </summary>
-    private static string TrimEdgeSymbols(string text)
+    private static string TrimEdgeSymbols(string text, bool keepTrailing = false)
     {
         int start = 0;
         while (start < text.Length && IsEdgeSymbol(text[start])) start++;
@@ -1897,27 +1897,37 @@ internal sealed partial class OcrTextCapture : ITextCapture
         }
 
         int end = text.Length;
-        while (end > start && (IsEdgeSymbol(text[end - 1]) || IsTrailingEdgeSymbol(text[end - 1]))) end--;
 
-        // 2026-10-24 补：**单个纯字母单词**尾巴上多认出来的 ASCII `.` / `:` 也削掉。
-        //   实战 BATTLEBOARD 那 44 次框选全都切到了文字边缘，切掉的半个字被 Tesseract
-        //   认成 `.` 或 `:`（全天 51 条 `BATTLEBOARD.` / `BATTLEBOARD:`，别处没有）。
-        //   门槛卡三道，缺一不削：
-        //     ① 整段就是**一个词**（没有空白，靠「每个字符都是 ASCII 字母」顺带保证）
-        //     ② 削完还剩 **≥4 个**字母（`e.g.` `U.S.` 这种缩写里的点不是字母，天然不碰）
-        //     ③ 只碰 ASCII `.` `:`——多词句子（`Server started on port 8080.`）和
-        //        中文句号（`…的过程。`）一律不动，那是真标点。
-        //   实测影响面：全天 1492 条最终原文只命中 51 条，全是 BATTLEBOARD 这一个词。
-        if (end > start && (text[end - 1] == '.' || text[end - 1] == ':'))
+        // 【2026-10-27 阶段三 S3 第 1 处接线：行尾一律不动】
+        //   keepTrailing = true 时跳过下面全部「削行尾」的规则，只保留开头清洗
+        //   （行尾空白由最后那句 .Trim() 兜掉）。
+        //   理由见 AppSettings.RapidOcrKeepTrailingPunct 的注释：
+        //   行尾 `'` 和句号被当装饰削掉，实测误伤 4 行（行-18/20/57/60）。
+        //   老通道仍然调用不传参的版本，行为一个字节没变。
+        if (!keepTrailing)
         {
-            int wordEnd = end - 1;
-            bool singleAsciiWord = wordEnd - start >= 4;
-            for (int i = start; singleAsciiWord && i < wordEnd; i++)
+            while (end > start && (IsEdgeSymbol(text[end - 1]) || IsTrailingEdgeSymbol(text[end - 1]))) end--;
+
+            // 2026-10-24 补：**单个纯字母单词**尾巴上多认出来的 ASCII `.` / `:` 也削掉。
+            //   实战 BATTLEBOARD 那 44 次框选全都切到了文字边缘，切掉的半个字被 Tesseract
+            //   认成 `.` 或 `:`（全天 51 条 `BATTLEBOARD.` / `BATTLEBOARD:`，别处没有）。
+            //   门槛卡三道，缺一不削：
+            //     ① 整段就是**一个词**（没有空白，靠「每个字符都是 ASCII 字母」顺带保证）
+            //     ② 削完还剩 **≥4 个**字母（`e.g.` `U.S.` 这种缩写里的点不是字母，天然不碰）
+            //     ③ 只碰 ASCII `.` `:`——多词句子（`Server started on port 8080.`）和
+            //        中文句号（`…的过程。`）一律不动，那是真标点。
+            //   实测影响面：全天 1492 条最终原文只命中 51 条，全是 BATTLEBOARD 这一个词。
+            if (end > start && (text[end - 1] == '.' || text[end - 1] == ':'))
             {
-                char c = text[i];
-                if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) singleAsciiWord = false;
+                int wordEnd = end - 1;
+                bool singleAsciiWord = wordEnd - start >= 4;
+                for (int i = start; singleAsciiWord && i < wordEnd; i++)
+                {
+                    char c = text[i];
+                    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) singleAsciiWord = false;
+                }
+                if (singleAsciiWord) end = wordEnd;
             }
-            if (singleAsciiWord) end = wordEnd;
         }
 
         if (start == 0 && end == text.Length) return text;

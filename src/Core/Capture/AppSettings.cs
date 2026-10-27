@@ -105,6 +105,22 @@ internal static class AppSettings
     /// </summary>
     public static bool RapidOcrUseOriginal { get; private set; } = false;
 
+    /// <summary>
+    /// 新通道要不要保留**行尾标点**（`.` `'` `:` 等）。**默认 false = 现状（照旧削）**。
+    ///
+    /// 【2026-10-27 集成损耗诊断：第 1 处接线】
+    ///   `TrimEdgeSymbols` 是老通道为 Tesseract 写的清洗器，两条规则会误伤：
+    ///     · `IsEdgeSymbol` 含 `'` → 行尾 `'` 被当装饰削掉
+    ///       （行-57/60 `SG-225 'Breaker'` → `SG-225 'Breaker`）；
+    ///     · 「单个纯字母词尾巴上的 `.` `:` 削掉」那条 → 行尾句号被吃
+    ///       （行-18 `sneaking.` → `sneaKing`、行-20 `sneak.`）。
+    ///   裸跑（不洗）这 4 行全对，管线全错。
+    ///   打开 = 新通道只削开头，行尾一律不动（空白由 Trim() 兜）。
+    ///   打开方式：settings.json 写 `"rapidOcrKeepTrailingPunct": true`。
+    ///   旧通道（Windows / Tesseract）**照旧用老清洗器，一个字节没改**。
+    /// </summary>
+    public static bool RapidOcrKeepTrailingPunct { get; private set; } = false;
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -172,6 +188,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-10-27 阶段三 S3 第 1 处接线：新通道保留行尾标点
+                if (doc.RootElement.TryGetProperty("rapidOcrKeepTrailingPunct", out var kt)
+                    && kt.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    RapidOcrKeepTrailingPunct = kt.GetBoolean();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
@@ -207,6 +231,7 @@ internal static class AppSettings
                         rapidOcrRec = RapidOcrRec,
                         rapidOcrDumpDir = RapidOcrDumpDir,
                         rapidOcrUseOriginal = RapidOcrUseOriginal,
+                        rapidOcrKeepTrailingPunct = RapidOcrKeepTrailingPunct,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
