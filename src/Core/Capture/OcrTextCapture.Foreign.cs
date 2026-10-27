@@ -15,7 +15,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
         bool RejectedAsGarbage);
 
     private ForeignOutcome RunForeignPath(
-        Bitmap raw, PassResult first, string text, int lineCount, string note,
+        Bitmap raw, Bitmap captured, PassResult first, string text, int lineCount, string note,
         string channelUsed, string scoreNote, bool rejectedAsGarbage,
         bool windowsSaysChinese, int windowsCharsForCompare, int windowsScoreForCompare)
     {
@@ -36,7 +36,16 @@ internal sealed partial class OcrTextCapture : ITextCapture
         // ==========================================================
         if (AppSettings.RapidOcrPrimary)
         {
-            string? rapidText = RapidOcrEngine.TryRecognize(raw, out double rapidScore, out string rapidNote);
+            // 【2026-10-27 集成损耗诊断：实验 B —— 反色图 vs 原图】
+            //   实测（tools\日志\阶段3-S3-集成损耗诊断.md 第 1 节）：
+            //     78 张进新通道的裁样里，**62 张喂的是整张反色后的图**（深底浅字），
+            //     16 张是原图，尺寸零差异、像素零其它差异。
+            //   裸跑（吃原图）L_行 78.3%，管线（62/78 吃反色）66.7% —— 差就差在这。
+            //   RapidOCR 自带 DBNet + 归一化，本身就能读浅字深底，**不需要**旧通道
+            //   为 Tesseract 调的那道「一拿到图就翻过来」。
+            //   开关默认 false = 维持现状（反色），打开才是吃原图，方便 A/B 回退。
+            Bitmap rapidInput = AppSettings.RapidOcrUseOriginal ? captured : raw;
+            string? rapidText = RapidOcrEngine.TryRecognize(rapidInput, out double rapidScore, out string rapidNote);
 
             if (rapidText is not null && rapidScore >= RapidOcrMinScore)
             {
