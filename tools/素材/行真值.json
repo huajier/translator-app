@@ -1,0 +1,1166 @@
+{
+    "说明":  "S1 行真值草稿：每项一条，按源图从上到下；id=行-NN 与回放清单同名；lines 已逐条对预览图核过。",
+    "images":  [
+                   {
+                       "id":  "行-01",
+                       "file":  "实机\\预览\\01-Barony-技能提示-第1行-v2.png",
+                       "编号":  1,
+                       "别名":  "Barony-技能提示-第1行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（项目符号）",
+                       "lines":  [
+                                     "Increases ranged and thrown ATK"
+                                 ]
+                   },
+                   {
+                       "id":  "行-02",
+                       "file":  "实机\\预览\\02-Barony-技能提示-第2行-v3.png",
+                       "编号":  2,
+                       "别名":  "Barony-技能提示-第2行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "damage"
+                                 ]
+                   },
+                   {
+                       "id":  "行-03",
+                       "file":  "实机\\预览\\03-Barony-技能提示-第3行-v3.png",
+                       "编号":  3,
+                       "别名":  "Barony-技能提示-第3行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（项目符号）",
+                       "lines":  [
+                                     "Improves movement speed while"
+                                 ]
+                   },
+                   {
+                       "id":  "行-04",
+                       "file":  "实机\\预览\\04-Barony-技能提示-第4行-v3.png",
+                       "编号":  4,
+                       "别名":  "Barony-技能提示-第4行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "carrying small weights"
+                                 ]
+                   },
+                   {
+                       "id":  "行-05",
+                       "file":  "实机\\预览\\05-Barony-技能提示-整块-v3.png",
+                       "编号":  5,
+                       "别名":  "Barony-技能提示-整块",
+                       "游戏":  "Barony",
+                       "mode":  "整块",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "整块；含图标（项目符号）",
+                       "lines":  [
+                                     "Increases ranged and thrown ATK",
+                                     "damage",
+                                     "Improves movement speed while",
+                                     "carrying small weights"
+                                 ]
+                   },
+                   {
+                       "id":  "行-06",
+                       "file":  "实机\\预览\\06-Barony-属性面板-STR行.png",
+                       "编号":  6,
+                       "别名":  "Barony-属性面板-STR行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像+箭头）",
+                       "lines":  [
+                                     "STR -1"
+                                 ]
+                   },
+                   {
+                       "id":  "行-07",
+                       "file":  "实机\\预览\\07-Barony-属性面板-DEX行.png",
+                       "编号":  7,
+                       "别名":  "Barony-属性面板-DEX行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像+箭头）",
+                       "lines":  [
+                                     "DEX 0"
+                                 ]
+                   },
+                   {
+                       "id":  "行-08",
+                       "file":  "实机\\预览\\08-Barony-属性面板-CON行.png",
+                       "编号":  8,
+                       "别名":  "Barony-属性面板-CON行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像+箭头）",
+                       "lines":  [
+                                     "CON 0"
+                                 ]
+                   },
+                   {
+                       "id":  "行-09",
+                       "file":  "实机\\预览\\09-Barony-属性面板-INT行.png",
+                       "编号":  9,
+                       "别名":  "Barony-属性面板-INT行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像+箭头）",
+                       "lines":  [
+                                     "INT 1"
+                                 ]
+                   },
+                   {
+                       "id":  "行-10",
+                       "file":  "实机\\预览\\10-Barony-属性面板-PER行.png",
+                       "编号":  10,
+                       "别名":  "Barony-属性面板-PER行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像+箭头）",
+                       "lines":  [
+                                     "PER -1"
+                                 ]
+                   },
+                   {
+                       "id":  "行-11",
+                       "file":  "实机\\预览\\11-Barony-属性面板-CHR行.png",
+                       "编号":  11,
+                       "别名":  "Barony-属性面板-CHR行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像+箭头）",
+                       "lines":  [
+                                     "CHR 1"
+                                 ]
+                   },
+                   {
+                       "id":  "行-12",
+                       "file":  "实机\\预览\\12-Barony-属性面板-整块.png",
+                       "编号":  12,
+                       "别名":  "Barony-属性面板-整块",
+                       "游戏":  "Barony",
+                       "mode":  "整块",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "整块；含图标（头像+箭头）",
+                       "lines":  [
+                                     "STR -1",
+                                     "DEX 0",
+                                     "CON 0",
+                                     "INT 1",
+                                     "PER -1",
+                                     "CHR 1"
+                                 ]
+                   },
+                   {
+                       "id":  "行-13",
+                       "file":  "实机\\预览\\13-Barony-加成面板-第1行.png",
+                       "编号":  13,
+                       "别名":  "Barony-加成面板-第1行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Ranged ATK Bonus:"
+                                 ]
+                   },
+                   {
+                       "id":  "行-14",
+                       "file":  "实机\\预览\\14-Barony-加成面板-第2行.png",
+                       "编号":  14,
+                       "别名":  "Barony-加成面板-第2行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Thrown ATK Bonus:"
+                                 ]
+                   },
+                   {
+                       "id":  "行-15",
+                       "file":  "实机\\预览\\15-Barony-加成面板-第3行.png",
+                       "编号":  15,
+                       "别名":  "Barony-加成面板-第3行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "DEX Speed Bonus:"
+                                 ]
+                   },
+                   {
+                       "id":  "行-16",
+                       "file":  "实机\\预览\\16-Barony-长描述-第1行.png",
+                       "编号":  16,
+                       "别名":  "Barony-长描述-第1行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Provides reduced visibility to enemies, bonus melee"
+                                 ]
+                   },
+                   {
+                       "id":  "行-17",
+                       "file":  "实机\\预览\\17-Barony-长描述-第2行.png",
+                       "编号":  17,
+                       "别名":  "Barony-长描述-第2行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "stealth attack damage, and additional vision while"
+                                 ]
+                   },
+                   {
+                       "id":  "行-18",
+                       "file":  "实机\\预览\\18-Barony-长描述-第3行.png",
+                       "编号":  18,
+                       "别名":  "Barony-长描述-第3行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "sneaking."
+                                 ]
+                   },
+                   {
+                       "id":  "行-19",
+                       "file":  "实机\\预览\\19-Barony-长描述-第4行.png",
+                       "编号":  19,
+                       "别名":  "Barony-长描述-第4行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Use the Block command without holding a shield to"
+                                 ]
+                   },
+                   {
+                       "id":  "行-20",
+                       "file":  "实机\\预览\\20-Barony-长描述-第5行.png",
+                       "编号":  20,
+                       "别名":  "Barony-长描述-第5行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "sneak."
+                                 ]
+                   },
+                   {
+                       "id":  "行-21",
+                       "file":  "实机\\预览\\21-Barony-长描述-整块.png",
+                       "编号":  21,
+                       "别名":  "Barony-长描述-整块",
+                       "游戏":  "Barony",
+                       "mode":  "整块",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Provides reduced visibility to enemies, bonus melee",
+                                     "stealth attack damage, and additional vision while",
+                                     "sneaking.",
+                                     "Use the Block command without holding a shield to",
+                                     "sneak."
+                                 ]
+                   },
+                   {
+                       "id":  "行-22",
+                       "file":  "实机\\预览\\22-Barony-技能名条-单行.png",
+                       "编号":  22,
+                       "别名":  "Barony-技能名条-单行",
+                       "游戏":  "Barony",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Stealth"
+                                 ]
+                   },
+                   {
+                       "id":  "行-23",
+                       "file":  "实机\\预览\\23-MutantSpider-标题-Boss名.png",
+                       "编号":  23,
+                       "别名":  "MutantSpider-标题-Boss名",
+                       "游戏":  "以撒",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "MUTANT SPIDER"
+                                 ]
+                   },
+                   {
+                       "id":  "行-24",
+                       "file":  "实机\\预览\\24-MutantSpider-标题-副标题.png",
+                       "编号":  24,
+                       "别名":  "MutantSpider-标题-副标题",
+                       "游戏":  "以撒",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Quad shot"
+                                 ]
+                   },
+                   {
+                       "id":  "行-25",
+                       "file":  "实机\\预览\\25-MutantSpider-标题-整块.png",
+                       "编号":  25,
+                       "别名":  "MutantSpider-标题-整块",
+                       "游戏":  "以撒",
+                       "mode":  "整块",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "整块；深色横幅底",
+                       "lines":  [
+                                     "MUTANT SPIDER",
+                                     "Quad shot"
+                                 ]
+                   },
+                   {
+                       "id":  "行-26",
+                       "file":  "实机\\预览\\26-Undertale-对话框-第1行.png",
+                       "编号":  26,
+                       "别名":  "Undertale-对话框-第1行",
+                       "游戏":  "Undertale",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "含标点（* 与左括号）",
+                       "lines":  [
+                                     "* (Playfully crinkling through"
+                                 ]
+                   },
+                   {
+                       "id":  "行-27",
+                       "file":  "实机\\预览\\27-Undertale-对话框-第2行.png",
+                       "编号":  27,
+                       "别名":  "Undertale-对话框-第2行",
+                       "游戏":  "Undertale",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "the leaves fills you with"
+                                 ]
+                   },
+                   {
+                       "id":  "行-28",
+                       "file":  "实机\\预览\\28-Undertale-对话框-第3行.png",
+                       "编号":  28,
+                       "别名":  "Undertale-对话框-第3行",
+                       "游戏":  "Undertale",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "determination.)"
+                                 ]
+                   },
+                   {
+                       "id":  "行-29",
+                       "file":  "实机\\预览\\29-Undertale-对话框-整块.png",
+                       "编号":  29,
+                       "别名":  "Undertale-对话框-整块",
+                       "游戏":  "Undertale",
+                       "mode":  "整块",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "整块；含边框白线",
+                       "lines":  [
+                                     "* (Playfully crinkling through",
+                                     "the leaves fills you with",
+                                     "determination.)"
+                                 ]
+                   },
+                   {
+                       "id":  "行-30",
+                       "file":  "实机\\预览\\30-GalacticChallenges-挑战界面-标题-v2.png",
+                       "编号":  30,
+                       "别名":  "GalacticChallenges-挑战界面-标题",
+                       "游戏":  "Galactic Challenges",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Galactic Challenges"
+                                 ]
+                   },
+                   {
+                       "id":  "行-33",
+                       "file":  "实机\\预览\\33-GalacticChallenges-挑战界面-INFO牌-v3.png",
+                       "编号":  33,
+                       "别名":  "GalacticChallenges-挑战界面-INFO牌",
+                       "游戏":  "Galactic Challenges",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "INFO"
+                                 ]
+                   },
+                   {
+                       "id":  "行-34",
+                       "file":  "实机\\预览\\34-GalacticChallenges-挑战界面-黄条第1行.png",
+                       "编号":  34,
+                       "别名":  "GalacticChallenges-挑战界面-黄条第1行",
+                       "游戏":  "Galactic Challenges",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "深字浅底",
+                       "note":  "行尾切字（右缘切在 what 的 h 上，真值只算完整可见字符）",
+                       "lines":  [
+                                     "Race - Race to the goal as quickly as possible. Do you have w"
+                                 ]
+                   },
+                   {
+                       "id":  "行-35",
+                       "file":  "实机\\预览\\35-GalacticChallenges-挑战界面-黄条第2行-v2.png",
+                       "编号":  35,
+                       "别名":  "GalacticChallenges-挑战界面-黄条第2行",
+                       "游戏":  "Galactic Challenges",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "31 hours 11 mins remaining!"
+                                 ]
+                   },
+                   {
+                       "id":  "行-36",
+                       "file":  "实机\\预览\\36-GalacticChallenges-挑战界面-底栏Select-v2.png",
+                       "编号":  36,
+                       "别名":  "GalacticChallenges-挑战界面-底栏Select",
+                       "游戏":  "Galactic Challenges",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Select"
+                                 ]
+                   },
+                   {
+                       "id":  "行-37",
+                       "file":  "实机\\预览\\37-GalacticChallenges-挑战界面-底栏Back-v2.png",
+                       "编号":  37,
+                       "别名":  "GalacticChallenges-挑战界面-底栏Back",
+                       "游戏":  "Galactic Challenges",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Back"
+                                 ]
+                   },
+                   {
+                       "id":  "行-38",
+                       "file":  "实机\\预览\\38-GalacticChallenges-挑战界面-气泡整块.png",
+                       "编号":  38,
+                       "别名":  "GalacticChallenges-挑战界面-气泡整块",
+                       "游戏":  "Galactic Challenges",
+                       "mode":  "整块",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "What are",
+                                     "CHALLENGES?"
+                                 ]
+                   },
+                   {
+                       "id":  "行-39",
+                       "file":  "实机\\预览\\39-GalacticChallenges-挑战界面-黄条整块.png",
+                       "编号":  39,
+                       "别名":  "GalacticChallenges-挑战界面-黄条整块",
+                       "游戏":  "Galactic Challenges",
+                       "mode":  "整块",
+                       "档":  "渐变",
+                       "极性":  "深字浅底",
+                       "note":  "整块；第1行行尾切字（同 34 号）",
+                       "lines":  [
+                                     "Race - Race to the goal as quickly as possible. Do you have w",
+                                     "31 hours 11 mins remaining!"
+                                 ]
+                   },
+                   {
+                       "id":  "行-40",
+                       "file":  "实机\\预览\\40-Helldivers2-LOADOUT-整屏-界面标题-v2.png",
+                       "编号":  40,
+                       "别名":  "Helldivers2-LOADOUT-整屏-界面标题",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（两侧装饰横条）",
+                       "lines":  [
+                                     "LOADOUT"
+                                 ]
+                   },
+                   {
+                       "id":  "行-41",
+                       "file":  "实机\\预览\\41-Helldivers2-LOADOUT-整屏-环境行-v2.png",
+                       "编号":  41,
+                       "别名":  "Helldivers2-LOADOUT-整屏-环境行",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "ENVIRONMENT: DESERT"
+                                 ]
+                   },
+                   {
+                       "id":  "行-42",
+                       "file":  "实机\\预览\\42-Helldivers2-LOADOUT-整屏-敌情行-v2.png",
+                       "编号":  42,
+                       "别名":  "Helldivers2-LOADOUT-整屏-敌情行",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "ENEMY: BUGS"
+                                 ]
+                   },
+                   {
+                       "id":  "行-43",
+                       "file":  "实机\\预览\\43-Helldivers2-LOADOUT-整屏-难度行-v2.png",
+                       "编号":  43,
+                       "别名":  "Helldivers2-LOADOUT-整屏-难度行",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "12 - Hell Dive"
+                                 ]
+                   },
+                   {
+                       "id":  "行-44",
+                       "file":  "实机\\预览\\44-Helldivers2-LOADOUT-整屏-卡1姓名.png",
+                       "编号":  44,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡1姓名",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像）",
+                       "lines":  [
+                                     "A-Aaronson"
+                                 ]
+                   },
+                   {
+                       "id":  "行-45",
+                       "file":  "实机\\预览\\45-Helldivers2-LOADOUT-整屏-卡1武器标题.png",
+                       "编号":  45,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡1武器标题",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "PRIMARY WEAPON"
+                                 ]
+                   },
+                   {
+                       "id":  "行-46",
+                       "file":  "实机\\预览\\46-Helldivers2-LOADOUT-整屏-卡2姓名-v2.png",
+                       "编号":  46,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2姓名",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像）",
+                       "lines":  [
+                                     "BDevaux"
+                                 ]
+                   },
+                   {
+                       "id":  "行-47",
+                       "file":  "实机\\预览\\47-Helldivers2-LOADOUT-整屏-卡2军衔.png",
+                       "编号":  47,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2军衔",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "25 Grand Lord"
+                                 ]
+                   },
+                   {
+                       "id":  "行-48",
+                       "file":  "实机\\预览\\48-Helldivers2-LOADOUT-整屏-卡2PERKS标题-v2.png",
+                       "编号":  48,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2PERKS标题",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "PERKS"
+                                 ]
+                   },
+                   {
+                       "id":  "行-49",
+                       "file":  "实机\\预览\\49-Helldivers2-LOADOUT-整屏-卡2PERKS内容-v2.png",
+                       "编号":  49,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2PERKS内容",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Stratagem Priority"
+                                 ]
+                   },
+                   {
+                       "id":  "行-50",
+                       "file":  "实机\\预览\\50-Helldivers2-LOADOUT-整屏-卡2武器标题-v2.png",
+                       "编号":  50,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2武器标题",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "PRIMARY WEAPON"
+                                 ]
+                   },
+                   {
+                       "id":  "行-51",
+                       "file":  "实机\\预览\\51-Helldivers2-LOADOUT-整屏-卡2武器名-v2.png",
+                       "编号":  51,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2武器名",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "RX-1 Rail Gun"
+                                 ]
+                   },
+                   {
+                       "id":  "行-52",
+                       "file":  "实机\\预览\\52-Helldivers2-LOADOUT-整屏-卡3姓名-v3.png",
+                       "编号":  52,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡3姓名",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像）",
+                       "lines":  [
+                                     "C-Zhang"
+                                 ]
+                   },
+                   {
+                       "id":  "行-53",
+                       "file":  "实机\\预览\\53-Helldivers2-LOADOUT-整屏-卡3PERKS内容-v2.png",
+                       "编号":  53,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡3PERKS内容",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Cardio Accelerator"
+                                 ]
+                   },
+                   {
+                       "id":  "行-54",
+                       "file":  "实机\\预览\\54-Helldivers2-LOADOUT-整屏-卡3武器名-v2.png",
+                       "编号":  54,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡3武器名",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "AR-20L \u0027Justice\u0027"
+                                 ]
+                   },
+                   {
+                       "id":  "行-55",
+                       "file":  "实机\\预览\\55-Helldivers2-LOADOUT-整屏-卡4姓名-v2.png",
+                       "编号":  55,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡4姓名",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（头像）",
+                       "lines":  [
+                                     "D-Silva"
+                                 ]
+                   },
+                   {
+                       "id":  "行-56",
+                       "file":  "实机\\预览\\56-Helldivers2-LOADOUT-整屏-卡4PERKS内容-v2.png",
+                       "编号":  56,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡4PERKS内容",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "Displacement Field"
+                                 ]
+                   },
+                   {
+                       "id":  "行-57",
+                       "file":  "实机\\预览\\57-Helldivers2-LOADOUT-整屏-卡4武器名-v2.png",
+                       "编号":  57,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡4武器名",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "SG-225 \u0027Breaker\u0027"
+                                 ]
+                   },
+                   {
+                       "id":  "行-58",
+                       "file":  "实机\\预览\\58-Helldivers2-LOADOUT-整屏-卡2STRATAGEMS标题-v2.png",
+                       "编号":  58,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2STRATAGEMS标题",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "STRATAGEMS"
+                                 ]
+                   },
+                   {
+                       "id":  "行-59",
+                       "file":  "实机\\预览\\59-Helldivers2-LOADOUT-整屏-卡2CONFIRM按钮.png",
+                       "编号":  59,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2CONFIRM按钮",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "CONFIRM"
+                                 ]
+                   },
+                   {
+                       "id":  "行-60",
+                       "file":  "实机\\预览\\60-Helldivers2-LOADOUT-整屏-左栏武器名.png",
+                       "编号":  60,
+                       "别名":  "Helldivers2-LOADOUT-整屏-左栏武器名",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "SG-225 \u0027Breaker\u0027"
+                                 ]
+                   },
+                   {
+                       "id":  "行-61",
+                       "file":  "实机\\预览\\61-Helldivers2-LOADOUT-整屏-左栏UNSTOPPABLE.png",
+                       "编号":  61,
+                       "别名":  "Helldivers2-LOADOUT-整屏-左栏UNSTOPPABLE",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "UNSTOPPABLE"
+                                 ]
+                   },
+                   {
+                       "id":  "行-62",
+                       "file":  "实机\\预览\\62-Helldivers2-LOADOUT-整屏-左栏描述.png",
+                       "编号":  62,
+                       "别名":  "Helldivers2-LOADOUT-整屏-左栏描述",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（右侧箭头入框）",
+                       "lines":  [
+                                     "A reliable, low-maintenance."
+                                 ]
+                   },
+                   {
+                       "id":  "行-63",
+                       "file":  "实机\\预览\\63-Helldivers2-LOADOUT-整屏-左栏BACK.png",
+                       "编号":  63,
+                       "别名":  "Helldivers2-LOADOUT-整屏-左栏BACK",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "单行",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "BACK"
+                                 ]
+                   },
+                   {
+                       "id":  "行-64",
+                       "file":  "实机\\预览\\64-Helldivers2-LOADOUT-整屏-卡2整块.png",
+                       "编号":  64,
+                       "别名":  "Helldivers2-LOADOUT-整屏-卡2整块",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "整块",
+                       "档":  "复杂",
+                       "极性":  "浅字深底",
+                       "note":  "整块（8 行）；含图标",
+                       "lines":  [
+                                     "BDevaux",
+                                     "25 Grand Lord",
+                                     "PERKS",
+                                     "Stratagem Priority",
+                                     "PRIMARY WEAPON",
+                                     "RX-1 Rail Gun",
+                                     "STRATAGEMS",
+                                     "CONFIRM"
+                                 ]
+                   },
+                   {
+                       "id":  "行-65",
+                       "file":  "实机\\预览\\65-Helldivers2-LOADOUT-整屏-左栏整块.png",
+                       "编号":  65,
+                       "别名":  "Helldivers2-LOADOUT-整屏-左栏整块",
+                       "游戏":  "Helldivers 2",
+                       "mode":  "整块",
+                       "档":  "渐变",
+                       "极性":  "浅字深底",
+                       "note":  "整块（9 行，左栏行高仅 19px）",
+                       "lines":  [
+                                     "SG-225 \u0027Breaker\u0027",
+                                     "POWER",
+                                     "FIRERATE",
+                                     "STABILITY",
+                                     "MAGAZINE",
+                                     "RANGE",
+                                     "UNSTOPPABLE",
+                                     "A reliable, low-maintenance.",
+                                     "BACK"
+                                 ]
+                   },
+                   {
+                       "id":  "行-66",
+                       "file":  "实机\\预览\\66-BigAmbitions-CONTRACTS-标题CONTRACTS.png",
+                       "编号":  66,
+                       "别名":  "BigAmbitions-CONTRACTS-标题CONTRACTS",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "CONTRACTS"
+                                 ]
+                   },
+                   {
+                       "id":  "行-67",
+                       "file":  "实机\\预览\\67-BigAmbitions-CONTRACTS-合约1标题.png",
+                       "编号":  67,
+                       "别名":  "BigAmbitions-CONTRACTS-合约1标题",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "Standard Bicycle"
+                                 ]
+                   },
+                   {
+                       "id":  "行-68",
+                       "file":  "实机\\预览\\68-BigAmbitions-CONTRACTS-合约1时长.png",
+                       "编号":  68,
+                       "别名":  "BigAmbitions-CONTRACTS-合约1时长",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "3d 8h"
+                                 ]
+                   },
+                   {
+                       "id":  "行-69",
+                       "file":  "实机\\预览\\69-BigAmbitions-CONTRACTS-合约1进度.png",
+                       "编号":  69,
+                       "别名":  "BigAmbitions-CONTRACTS-合约1进度",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "0/7"
+                                 ]
+                   },
+                   {
+                       "id":  "行-70",
+                       "file":  "实机\\预览\\70-BigAmbitions-CONTRACTS-合约1完成率.png",
+                       "编号":  70,
+                       "别名":  "BigAmbitions-CONTRACTS-合约1完成率",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "78.7%"
+                                 ]
+                   },
+                   {
+                       "id":  "行-71",
+                       "file":  "实机\\预览\\71-BigAmbitions-CONTRACTS-合约2标题.png",
+                       "编号":  71,
+                       "别名":  "BigAmbitions-CONTRACTS-合约2标题",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "MiniCar F1"
+                                 ]
+                   },
+                   {
+                       "id":  "行-72",
+                       "file":  "实机\\预览\\72-BigAmbitions-CONTRACTS-合约2进度.png",
+                       "编号":  72,
+                       "别名":  "BigAmbitions-CONTRACTS-合约2进度",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "0/50"
+                                 ]
+                   },
+                   {
+                       "id":  "行-73",
+                       "file":  "实机\\预览\\73-BigAmbitions-CONTRACTS-合约2完成率.png",
+                       "编号":  73,
+                       "别名":  "BigAmbitions-CONTRACTS-合约2完成率",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "4.6%"
+                                 ]
+                   },
+                   {
+                       "id":  "行-74",
+                       "file":  "实机\\预览\\74-BigAmbitions-CONTRACTS-工具标题-v2.png",
+                       "编号":  74,
+                       "别名":  "BigAmbitions-CONTRACTS-工具标题",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "WALL BUILDING TOOL"
+                                 ]
+                   },
+                   {
+                       "id":  "行-75",
+                       "file":  "实机\\预览\\75-BigAmbitions-CONTRACTS-提示第1行.png",
+                       "编号":  75,
+                       "别名":  "BigAmbitions-CONTRACTS-提示第1行",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "CLICK and DRAG with left mouse button to create new walls"
+                                 ]
+                   },
+                   {
+                       "id":  "行-76",
+                       "file":  "实机\\预览\\76-BigAmbitions-CONTRACTS-提示第2行.png",
+                       "编号":  76,
+                       "别名":  "BigAmbitions-CONTRACTS-提示第2行",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "or rooms. Confirm any changes by clicking ORDER at the"
+                                 ]
+                   },
+                   {
+                       "id":  "行-77",
+                       "file":  "实机\\预览\\77-BigAmbitions-CONTRACTS-提示第3行.png",
+                       "编号":  77,
+                       "别名":  "BigAmbitions-CONTRACTS-提示第3行",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "",
+                       "lines":  [
+                                     "bottom right."
+                                 ]
+                   },
+                   {
+                       "id":  "行-78",
+                       "file":  "实机\\预览\\78-BigAmbitions-CONTRACTS-底栏DAY-v2.png",
+                       "编号":  78,
+                       "别名":  "BigAmbitions-CONTRACTS-底栏DAY",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "DAY 53"
+                                 ]
+                   },
+                   {
+                       "id":  "行-80",
+                       "file":  "实机\\预览\\80-BigAmbitions-CONTRACTS-底栏金额.png",
+                       "编号":  80,
+                       "别名":  "BigAmbitions-CONTRACTS-底栏金额",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "含图标（右侧金币）",
+                       "lines":  [
+                                     "387271"
+                                 ]
+                   },
+                   {
+                       "id":  "行-81",
+                       "file":  "实机\\预览\\81-BigAmbitions-CONTRACTS-底栏经验.png",
+                       "编号":  81,
+                       "别名":  "BigAmbitions-CONTRACTS-底栏经验",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "单行",
+                       "档":  "纯色",
+                       "极性":  "浅字深底",
+                       "note":  "",
+                       "lines":  [
+                                     "0 / 10000"
+                                 ]
+                   },
+                   {
+                       "id":  "行-82",
+                       "file":  "实机\\预览\\82-BigAmbitions-CONTRACTS-合约卡整块.png",
+                       "编号":  82,
+                       "别名":  "BigAmbitions-CONTRACTS-合约卡整块",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "整块",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "整块（7 行，含两张合约卡）",
+                       "lines":  [
+                                     "Standard Bicycle",
+                                     "3d 8h",
+                                     "0/7",
+                                     "78.7%",
+                                     "MiniCar F1",
+                                     "0/50",
+                                     "4.6%"
+                                 ]
+                   },
+                   {
+                       "id":  "行-83",
+                       "file":  "实机\\预览\\83-BigAmbitions-CONTRACTS-提示整块-v2.png",
+                       "编号":  83,
+                       "别名":  "BigAmbitions-CONTRACTS-提示整块",
+                       "游戏":  "Big Ambitions",
+                       "mode":  "整块",
+                       "档":  "纯色",
+                       "极性":  "深字浅底",
+                       "note":  "整块（4 行，含标题行）",
+                       "lines":  [
+                                     "WALL BUILDING TOOL",
+                                     "CLICK and DRAG with left mouse button to create new walls",
+                                     "or rooms. Confirm any changes by clicking ORDER at the",
+                                     "bottom right."
+                                 ]
+                   }
+               ]
+}

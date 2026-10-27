@@ -107,6 +107,7 @@ function Align-Lines([string[]]$want, [string[]]$got) {
 function Get-LineReport($entries, [hashtable]$actualRaw) {
     $rows = New-Object System.Collections.ArrayList
     $missing = New-Object System.Collections.ArrayList
+    $estat = New-Object System.Collections.ArrayList
     $modes = @{}
     $total = 0; $ok = 0; $changed = 0; $lost = 0; $extra = 0
 
@@ -119,40 +120,44 @@ function Get-LineReport($entries, [hashtable]$actualRaw) {
         $want = @($e.lines | ForEach-Object { Norm ([string]$_) } | Where-Object { $_ -ne '' })
         $total += $want.Count
         $st.总 += $want.Count
+        $eOk = 0; $eChanged = 0; $eLost = 0; $eExtra = 0
 
         if (-not $actualRaw.ContainsKey([string]$e.id)) {
             [void]$missing.Add([string]$e.id)
             $lost += $want.Count
             $st.丢 += $want.Count
+            $eLost = $want.Count
             foreach ($w in $want) {
                 [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '丢'; Want = $w; Got = '<缺测>'; Dist = $w.Length })
             }
+            [void]$estat.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; 总 = $want.Count; 对 = 0; 改 = 0; 丢 = $eLost; 多 = 0 })
             continue
         }
 
         foreach ($op in (Align-Lines $want (Split-Lines $actualRaw[[string]$e.id]))) {
             switch ($op.Kind) {
-                '对' { $ok++; $st.对++ }
+                '对' { $ok++; $st.对++; $eOk++ }
                 '改' {
-                    $changed++; $st.改++
+                    $changed++; $st.改++; $eChanged++
                     [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '改'; Want = $op.Want; Got = $op.Got; Dist = (EditDist $op.Want $op.Got) })
                 }
                 '丢' {
-                    $lost++; $st.丢++
+                    $lost++; $st.丢++; $eLost++
                     [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '丢'; Want = $op.Want; Got = '<没认出来>'; Dist = $op.Want.Length })
                 }
                 '多' {
-                    $extra++; $st.多++
+                    $extra++; $st.多++; $eExtra++
                     [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '多'; Want = '<无此行>'; Got = $op.Got; Dist = $op.Got.Length })
                 }
             }
         }
+        [void]$estat.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; 总 = $want.Count; 对 = $eOk; 改 = $eChanged; 丢 = $eLost; 多 = $eExtra })
     }
 
     return [pscustomobject]@{
         Total = $total; Ok = $ok; Changed = $changed; Lost = $lost; Extra = $extra
         Bad = ($changed + $lost + $extra)
-        Rows = @($rows); Missing = @($missing); Modes = $modes
+        Rows = @($rows); Missing = @($missing); Modes = $modes; Entries = @($estat)
     }
 }
 
@@ -341,7 +346,18 @@ if ($按行) {
         [pscustomobject]@{ id = $id; mode = [string]$e.mode; lines = @($e.lines) }
     }
 
-    Show-LineReport (Get-LineReport @($entries) $actualRaw)
+    $rep = Get-LineReport @($entries) $actualRaw
+    Show-LineReport $rep
+
+    # 机器可读落盘：给「分游戏 / 分档 / 分极性」汇总用（只多写一个文件，判分口径不变）。
+    $tsvPath = "$resultPath.行明细.tsv"
+    $out = New-Object System.Collections.ArrayList
+    [void]$out.Add("Id`tMode`t总`t对`t改`t丢`t多")
+    foreach ($x in $rep.Entries) {
+        [void]$out.Add(("{0}`t{1}`t{2}`t{3}`t{4}`t{5}`t{6}" -f $x.Id, $x.Mode, $x.总, $x.对, $x.改, $x.丢, $x.多))
+    }
+    [IO.File]::WriteAllLines($tsvPath, [string[]]$out.ToArray(), (New-Object System.Text.UTF8Encoding($true)))
+    Write-Host ("  逐项明细已落盘：{0}" -f $tsvPath) -ForegroundColor DarkGray
     return
 }
 

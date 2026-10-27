@@ -1,0 +1,246 @@
+﻿阶段三 S2 首轮（2026-10-27）
+执行文件：release\v0.3.4.3\TranslatorApp.exe
+回放清单：tools\语料\回放-清单-行.txt（80 张裁样，id=行-NN）
+真值：tools\素材\行真值.json（80 项 / 121 行）
+墙钟：110.0 秒
+
+=== 行级成绩（按行）===
+  真值 121 行：对 44 / 错 77（改 28、丢 49、多 0）→ 全量 36.4%
+  L_行（单行）：对 35 / 错 34（改 17、丢 17、多 0）→ L_行 50.7%
+  L_整块（整块）：对 9 / 错 43（改 11、丢 32、多 0）→ L_整块 17.3%
+  错法归类：改字 28 例（36%）、整行丢 49 例（64%）、多出行 0 例（0%）
+
+  逐行明细：
+    [行-01][单行] 丢  差 31
+      答案：Increases ranged and thrown ATK
+      实得：<没认出来>
+    [行-02][单行] 丢  差 6
+      答案：damage
+      实得：<没认出来>
+    [行-03][单行] 丢  差 29
+      答案：Improves movement speed while
+      实得：<没认出来>
+    [行-04][单行] 丢  差 22
+      答案：carrying small weights
+      实得：<没认出来>
+    [行-05][整块] 丢  差 31
+      答案：Increases ranged and thrown ATK
+      实得：<没认出来>
+    [行-05][整块] 丢  差 6
+      答案：damage
+      实得：<没认出来>
+    [行-05][整块] 丢  差 29
+      答案：Improves movement speed while
+      实得：<没认出来>
+    [行-05][整块] 丢  差 22
+      答案：carrying small weights
+      实得：<没认出来>
+    [行-06][单行] 丢  差 6
+      答案：STR -1
+      实得：<没认出来>
+    [行-07][单行] 丢  差 5
+      答案：DEX 0
+      实得：<没认出来>
+    [行-08][单行] 丢  差 5
+      答案：CON 0
+      实得：<没认出来>
+    [行-09][单行] 丢  差 5
+      答案：INT 1
+      实得：<没认出来>
+    [行-10][单行] 改  差 4
+      答案：PER -1
+      实得：一 1
+    [行-11][单行] 丢  差 5
+      答案：CHR 1
+      实得：<没认出来>
+    [行-12][整块] 丢  差 6
+      答案：STR -1
+      实得：<没认出来>
+    [行-12][整块] 丢  差 5
+      答案：DEX 0
+      实得：<没认出来>
+    [行-12][整块] 丢  差 5
+      答案：CON 0
+      实得：<没认出来>
+    [行-12][整块] 丢  差 5
+      答案：INT 1
+      实得：<没认出来>
+    [行-12][整块] 丢  差 6
+      答案：PER -1
+      实得：<没认出来>
+    [行-12][整块] 丢  差 5
+      答案：CHR 1
+      实得：<没认出来>
+    [行-13][单行] 改  差 13
+      答案：Ranged ATK Bonus:
+      实得：d 亻 K 孬：
+    [行-16][单行] 改  差 2
+      答案：Provides reduced visibility to enemies, bonus melee
+      实得：Provides reduced visibility 10 enemies, bonus melee
+    [行-18][单行] 丢  差 9
+      答案：sneaking.
+      实得：<没认出来>
+    [行-19][单行] 丢  差 49
+      答案：Use the Block command without holding a shield to
+      实得：<没认出来>
+    [行-20][单行] 丢  差 6
+      答案：sneak.
+      实得：<没认出来>
+    [行-21][整块] 改  差 3
+      答案：stealth attack damage, and additional vision while
+      实得：stealth attack damoge, ond additional vision whil
+    [行-21][整块] 改  差 2
+      答案：Use the Block command without holding a shield to
+      实得：Use the Block command without holding ao shigld to
+    [行-21][整块] 改  差 3
+      答案：sneak.
+      实得：2neo.K.
+    [行-23][单行] 改  差 1
+      答案：MUTANT SPIDER
+      实得：MUTRNT SPIDER
+    [行-26][单行] 改  差 2
+      答案：* (Playfully crinkling through
+      实得：(Playfully crinkling through
+    [行-28][单行] 改  差 1
+      答案：determination.)
+      实得：determination. )
+    [行-29][整块] 丢  差 30
+      答案：* (Playfully crinkling through
+      实得：<没认出来>
+    [行-29][整块] 丢  差 25
+      答案：the leaves fills you with
+      实得：<没认出来>
+    [行-29][整块] 改  差 55
+      答案：determination.)
+      实得：(Playfully crinkling through the leaves fills you with determination.)
+    [行-34][单行] 改  差 1
+      答案：Race - Race to the goal as quickly as possible. Do you have w
+      实得：Race - Race to the goal as quickly as possible. Do you have wl
+    [行-38][整块] 改  差 5
+      答案：What are
+      实得：遢 h 俱眚 are
+    [行-39][整块] 丢  差 61
+      答案：Race - Race to the goal as quickly as possible. Do you have w
+      实得：<没认出来>
+    [行-39][整块] 改  差 64
+      答案：31 hours 11 mins remaining!
+      实得：Race - Race to the goal as quickly as possible. Do you have wi 31 bours 11 mins remaining!
+    [行-43][单行] 改  差 1
+      答案：12 - Hell Dive
+      实得：I2 - Hell Dive
+    [行-51][单行] 改  差 1
+      答案：RX-1 Rail Gun
+      实得：RX-l Rail Gun
+    [行-52][单行] 丢  差 7
+      答案：C-Zhang
+      实得：<没认出来>
+    [行-54][单行] 改  差 1
+      答案：AR-20L 'Justice'
+      实得：AR-20L 'Justice
+    [行-55][单行] 丢  差 7
+      答案：D-Silva
+      实得：<没认出来>
+    [行-57][单行] 丢  差 16
+      答案：SG-225 'Breaker'
+      实得：<没认出来>
+    [行-60][单行] 改  差 8
+      答案：SG-225 'Breaker'
+      实得：SG-225 'ВгеаКег
+    [行-62][单行] 改  差 3
+      答案：A reliable, low-maintenance.
+      实得：A reliable. low-maintenance. ©
+    [行-64][整块] 丢  差 7
+      答案：BDevaux
+      实得：<没认出来>
+    [行-64][整块] 改  差 10
+      答案：25 Grand Lord
+      实得：= BDevaux 25 Grand Lord
+    [行-64][整块] 改  差 3
+      答案：Stratagem Priority
+      实得：Stratagem Priority pe
+    [行-64][整块] 丢  差 13
+      答案：RX-1 Rail Gun
+      实得：<没认出来>
+    [行-64][整块] 改  差 13
+      答案：STRATAGEMS
+      实得：RX-I Rail Gun ai
+    [行-65][整块] 丢  差 16
+      答案：SG-225 'Breaker'
+      实得：<没认出来>
+    [行-65][整块] 丢  差 5
+      答案：POWER
+      实得：<没认出来>
+    [行-65][整块] 丢  差 8
+      答案：FIRERATE
+      实得：<没认出来>
+    [行-65][整块] 丢  差 9
+      答案：STABILITY
+      实得：<没认出来>
+    [行-65][整块] 丢  差 8
+      答案：MAGAZINE
+      实得：<没认出来>
+    [行-65][整块] 丢  差 5
+      答案：RANGE
+      实得：<没认出来>
+    [行-65][整块] 丢  差 11
+      答案：UNSTOPPABLE
+      实得：<没认出来>
+    [行-65][整块] 丢  差 28
+      答案：A reliable, low-maintenance.
+      实得：<没认出来>
+    [行-65][整块] 丢  差 4
+      答案：BACK
+      实得：<没认出来>
+    [行-69][单行] 丢  差 3
+      答案：0/7
+      实得：<没认出来>
+    [行-72][单行] 丢  差 4
+      答案：0/50
+      实得：<没认出来>
+    [行-73][单行] 改  差 2
+      答案：4.6%
+      实得：4 6%,
+    [行-75][单行] 改  差 5
+      答案：CLICK and DRAG with left mouse button to create new walls
+      实得：Be CLICK and DRAG with left mouse button to create new walls [
+    [行-76][单行] 改  差 7
+      答案：or rooms. Confirm any changes by clicking ORDER at the
+      实得：JEM or rooms. Confirm any changes by clicking ORDER at the |}
+    [行-80][单行] 改  差 2
+      答案：387271
+      实得：387271 G
+    [行-81][单行] 改  差 2
+      答案：0 / 10000
+      实得：0/10000
+    [行-82][整块] 丢  差 5
+      答案：3d 8h
+      实得：<没认出来>
+    [行-82][整块] 丢  差 3
+      答案：0/7
+      实得：<没认出来>
+    [行-82][整块] 丢  差 5
+      答案：78.7%
+      实得：<没认出来>
+    [行-82][整块] 丢  差 10
+      答案：MiniCar F1
+      实得：<没认出来>
+    [行-82][整块] 丢  差 4
+      答案：0/50
+      实得：<没认出来>
+    [行-82][整块] 丢  差 4
+      答案：4.6%
+      实得：<没认出来>
+    [行-83][整块] 丢  差 18
+      答案：WALL BUILDING TOOL
+      实得：<没认出来>
+    [行-83][整块] 丢  差 57
+      答案：CLICK and DRAG with left mouse button to create new walls
+      实得：<没认出来>
+    [行-83][整块] 改  差 45
+      答案：or rooms. Confirm any changes by clicking ORDER at the
+      实得：WALL BUILDING TOOL ™*=
+    [行-83][整块] 改  差 113
+      答案：bottom right.
+      实得：CLICK and DRAG with left mouse button to create new walls or rooms. Confirm any changes by clicking ORDER at the bottom right.
+
+  逐项明细已落盘：D:\111Desktop\deepseek\翻译软件\tools\临时\回放-行结果.txt.行明细.tsv
