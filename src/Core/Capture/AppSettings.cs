@@ -81,6 +81,30 @@ internal static class AppSettings
     /// </summary>
     public static string RapidOcrRec { get; private set; } = "en";
 
+    /// <summary>
+    /// 诊断用：把**真正交给 RapidOCR 的那张图**存成 PNG 到该目录（默认空 = 不存）。
+    ///
+    /// 【2026-10-27 阶段三 S3 集成损耗诊断】
+    ///   裸跑 en 78.3% / P95 210ms，集成后 66.7% / P95 1110ms，差 11.6pp。
+    ///   要判断「是不是喂进去的图不一样」，唯一不靠猜的办法是把实际入参存下来，
+    ///   跟 `tools\临时\裁样\NN.png` 逐像素比。**只存图，不改任何识别行为。**
+    ///   用法：settings.json 写 `"rapidOcrDumpDir": "D:\\...\\tools\\临时\\入参"`。
+    /// </summary>
+    public static string RapidOcrDumpDir { get; private set; } = "";
+
+    /// <summary>
+    /// 诊断用：新通道吃「反色前的原图」还是「反色后的图」。**默认 false = 现状（反色）**。
+    ///
+    /// 【2026-10-27 集成损耗诊断：实验 B】
+    ///   旧代码为了 Tesseract 在 `OcrTextCapture.cs:134` 一拿到图就把深底整张反色，
+    ///   而新通道（RapidOCR 自带检测+归一化）也被迫吃这张反色图。
+    ///   存图对照实测：78 张进新通道的裁样里 **62 张是反色图**、16 张原图。
+    ///   裸跑吃原图 78.3%，管线吃反色 66.7% → 这就是 11.6pp 的去处。
+    ///   打开方式：settings.json 写 `"rapidOcrUseOriginal": true`。
+    ///   旧通道（Windows / Tesseract）**照旧吃反色图，一个字节没改**。
+    /// </summary>
+    public static bool RapidOcrUseOriginal { get; private set; } = false;
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -132,6 +156,22 @@ internal static class AppSettings
                     if (s == "latin" || s == "en") { RapidOcrRec = s; any = true; }
                 }
 
+                // 2026-10-27 阶段三 S3 集成损耗诊断：把入参图存下来（默认空 = 不存）
+                if (doc.RootElement.TryGetProperty("rapidOcrDumpDir", out var dd)
+                    && dd.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    RapidOcrDumpDir = (dd.GetString() ?? "").Trim();
+                    any = true;
+                }
+
+                // 2026-10-27 阶段三 S3 集成损耗诊断：新通道吃原图还是反色图
+                if (doc.RootElement.TryGetProperty("rapidOcrUseOriginal", out var uo)
+                    && uo.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    RapidOcrUseOriginal = uo.GetBoolean();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
@@ -150,7 +190,7 @@ internal static class AppSettings
     /// <summary>
     /// 写设置。用户想开/关时调它。
     ///
-    /// 【三个键都要写】只写 windowsOnly 会把 rapidOcrPrimary / rapidOcrRec 抹掉，
+    /// 【键都要写】只写 windowsOnly 会把 rapidOcrPrimary / rapidOcrRec / rapidOcrDumpDir 抹掉，
     /// 下次启动就悄悄回到默认值，排查时会以为「开关没生效」。
     /// </summary>
     public static void Save(bool windowsOnly)
@@ -160,7 +200,14 @@ internal static class AppSettings
             Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath)!);
             File.WriteAllText(ConfigPath,
                 System.Text.Json.JsonSerializer.Serialize(
-                    new { windowsOnly, rapidOcrPrimary = RapidOcrPrimary, rapidOcrRec = RapidOcrRec },
+                    new
+                    {
+                        windowsOnly,
+                        rapidOcrPrimary = RapidOcrPrimary,
+                        rapidOcrRec = RapidOcrRec,
+                        rapidOcrDumpDir = RapidOcrDumpDir,
+                        rapidOcrUseOriginal = RapidOcrUseOriginal,
+                    },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
             WindowsOnly = windowsOnly;

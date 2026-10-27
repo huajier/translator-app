@@ -321,7 +321,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
                 if (!windowsSaysChinese || colorful)
                 {
                     ForeignOutcome foreign = RunForeignPath(
-                        raw, first, text, lineCount, note,
+                        raw, captured, first, text, lineCount, note,
                         channelUsed, scoreNote, rejectedAsGarbage,
                         windowsSaysChinese, windowsCharsForCompare, windowsScoreForCompare);
                     text = foreign.Text;

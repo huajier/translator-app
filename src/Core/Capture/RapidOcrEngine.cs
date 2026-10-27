@@ -126,6 +126,8 @@ internal static class RapidOcrEngine
             return null;
         }
 
+        DumpIfAsked(bitmap);
+
         try
         {
             // GDI 位图 → Skia 位图：走一次内存 PNG 编码（裁样都只有几十 KB，1 毫秒量级），
@@ -181,6 +183,52 @@ internal static class RapidOcrEngine
             note = $"{ex.GetType().Name} {ex.Message}";
             AppLogger.Warn($"RapidOCR 识别异常（回退旧通道）：{note}");
             return null;
+        }
+    }
+
+    /// <summary>诊断用序号（每进程从 1 开始，按回放顺序与 id 一一对应）。</summary>
+    private static int _dumpSeq;
+
+    /// <summary>
+    /// 诊断用：`rapidOcrDumpDir` 非空时，把这张**实际入参**存成 `NNNN.png`，
+    /// 并把「尺寸 / 平均亮度」追加到 `dump.txt`。平均亮度用来一眼看出是不是反色图
+    /// （反色后浅字深底会变成暗字亮底，亮度从 &lt;100 跳到 &gt;150）。
+    /// 任何异常都只记一条警告，**绝不影响识别**。
+    /// </summary>
+    private static void DumpIfAsked(Bitmap bitmap)
+    {
+        string dir = AppSettings.RapidOcrDumpDir;
+        if (string.IsNullOrWhiteSpace(dir)) return;
+
+        try
+        {
+            Directory.CreateDirectory(dir);
+            int seq = System.Threading.Interlocked.Increment(ref _dumpSeq);
+            string name = $"{seq:D4}.png";
+            bitmap.Save(Path.Combine(dir, name), ImageFormat.Png);
+
+            // 平均亮度：每 4 个像素取一个，几十 KB 的小图足够准，也不慢
+            double sum = 0;
+            int n = 0;
+            for (int y = 0; y < bitmap.Height; y += 2)
+            {
+                for (int x = 0; x < bitmap.Width; x += 2)
+                {
+                    Color c = bitmap.GetPixel(x, y);
+                    sum += 0.299 * c.R + 0.587 * c.G + 0.114 * c.B;
+                    n++;
+                }
+            }
+            double lum = n > 0 ? sum / n : 0;
+
+            File.AppendAllText(
+                Path.Combine(dir, "dump.txt"),
+                $"{seq:D4}\t{bitmap.Width}x{bitmap.Height}\t亮度 {lum:F1}{Environment.NewLine}",
+                Encoding.UTF8);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"入参存图失败（不影响识别）：{ex.GetType().Name} {ex.Message}");
         }
     }
 
