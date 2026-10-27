@@ -64,8 +64,29 @@ internal static class RapidOcrEngine
             string dir = ModelDir;
             string det = Path.Combine(dir, "ch_PP-OCRv5_mobile_det.onnx");
             string cls = Path.Combine(dir, "ch_PP-LCNet_x0_25_textline_ori_cls_mobile.onnx");
-            string rec = Path.Combine(dir, "latin_PP-OCRv5_rec_mobile_infer.onnx");
-            string keys = Path.Combine(dir, "ppocrv5_latin_dict.txt");
+
+            // 识别模型按设置挑：en（英文专用，默认）/ latin（包自带）。
+            // 只换 rec + dict，det/cls 不变；缺文件就退回 latin，不让主通道整个失效。
+            string rec, keys, recName;
+            if (AppSettings.RapidOcrRec == "latin")
+            {
+                rec = Path.Combine(dir, "latin_PP-OCRv5_rec_mobile_infer.onnx");
+                keys = Path.Combine(dir, "ppocrv5_latin_dict.txt");
+                recName = "latin";
+            }
+            else
+            {
+                rec = Path.Combine(dir, "en_PP-OCRv5_rec_mobile.onnx");
+                keys = Path.Combine(dir, "ppocrv5_en_dict.txt");
+                recName = "en";
+                if (!File.Exists(rec) || !File.Exists(keys))
+                {
+                    AppLogger.Warn($"英文识别模型缺失（{dir}），改用包自带 latin 模型");
+                    rec = Path.Combine(dir, "latin_PP-OCRv5_rec_mobile_infer.onnx");
+                    keys = Path.Combine(dir, "ppocrv5_latin_dict.txt");
+                    recName = "latin（en 缺文件回退）";
+                }
+            }
 
             if (!File.Exists(det) || !File.Exists(rec) || !File.Exists(keys))
             {
@@ -79,7 +100,7 @@ internal static class RapidOcrEngine
                 var ocr = new RapidOcr();
                 ocr.InitModels(det, cls, rec, keys);
                 _ocr = ocr;
-                AppLogger.Info($"RapidOCR 引擎已就绪：PP-OCRv5 latin，耗时 {start.ElapsedMilliseconds} 毫秒（之后复用，不再重建）");
+                AppLogger.Info($"RapidOCR 引擎已就绪：PP-OCRv5 {recName}，耗时 {start.ElapsedMilliseconds} 毫秒（之后复用，不再重建）");
             }
             catch (Exception ex)
             {
