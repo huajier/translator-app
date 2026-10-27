@@ -116,10 +116,12 @@ internal static class AppSettings
     ///       （行-18 `sneaking.` → `sneaKing`、行-20 `sneak.`）。
     ///   裸跑（不洗）这 4 行全对，管线全错。
     ///   打开 = 新通道只削开头，行尾一律不动（空白由 Trim() 兜）。
-    ///   打开方式：settings.json 写 `"rapidOcrKeepTrailingPunct": true`。
+    ///   关闭方式：settings.json 写 `"rapidOcrKeepTrailingPunct": false`。
     ///   旧通道（Windows / Tesseract）**照旧用老清洗器，一个字节没改**。
+    ///   2026-10-27 用户拍板：默认改 true（A/B：L_行 46→49、Barony 47.1→50.0%、L_整块持平、P95 不变差、零新错；
+    ///   行尾标点本来就该保留给翻译）。
     /// </summary>
-    public static bool RapidOcrKeepTrailingPunct { get; private set; } = false;
+    public static bool RapidOcrKeepTrailingPunct { get; private set; } = true;
 
     private static bool _loaded;
 
