@@ -32,7 +32,7 @@ internal static class OcrWorker
         {
             IsBackground = true,          // 不阻止程序退出
             Name = "文字识别线程",
-            Priority = ThreadPriority.BelowNormal
+            Priority = ThreadPriority.Normal
         };
         Thread.Start();
         AppLogger.Info("文字识别后台线程已启动（识别时界面不会卡）");
