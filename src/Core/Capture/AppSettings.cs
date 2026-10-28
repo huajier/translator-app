@@ -123,6 +123,19 @@ internal static class AppSettings
     /// </summary>
     public static bool RapidOcrKeepTrailingPunct { get; private set; } = true;
 
+    /// <summary>
+    /// 新通道没认到时，旧通道的回退要不要**短路**：只跑「灰度 + 局部阈值」两路，
+    /// 不再跑红/绿/蓝三路和「红通道不二值化」那一路。**默认 false = 现状（五路全跑）**。
+    ///
+    /// 【2026-10-28 阶段三 S3：行-75 的尾部】
+    ///   P95 由这条回退路径决定：行-75 新通道认不出 → 旧通道 6 次 Tesseract 串行，
+    ///   单段 1.6~2.4s，而第一遍本身只要 16~31ms。
+    ///   五路里真正救回样本的是灰度/局部阈值（红绿蓝只在彩色底上有用）。
+    ///   开关只影响**回退时跑几路**，模型、预处理参数、chi_sim 兜底全不动。
+    ///   打开方式：settings.json 写 `"fallbackShortCircuit": true`。
+    /// </summary>
+    public static bool FallbackShortCircuit { get; private set; } = false;
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -198,6 +211,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-10-28 阶段三 S3：回退路径短路（只跑灰度 + 局部阈值两路）
+                if (doc.RootElement.TryGetProperty("fallbackShortCircuit", out var fs)
+                    && fs.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    FallbackShortCircuit = fs.GetBoolean();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
@@ -234,6 +255,7 @@ internal static class AppSettings
                         rapidOcrDumpDir = RapidOcrDumpDir,
                         rapidOcrUseOriginal = RapidOcrUseOriginal,
                         rapidOcrKeepTrailingPunct = RapidOcrKeepTrailingPunct,
+                        fallbackShortCircuit = FallbackShortCircuit,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 

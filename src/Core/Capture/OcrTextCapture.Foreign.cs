@@ -469,8 +469,22 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     // **下面中文兜底还要在这张图上再试一次**，所以不能随手就释放。
                     Bitmap? bestPlane = null;
 
+                    // 【2026-10-28 阶段三 S3：回退短路】
+                    //   开关打开时只跑「灰度」(3) 和「局部阈值」(4) 两路，
+                    //   跳过红/绿/蓝三路二值化图 —— 这三路只在彩色底上才救得回字，
+                    //   而每多一路就是一次完整的 Tesseract 识别（150~300ms）。
+                    //   行-75 的 1.6~2.4s 就是这么串出来的，第一遍本身只要 16~31ms。
+                    //   默认关闭 = 行为与改动前完全一致。
+                    bool shortFallback = AppSettings.FallbackShortCircuit;
+
                     for (int i = 0; i < planes.Length; i++)
                     {
+                        if (shortFallback && i < 3)
+                        {
+                            AppLogger.Info($"  短路：「{PlaneNames[i]}」这一路跳过（回退只跑灰度 + 局部阈值）");
+                            continue;
+                        }
+
                         var planeResult = TesseractOcr.TryRecognize(planes[i], modelUsed);
 
                         // ==========================================================
@@ -888,6 +902,14 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     //   字数一样 → 不换，认得准的那版留着（E3、R3 安全）；
                     //   字数明显更多 → 换（正是 R9 缺 `позже` 的情况）。
                     // ==========================================================
+                    // 【2026-10-28 阶段三 S3：短路时连这一路也不跑】
+                    //   它同样是一次完整的 Tesseract 识别（150~300ms），
+                    //   而且喂的是红通道图 —— 和红/绿/蓝三路同源，只在彩色底上救字。
+                    if (shortFallback)
+                    {
+                        AppLogger.Info("  短路：「红通道不二值化」这一路跳过（回退只跑灰度 + 局部阈值）");
+                    }
+                    else
                     {
                         using Bitmap redGray = ImagePreprocessor.PrepareRedChannelGray(foreignImage);
                         var grayResult = TesseractOcr.TryRecognize(redGray, modelUsed);
@@ -1055,6 +1077,16 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     //   所以**兜底的门槛要比择优的更高（更保守）**，
                     //   否则它永远在最该来的时候不来。
                     // ==========================================================
+                    // 【2026-10-28 阶段三 S3：短路时的中文兜底】
+                    //   两路（灰度 / 局部阈值）都认不出外文时 bestPlane 还是 null，
+                    //   下面这段中文兜底就被跳过了 —— 中英混排图会直接哑。
+                    //   所以短路时把「局部阈值」那张图顶上，保证中文通道照跑。
+                    if (bestPlane is null && shortFallback)
+                    {
+                        bestPlane = planes[planes.Length - 1];
+                        AppLogger.Info("  短路：两路都没认出外文，拿「局部阈值」那张图跑中文兜底");
+                    }
+
                     if (bestPlane is not null)
                     {
                         // 中文兜底：在最能分开底色的那张图上试。
