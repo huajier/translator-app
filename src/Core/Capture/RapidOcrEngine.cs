@@ -114,7 +114,7 @@ internal static class RapidOcrEngine
     }
 
     /// <summary>
-    /// 认一张图。成功返回按行拼好的文本（行间用 ⏎ 即 U+23CE，和旧通道一致），
+    /// 认一张图。成功返回按行拼好的文本（行间用真正的 <c>\n</c>，和旧通道一致），
     /// 失败返回 null，原因写进 <paramref name="note"/>。
     /// </summary>
     /// <param name="averageScore">各检测行的平均置信度（0~1），调用方拿它决定信不信。</param>
@@ -183,7 +183,14 @@ internal static class RapidOcrEngine
                 if (CountLettersDigits(block.Text) <= 1) singleCharBoxes++;
 
                 if (string.IsNullOrWhiteSpace(block.Text)) continue;
-                if (sb.Length > 0) sb.Append('\u23CE');
+                // 【2026-10-29 用户实机反馈「换行显示：无」】
+                //   原来这里拼的是 U+23CE（⏎）——那是**取词记录/回放结果文件**里
+                //   为了「一段一行」用的换行替身，不是给人看的文本。
+                //   UI 的 MainText 是个 TextBox，它只认真正的 \n，
+                //   于是用户看到的是 7 行认出来挤成一整行、中间还夹着 ⏎。
+                //   旧通道 RecognizeOnce 拼的是 string.Join("\n", lines)，
+                //   这里改成一样，两条通道才算一致。
+                if (sb.Length > 0) sb.Append('\n');
                 sb.Append(block.Text);
                 if (block.CharScores is { Length: > 0 } chars)
                 {
