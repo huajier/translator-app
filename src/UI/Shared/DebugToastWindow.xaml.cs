@@ -407,7 +407,10 @@ public partial class DebugToastWindow : Window
                 $"{ChannelNameOf(result.Channel)}    {Core.Capture.LanguageDetector.DisplayName(result.DetectedLanguage)}    " +
                 $"用时 {result.ElapsedMs} ms" +
                 (result.LineCount > 0 ? $"    {result.LineCount} 行" : string.Empty) +
-                (needScroll ? $"    共 {result.Text.Length} 字，可滚动查看" : string.Empty);
+                (needScroll ? $"    共 {result.Text.Length} 字，可滚动查看" : string.Empty) +
+                // 【2026-10-29 阶段三 S4】整块没认好时加一行小字，引导逐行框。
+                //   只加提示，不改上面任何文字，也不阻断翻译。
+                (result.BlockLooksBad ? Environment.NewLine + "这块字没认好，切成一行一行框会更准" : string.Empty);
         }
         else
         {

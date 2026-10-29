@@ -12,7 +12,14 @@ internal sealed partial class OcrTextCapture : ITextCapture
         int LineCount,
         string ChannelUsed,
         string ScoreNote,
-        bool RejectedAsGarbage);
+        bool RejectedAsGarbage)
+    {
+        /// <summary>
+        /// 多行整块「看起来没认好」（S4）。只在 RapidOCR 通道且开关打开时才有值，
+        /// 其余路径一律 false。**纯展示信号，不参与任何文字取舍。**
+        /// </summary>
+        public bool BlockLooksBad { get; init; }
+    }
 
     private ForeignOutcome RunForeignPath(
         Bitmap raw, Bitmap captured, PassResult first, string text, int lineCount, string note,
@@ -45,23 +52,48 @@ internal sealed partial class OcrTextCapture : ITextCapture
             //   为 Tesseract 调的那道「一拿到图就翻过来」。
             //   开关默认 false = 维持现状（反色），打开才是吃原图，方便 A/B 回退。
             Bitmap rapidInput = AppSettings.RapidOcrUseOriginal ? captured : raw;
-            string? rapidText = RapidOcrEngine.TryRecognize(rapidInput, out double rapidScore, out string rapidNote);
+            string? rapidText = RapidOcrEngine.TryRecognize(
+                rapidInput, out double rapidScore, out string rapidNote,
+                out int rapidWeakChars, out int rapidSingleBoxes, out int rapidBoxes);
 
             if (rapidText is not null && rapidScore >= RapidOcrMinScore)
             {
                 string trimmed = TrimEdgeSymbols(rapidText, AppSettings.RapidOcrKeepTrailingPunct);
                 if (trimmed.Length > 0) rapidText = trimmed;
 
+                // ==========================================================
+                // 【2026-10-29 阶段三 S4：整块没认好的提示信号】
+                //
+                //   触发条件（申请单 tools\日志\阶段3-S4-申请单-整块提示.md）：
+                //     boxes >= 2（多行） 且 (弱字符 >= 2 或 单字框 >= 2)
+                //   弱字符 = 字符分 < 0.60；单字框 = 有效字母/数字 <= 1 的框。
+                //
+                //   离线 11 张整块上：触发 5 张，5 张全坏，2 张好的不触发，误报 0；
+                //   66 张能取到几何的单行图零触发。
+                //
+                //   **只管提示，一个字都不改**：下面 return 的 Text 与开关无关。
+                //   开关关掉时 BlockLooksBad 恒为 false，等于回到没有这个功能。
+                // ==========================================================
+                bool blockLooksBad = AppSettings.BlockFallbackHint
+                    && rapidBoxes >= 2
+                    && (rapidWeakChars >= 2 || rapidSingleBoxes >= 2);
+
                 AppLogger.Info(
                     $"【RapidOCR 主通道】认到 {TextNormalizer.CountMeaningfulChars(rapidText)} 个有效字符，" +
-                    $"平均分 {rapidScore:F2}，不再跑 Tesseract 多路");
+                    $"平均分 {rapidScore:F2}，不再跑 Tesseract 多路" +
+                    (blockLooksBad
+                        ? $"；整块疑似没认好（{rapidBoxes} 行，弱字符 {rapidWeakChars}，单字框 {rapidSingleBoxes}），将提示逐行框"
+                        : string.Empty));
 
                 return new ForeignOutcome(
                     rapidText,
                     TextNormalizer.CountLines(rapidText),
                     "RapidOCR",
                     $"RapidOCR 平均分 {rapidScore:F2}",
-                    false);
+                    false)
+                {
+                    BlockLooksBad = blockLooksBad,
+                };
             }
 
             AppLogger.Info(

@@ -56,6 +56,12 @@ internal sealed class CaptureResult
     /// <summary>失败时的补充说明，直接写进日志便于排查。</summary>
     public string Detail { get; init; } = string.Empty;
 
+    /// <summary>
+    /// 多行整块看起来没认好（由 RapidOCR 逐字分数与框数判断），UI 可以提示用户改成逐行框。
+    /// 只是展示信号，**不影响 Text 里任何字符**。
+    /// </summary>
+    public bool BlockLooksBad { get; init; }
+
     /// <summary>认出的文字去掉空白和标点后，是否还够长度算「有效」。</summary>
     public bool HasMeaningfulText => TextNormalizer.CountMeaningfulChars(Text) >= 2;
 

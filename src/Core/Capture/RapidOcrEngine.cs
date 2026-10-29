@@ -34,6 +34,9 @@ namespace TranslatorApp.Core.Capture;
 /// </summary>
 internal static class RapidOcrEngine
 {
+    /// <summary>字符分低于这个值算「弱字符」。与 tools/临时/S4 离线模拟的 0.60 同口径。</summary>
+    private const float WeakCharScore = 0.60f;
+
     private static readonly object Gate = new();
     private static RapidOcr? _ocr;
     private static bool _tried;
@@ -115,10 +118,18 @@ internal static class RapidOcrEngine
     /// 失败返回 null，原因写进 <paramref name="note"/>。
     /// </summary>
     /// <param name="averageScore">各检测行的平均置信度（0~1），调用方拿它决定信不信。</param>
-    public static string? TryRecognize(Bitmap bitmap, out double averageScore, out string note)
+    /// <param name="weakChars">字符分低于 0.60 的字符数（跨块累加，纯统计）。</param>
+    /// <param name="singleCharBoxes">有效字符（字母/数字）不超过 1 个的框数（纯统计）。</param>
+    /// <param name="boxCount">检测框总数（纯统计）。</param>
+    public static string? TryRecognize(
+        Bitmap bitmap, out double averageScore, out string note,
+        out int weakChars, out int singleCharBoxes, out int boxCount)
     {
         averageScore = 0;
         note = string.Empty;
+        weakChars = 0;
+        singleCharBoxes = 0;
+        boxCount = 0;
 
         if (!IsAvailable)
         {
@@ -160,6 +171,17 @@ internal static class RapidOcrEngine
             var scores = new System.Collections.Generic.List<double>(blocks.Length);
             foreach (var block in blocks)
             {
+                // 统计口径与 tools/临时/S4 离线模拟脚本一致：先统计，再跳过空行。
+                boxCount++;
+                if (block.CharScores is { Length: > 0 } everyScore)
+                {
+                    foreach (float one in everyScore)
+                    {
+                        if (one < WeakCharScore) weakChars++;
+                    }
+                }
+                if (CountLettersDigits(block.Text) <= 1) singleCharBoxes++;
+
                 if (string.IsNullOrWhiteSpace(block.Text)) continue;
                 if (sb.Length > 0) sb.Append('\u23CE');
                 sb.Append(block.Text);
@@ -184,6 +206,18 @@ internal static class RapidOcrEngine
             AppLogger.Warn($"RapidOCR 识别异常（回退旧通道）：{note}");
             return null;
         }
+    }
+
+    /// <summary>数有效字符（字母/数字），和离线模拟里 <c>t.Count(char.IsLetterOrDigit)</c> 同口径。</summary>
+    private static int CountLettersDigits(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return 0;
+        int n = 0;
+        foreach (char c in text)
+        {
+            if (char.IsLetterOrDigit(c)) n++;
+        }
+        return n;
     }
 
     /// <summary>诊断用序号（每进程从 1 开始，按回放顺序与 id 一一对应）。</summary>

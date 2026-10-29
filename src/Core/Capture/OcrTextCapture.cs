@@ -317,6 +317,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
                 //   宁可说没认出来，也不要给错的。
                 // ==========================================================
                 bool rejectedAsGarbage = false;
+                bool blockLooksBad = false;
 
                 if (!windowsSaysChinese || colorful)
                 {
@@ -329,6 +330,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     channelUsed = foreign.ChannelUsed;
                     scoreNote = foreign.ScoreNote;
                     rejectedAsGarbage = foreign.RejectedAsGarbage;
+                    blockLooksBad = foreign.BlockLooksBad;
                 }
                 else
                 {
@@ -497,6 +499,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     Failure = CaptureFailure.None,
                     LineCount = lineCount,
                     DetectedLanguage = LanguageDetector.Detect(text),
+                    BlockLooksBad = blockLooksBad,
                     Detail = $"识别耗时 {ocrMs} 毫秒" +
                             (scoreNote.Length > 0 ? $"    {scoreNote}" : string.Empty)
                 };

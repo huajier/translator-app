@@ -123,6 +123,19 @@ internal static class AppSettings
     /// </summary>
     public static bool RapidOcrKeepTrailingPunct { get; private set; } = true;
 
+    /// <summary>
+    /// 整块没认好时提示用户改成逐行框（S4，2026-10-29）。
+    ///
+    /// 【做什么】RapidOCR 认到多行时，若「弱字符（字符分 &lt; 0.60）≥ 2」或「单字框 ≥ 2」，
+    ///   在结果旁加一行小字提示逐行框。**只影响提示，不改一个识别字符。**
+    /// 【为什么默认 true】离线 11 张整块上触发 5 张、5 张全坏、2 张好的不触发，误报 0；
+    ///   66 张单行图零触发。引导逐行能回收 4 行 → L_整块 +7.7pp，L_行 不变。
+    /// 【怎么关】settings.json 里 <c>blockFallbackHint=false</c>，等于回到没有这个功能。
+    /// 【已知漏报】整块坏 9 张里有 4 张不触发（行-38/39/64/65），纯文本信号最多只能到 3/9，
+    ///   拿不到逐字分数就只能漏，这是设计上接受的。
+    /// </summary>
+    public static bool BlockFallbackHint { get; private set; } = true;
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -198,6 +211,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-10-29 阶段三 S4：整块没认好时的逐行提示开关
+                if (doc.RootElement.TryGetProperty("blockFallbackHint", out var bfh)
+                    && bfh.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    BlockFallbackHint = bfh.GetBoolean();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
@@ -234,6 +255,7 @@ internal static class AppSettings
                         rapidOcrDumpDir = RapidOcrDumpDir,
                         rapidOcrUseOriginal = RapidOcrUseOriginal,
                         rapidOcrKeepTrailingPunct = RapidOcrKeepTrailingPunct,
+                        blockFallbackHint = BlockFallbackHint,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
