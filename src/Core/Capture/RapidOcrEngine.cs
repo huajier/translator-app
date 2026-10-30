@@ -5,6 +5,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.ML.OnnxRuntime;
 using RapidOcrNet;
 using SkiaSharp;
 using TranslatorApp.Core.Logging;
@@ -39,6 +40,9 @@ internal static class RapidOcrEngine
 
     private static readonly object Gate = new();
     private static RapidOcr? _ocr;
+
+    /// <summary>会话选项。创建好之后必须一直活着 —— 提前 Dispose 会让推理抛异常。</summary>
+    private static SessionOptions? _sessionOptions;
     private static bool _tried;
 
     /// <summary>识别要串行：一个引擎实例带三份 ONNX 会话，并发调用没有意义也不保证安全。</summary>
@@ -101,8 +105,14 @@ internal static class RapidOcrEngine
             {
                 var start = Stopwatch.StartNew();
                 var ocr = new RapidOcr();
-                ocr.InitModels(det, cls, rec, keys);
+                var options = new SessionOptions
+                {
+                    IntraOpNumThreads = 2,
+                    InterOpNumThreads = 1
+                };
+                ocr.InitModels(det, cls, rec, keys, options);
                 _ocr = ocr;
+                _sessionOptions = options;
                 AppLogger.Info($"RapidOCR 引擎已就绪：PP-OCRv5 {recName}，耗时 {start.ElapsedMilliseconds} 毫秒（之后复用，不再重建）");
             }
             catch (Exception ex)
@@ -389,7 +399,9 @@ internal static class RapidOcrEngine
         lock (Gate)
         {
             try { _ocr?.Dispose(); } catch { /* 退出路径，忽略 */ }
+            try { _sessionOptions?.Dispose(); } catch { /* 退出路径，忽略 */ }
             _ocr = null;
+            _sessionOptions = null;
             _tried = false;
         }
     }
