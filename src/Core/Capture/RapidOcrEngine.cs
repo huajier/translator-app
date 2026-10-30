@@ -141,71 +141,33 @@ internal static class RapidOcrEngine
 
         try
         {
-            // GDI 位图 → Skia 位图：走一次内存 PNG 编码（裁样都只有几十 KB，1 毫秒量级），
-            // 比手写 LockBits 逐像素搬运短得多，也不用碰指针。
-            using var ms = new MemoryStream();
-            bitmap.Save(ms, ImageFormat.Png);
-            ms.Position = 0;
+            Pass first = RecognizeOnePass(bitmap);
 
-            using var skBitmap = SKBitmap.Decode(ms);
-            if (skBitmap is null)
+            // 【2026-10-30 阶段三 S4-D：小框 3 倍重试（默认关）】
+            //   申请单与全量模拟见 tools\日志\阶段3-S4D-申请单-小框3倍重试.md。
+            //   1x 结果「空」或「某块里有非 ASCII 字符」时，把同一张输入图放大 3 倍再认一次。
+            //   80 张里只触发 2 张（行-68 的 ε、行-75 整块空），L_行 49→51、回归 0。
+            //   3x 结果要「非空 且 非 ASCII 字符数不增加」才采用，否则保留 1x。
+            //   开关关着时这段一次都不进，行为与没有这个功能完全一致。
+            if (AppSettings.RapidOcrSmallBoxUpscale && NeedsUpscaleRetry(first))
             {
-                note = "图片解码失败";
-                return null;
-            }
-
-            OcrResult? result;
-            lock (RunGate)
-            {
-                result = _ocr!.Detect(skBitmap, RapidOcrOptions.Default);
-            }
-
-            var blocks = result?.TextBlocks;
-            if (blocks is null || blocks.Length == 0)
-            {
-                note = "没检测到文字行";
-                return null;
-            }
-
-            var sb = new StringBuilder();
-            var scores = new System.Collections.Generic.List<double>(blocks.Length);
-            foreach (var block in blocks)
-            {
-                // 统计口径与 tools/临时/S4 离线模拟脚本一致：先统计，再跳过空行。
-                boxCount++;
-                if (block.CharScores is { Length: > 0 } everyScore)
+                using Bitmap upscaled = UpscaleForRetry(bitmap);
+                Pass second = RecognizeOnePass(upscaled);
+                if (IsBetterUpscaledResult(first, second))
                 {
-                    foreach (float one in everyScore)
-                    {
-                        if (one < WeakCharScore) weakChars++;
-                    }
-                }
-                if (CountLettersDigits(block.Text) <= 1) singleCharBoxes++;
-
-                if (string.IsNullOrWhiteSpace(block.Text)) continue;
-                // 【2026-10-29 用户实机反馈「换行显示：无」】
-                //   原来这里拼的是 U+23CE（⏎）——那是**取词记录/回放结果文件**里
-                //   为了「一段一行」用的换行替身，不是给人看的文本。
-                //   UI 的 MainText 是个 TextBox，它只认真正的 \n，
-                //   于是用户看到的是 7 行认出来挤成一整行、中间还夹着 ⏎。
-                //   旧通道 RecognizeOnce 拼的是 string.Join("\n", lines)，
-                //   这里改成一样，两条通道才算一致。
-                if (sb.Length > 0) sb.Append('\n');
-                sb.Append(block.Text);
-                if (block.CharScores is { Length: > 0 } chars)
-                {
-                    scores.Add(chars.Average(c => (double)c));
+                    AppLogger.Info(
+                        $"小框 3 倍重试：{bitmap.Width}×{bitmap.Height} → {upscaled.Width}×{upscaled.Height}，" +
+                        $"1x「{Preview(first.Text)}」→ 3x「{Preview(second.Text)}」");
+                    first = second;
                 }
             }
 
-            if (sb.Length == 0)
-            {
-                note = "检测到行但没有文字";
-                return null;
-            }
-
-            averageScore = scores.Count > 0 ? scores.Average() : 0;
-            return sb.ToString();
+            note = first.Note;
+            averageScore = first.AverageScore;
+            weakChars = first.WeakChars;
+            singleCharBoxes = first.SingleCharBoxes;
+            boxCount = first.BoxCount;
+            return first.Text;
         }
         catch (Exception ex)
         {
@@ -213,6 +175,154 @@ internal static class RapidOcrEngine
             AppLogger.Warn($"RapidOCR 识别异常（回退旧通道）：{note}");
             return null;
         }
+    }
+
+    /// <summary>一次 Detect 的全部产出（1x 与 3x 各产生一个，用来比较与择优）。</summary>
+    private readonly record struct Pass(
+        string? Text, string Note, double AverageScore,
+        int WeakChars, int SingleCharBoxes, int BoxCount);
+
+    /// <summary>对一张位图跑一次完整识别，不涉及任何重试决策。原 TryRecognize 的实现原样搬到这里。</summary>
+    private static Pass RecognizeOnePass(Bitmap bitmap)
+    {
+        // GDI 位图 → Skia 位图：走一次内存 PNG 编码（裁样都只有几十 KB，1 毫秒量级），
+        // 比手写 LockBits 逐像素搬运短得多，也不用碰指针。
+        using var ms = new MemoryStream();
+        bitmap.Save(ms, ImageFormat.Png);
+        ms.Position = 0;
+
+        using var skBitmap = SKBitmap.Decode(ms);
+        if (skBitmap is null) return new Pass(null, "图片解码失败", 0, 0, 0, 0);
+
+        OcrResult? result;
+        lock (RunGate)
+        {
+            result = _ocr!.Detect(skBitmap, RapidOcrOptions.Default);
+        }
+
+        var blocks = result?.TextBlocks;
+        if (blocks is null || blocks.Length == 0)
+        {
+            return new Pass(null, "没检测到文字行", 0, 0, 0, 0);
+        }
+
+        var sb = new StringBuilder();
+        var scores = new System.Collections.Generic.List<double>(blocks.Length);
+        int weakChars = 0, singleCharBoxes = 0, boxCount = 0;
+        foreach (var block in blocks)
+        {
+            // 统计口径与 tools/临时/S4 离线模拟脚本一致：先统计，再跳过空行。
+            boxCount++;
+            if (block.CharScores is { Length: > 0 } everyScore)
+            {
+                foreach (float one in everyScore)
+                {
+                    if (one < WeakCharScore) weakChars++;
+                }
+            }
+            if (CountLettersDigits(block.Text) <= 1) singleCharBoxes++;
+
+            if (string.IsNullOrWhiteSpace(block.Text)) continue;
+            // 【2026-10-29 用户实机反馈「换行显示：无」】
+            //   原来这里拼的是 U+23CE（⏎）——那是**取词记录/回放结果文件**里
+            //   为了「一段一行」用的换行替身，不是给人看的文本。
+            //   UI 的 MainText 是个 TextBox，它只认真正的 \n，
+            //   于是用户看到的是 7 行认出来挤成一整行、中间还夹着 ⏎。
+            //   旧通道 RecognizeOnce 拼的是 string.Join("\n", lines)，
+            //   这里改成一样，两条通道才算一致。
+            if (sb.Length > 0) sb.Append('\n');
+            sb.Append(block.Text);
+            if (block.CharScores is { Length: > 0 } chars)
+            {
+                scores.Add(chars.Average(c => (double)c));
+            }
+        }
+
+        if (sb.Length == 0)
+        {
+            return new Pass(null, "检测到行但没有文字", 0, weakChars, singleCharBoxes, boxCount);
+        }
+
+        return new Pass(sb.ToString(), string.Empty, scores.Count > 0 ? scores.Average() : 0,
+            weakChars, singleCharBoxes, boxCount);
+    }
+
+    /// <summary>
+    /// 1x 结果要不要 3x 重试（S1 / S2 两个信号，逐块判）。
+    ///   S1 空：没有文本。
+    ///   S2 非 ASCII：任一块里有 <c>c &gt; 127</c> 的字符（典型是 行-68 的 ε）。
+    /// 注意 S2 是**逐块**判：首版按整图串判，把含 <c>'</c> <c>-</c> <c>?</c> 的图误触 12 张，
+    /// 整块 -5.7pp。中文块也跳过——中文本来就该是汉字，S2 对它没有意义。
+    /// </summary>
+    private static bool NeedsUpscaleRetry(Pass pass)
+    {
+        if (pass.Text is null) return true;
+
+        foreach (string line in pass.Text.Split('\n'))
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            if (LanguageDetector.IsMostlyChinese(line)) continue;
+            foreach (char c in line)
+            {
+                if (c > 127) return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 3x 结果比 1x 好吗：非空 且 非 ASCII 字符数不增加（非 ASCII 变多说明认得更糟）。
+    /// </summary>
+    private static bool IsBetterUpscaledResult(Pass before, Pass after)
+    {
+        if (after.Text is null) return false;
+        return CountNonAscii(after.Text) <= CountNonAscii(before.Text);
+    }
+
+    /// <summary>数非 ASCII 字符（&gt; 127），用来判断一次重试有没有把图认得更糟。</summary>
+    private static int CountNonAscii(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return 0;
+        int n = 0;
+        foreach (char c in text)
+        {
+            if (c > 127) n++;
+        }
+        return n;
+    }
+
+    /// <summary>
+    /// 放大 3 倍给重试用。放大方式与 ImagePreprocessor.UpscaleForForeign 同款
+    /// （HighQualityBicubic + PixelOffsetMode.HighQuality），不新增依赖。
+    /// 边太长时按 2000 像素上限把系数降下来——超过 MaxSideLen，检测会直接失败。
+    /// </summary>
+    private static Bitmap UpscaleForRetry(Bitmap source)
+    {
+        const int retryScale = 3;
+        const int maxSide = 2000;
+
+        double scale = retryScale;
+        int longest = Math.Max(source.Width, source.Height);
+        if (longest * scale > maxSide) scale = (double)maxSide / longest;
+        if (scale < 1) scale = 1;
+
+        int nw = Math.Max(1, (int)Math.Round(source.Width * scale));
+        int nh = Math.Max(1, (int)Math.Round(source.Height * scale));
+
+        var dst = new Bitmap(nw, nh, PixelFormat.Format32bppArgb);
+        using var g = Graphics.FromImage(dst);
+        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+        g.DrawImage(source, new Rectangle(0, 0, nw, nh));
+        return dst;
+    }
+
+    /// <summary>日志里截断一长串文本，只留前 40 个字符。</summary>
+    private static string Preview(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return "(空)";
+        string oneLine = text.Replace('\n', ' ');
+        return oneLine.Length <= 40 ? oneLine : oneLine[..40] + "…";
     }
 
     /// <summary>数有效字符（字母/数字），和离线模拟里 <c>t.Count(char.IsLetterOrDigit)</c> 同口径。</summary>

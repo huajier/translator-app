@@ -136,6 +136,19 @@ internal static class AppSettings
     /// </summary>
     public static bool BlockFallbackHint { get; private set; } = true;
 
+    /// <summary>
+    /// 小框 3 倍重试（S4-D，2026-10-30）。
+    ///
+    /// 【做什么】RapidOCR 1x 结果「空」或「有块含非 ASCII 字符」时，把同一张输入图放大 3 倍再认一次；
+    ///   3x 结果非空且非 ASCII 字符数不增加才采用。**不改任何阈值、不动回退路径。**
+    /// 【为什么默认 false】离线 80 张模拟：只触发 2 张（行-68 `48 pε`→`3d 8h`、行-75 空→全对），
+    ///   L_行 49→51（+2.9pp）、L_整块 0 变化、回归 0；但收益面很窄（2/80），
+    ///   且行-75 的 3x 输出首字母是小写（`cLICK`），所以先默认关、等实机验证再决定。
+    /// 【怎么开】settings.json 里 <c>rapidOcrSmallBoxUpscale=true</c>。
+    ///   申请单与模拟数据见 tools\日志\阶段3-S4D-申请单-小框3倍重试.md。
+    /// </summary>
+    public static bool RapidOcrSmallBoxUpscale { get; private set; }
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -219,6 +232,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-10-30 阶段三 S4-D：小框 3 倍重试开关（默认关）
+                if (doc.RootElement.TryGetProperty("rapidOcrSmallBoxUpscale", out var sbu)
+                    && sbu.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    RapidOcrSmallBoxUpscale = sbu.GetBoolean();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
@@ -256,6 +277,7 @@ internal static class AppSettings
                         rapidOcrUseOriginal = RapidOcrUseOriginal,
                         rapidOcrKeepTrailingPunct = RapidOcrKeepTrailingPunct,
                         blockFallbackHint = BlockFallbackHint,
+                        rapidOcrSmallBoxUpscale = RapidOcrSmallBoxUpscale,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
