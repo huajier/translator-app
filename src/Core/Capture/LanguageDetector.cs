@@ -151,6 +151,47 @@ internal static class LanguageDetector
     public static string TargetOf(string sourceLanguage)
         => sourceLanguage == Chinese ? Foreign : Chinese;
 
+    /// <summary>
+    /// 这段「中文」里的汉字够不够多，值得为它放弃外文那条路。
+    ///
+    /// 【2026-10-31 阶段三 S4-D 1a：行-10 的教训】
+    ///   行-10 是 Barony 属性面板的 `PER -1`（深底浅字）。
+    ///   Windows 自带把它认成 `一 1`——**一个汉字加一个数字**，
+    ///   汉字占比 50% &gt; 30% 的阈值 → `Detect` 判中文 →
+    ///   `OcrTextCapture` 直接跳中文路，**RapidOCR 从头到尾没跑过**，
+    ///   最后把 `一 1` 当结果交出去。行-13 的 `d 亻 K 孬：` 同一个病。
+    ///
+    ///   **这两个「汉字」根本不是中文，是被错认出来的汉字形。**
+    ///
+    /// 【判据只有一条：汉字至少 3 个】
+    ///   故意**不**看「汉字占比」——`一 1` 的占比刚好 50%，
+    ///   而真中文混排（Z3 `使用 Windows 10 系统，API 版本 v2.0…`）
+    ///   汉字占比也正好是 50%，拿占比当门槛会把 Z3 误伤掉。
+    ///   **数量就够分**：真中文样本里最少的 Z1 也有 10 个汉字，
+    ///   Z2 有 28 个、Z3 有 11 个；而两个错例只有 1 个和 2 个。
+    ///   中间空档极大，取 3 是「比最少的错例多 1、比最少的真样本少 7」。
+    /// </summary>
+    public static bool HasEnoughChinese(string? text)
+    {
+        CountScripts(text, out int cjk, out _, out _);
+        return cjk >= 3;
+    }
+
+    /// <summary>这段文字里有几个汉字（只做诊断日志用）。</summary>
+    public static int CountCjkChars(string? text)
+    {
+        CountScripts(text, out int cjk, out _, out _);
+        return cjk;
+    }
+
+    /// <summary>汉字占全部有效字母的比例（只做诊断日志用）。</summary>
+    public static double CountCjkRatio(string? text)
+    {
+        CountScripts(text, out int cjk, out int cyrillic, out int latin);
+        int letters = cjk + cyrillic + latin;
+        return letters == 0 ? 0 : (double)cjk / letters;
+    }
+
     /// <summary>给用户看的中文名。</summary>
     public static string DisplayName(string language) => language switch
     {

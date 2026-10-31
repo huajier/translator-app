@@ -285,6 +285,42 @@ internal sealed partial class OcrTextCapture : ITextCapture
                 bool colorful = ImagePreprocessor.IsColorfulBackground(raw);
 
                 // ==========================================================
+                // 【2026-10-31 阶段三 S4-D 1a：RapidOCR 先跑，中文路降为兜底】
+                //
+                //   **现场（行-10）**：Barony 属性面板的 `PER -1`，深底浅字。
+                //   Windows 自带把反色后的 `PER -1` 认成 `一 1`，
+                //   而 `一` 是汉字 → LanguageDetector 判「中文占比 50%」→
+                //   **整条外文链路（含 RapidOCR）从来没执行过**，
+                //   中文路里 chi_sim 三次（0.18 / 0.69 / …）又全判乱码，
+                //   最后把 `一 1` 当正式结果交给了用户。
+                //
+                //   行-13（`Ranged ATK Bonus:` → `d 亻 K 孬：`）同一个病。
+                //
+                //   **为什么不能靠「改善中文路」解决**：
+                //     这两张图本来就不是中文，走到中文路就是走错了门。
+                //     中文路里所有补救（红通道 / 竖向拉长 / 三、四证人）
+                //     都是在中文模型上打转，认拉丁字母本来就认不出来。
+                //
+                //   **判据（只看证据，不看猜）**：
+                //     Windows 说了中文，**但这段「中文」里汉字少得可怜**——
+                //     汉字个数 < 3，或汉字占全部有效字母不到 50%。
+                //     真中文（Z1 10 字 / Z2 32 字 / Z3 Windows 那份 30 字）汉字占比都极高；
+                //     而 `一 1` 只有 1 个汉字 1 个数字 → 立刻露馅。
+                //     **这不是新阈值，是「Windows 那份根本不配叫中文」的事实检查。**
+                //
+                //   **只在这一个口子上改**：Windows 说了中文、但证据不足时才放行外文路；
+                //   证据足（真中文）时行为与原来完全一致，一个字都不动。
+                // ==========================================================
+                if (windowsSaysChinese && !LanguageDetector.HasEnoughChinese(text))
+                {
+                    windowsSaysChinese = false;
+                    AppLogger.Info(
+                        $"Windows 说是中文，但汉字只有 {LanguageDetector.CountCjkChars(text)} 个、" +
+                        $"占有效字母 {LanguageDetector.CountCjkRatio(text):P0}——证据不足，" +
+                        $"按外文再试一次（原文【{Preview(text)}】）");
+                }
+
+                // ==========================================================
                 // 【2026-10-13 只记不改 —— 攒数据用】
                 //
                 //   背景（tools\日志\阶段3-验收.md 一百二十四节）：
