@@ -190,7 +190,7 @@ internal static class RapidOcrEngine
     /// <summary>一次 Detect 的全部产出（1x 与 3x 各产生一个，用来比较与择优）。</summary>
     private readonly record struct Pass(
         string? Text, string Note, double AverageScore,
-        int WeakChars, int SingleCharBoxes, int BoxCount);
+        int WeakChars, int SingleCharBoxes, int BoxCount, bool WeakBlock);
 
     /// <summary>对一张位图跑一次完整识别，不涉及任何重试决策。原 TryRecognize 的实现原样搬到这里。</summary>
     private static Pass RecognizeOnePass(Bitmap bitmap)
@@ -202,7 +202,7 @@ internal static class RapidOcrEngine
         ms.Position = 0;
 
         using var skBitmap = SKBitmap.Decode(ms);
-        if (skBitmap is null) return new Pass(null, "图片解码失败", 0, 0, 0, 0);
+        if (skBitmap is null) return new Pass(null, "图片解码失败", 0, 0, 0, 0, false);
 
         OcrResult? result;
         lock (RunGate)
@@ -213,21 +213,37 @@ internal static class RapidOcrEngine
         var blocks = result?.TextBlocks;
         if (blocks is null || blocks.Length == 0)
         {
-            return new Pass(null, "没检测到文字行", 0, 0, 0, 0);
+            return new Pass(null, "没检测到文字行", 0, 0, 0, 0, false);
         }
 
         var sb = new StringBuilder();
         var scores = new System.Collections.Generic.List<double>(blocks.Length);
         int weakChars = 0, singleCharBoxes = 0, boxCount = 0;
+        bool weakBlock = false;
         foreach (var block in blocks)
         {
             // 统计口径与 tools/临时/S4 离线模拟脚本一致：先统计，再跳过空行。
             boxCount++;
+            int blockWeak = 0;
             if (block.CharScores is { Length: > 0 } everyScore)
             {
                 foreach (float one in everyScore)
                 {
-                    if (one < WeakCharScore) weakChars++;
+                    if (one >= WeakCharScore) continue;
+                    weakChars++;
+                    blockWeak++;
+                }
+                // 【2026-10-31 阶段三 S4-D-1b】塌行信号：同一块里低分字符占比过高。
+                //   0.60 分以下的字占该块四分之一以上，且至少 2 个。
+                //   实测：行-76 一块 27 字里 8 个（30%）、行-83 一块 6 字里 2 个（33%）；
+                //   而全部判对的行里最高只到 1 个 / 0.25，余量够。中文块跳过——中文分本来就低。
+                //   还要求这块至少有 4 个字母/数字：R1 俄文图的 1x 是「    6」（只有一个数字、
+                //   其余全是空格，空格分也低），不加这条会被当成塌行拉去 3x，凭空造出 23 字乱码。
+                if (blockWeak >= 2 && blockWeak * 4 >= everyScore.Length
+                    && CountLettersDigits(block.Text) >= 4
+                    && !LanguageDetector.IsMostlyChinese(block.Text))
+                {
+                    weakBlock = true;
                 }
             }
             if (CountLettersDigits(block.Text) <= 1) singleCharBoxes++;
@@ -250,23 +266,25 @@ internal static class RapidOcrEngine
 
         if (sb.Length == 0)
         {
-            return new Pass(null, "检测到行但没有文字", 0, weakChars, singleCharBoxes, boxCount);
+            return new Pass(null, "检测到行但没有文字", 0, weakChars, singleCharBoxes, boxCount, weakBlock);
         }
 
         return new Pass(sb.ToString(), string.Empty, scores.Count > 0 ? scores.Average() : 0,
-            weakChars, singleCharBoxes, boxCount);
+            weakChars, singleCharBoxes, boxCount, weakBlock);
     }
 
     /// <summary>
-    /// 1x 结果要不要 3x 重试（S1 / S2 两个信号，逐块判）。
+    /// 1x 结果要不要 3x 重试（S1 / S2 / S3 三个信号）。
     ///   S1 空：没有文本。
-    ///   S2 非 ASCII：任一块里有 <c>c &gt; 127</c> 的字符（典型是 行-68 的 ε）。
-    /// 注意 S2 是**逐块**判：首版按整图串判，把含 <c>'</c> <c>-</c> <c>?</c> 的图误触 12 张，
-    /// 整块 -5.7pp。中文块也跳过——中文本来就该是汉字，S2 对它没有意义。
+    ///   S2 非 ASCII：逐行判，任一行里有 <c>c &gt; 127</c> 的字符（典型是 行-68 的 ε）。
+    ///   S3 塌行：某一块里 0.60 分以下的字占该块四分之一以上且至少 2 个（行-76 / 行-83）。
+    /// S2 是**逐行**判：首版按整图串判，把含 <c>'</c> <c>-</c> <c>?</c> 的图误触 12 张，
+    /// 整块 -5.7pp。中文行/块也跳过——中文本来就该是汉字，这两条信号对它没有意义。
     /// </summary>
     private static bool NeedsUpscaleRetry(Pass pass)
     {
         if (pass.Text is null) return true;
+        if (pass.WeakBlock) return true;
 
         foreach (string line in pass.Text.Split('\n'))
         {
@@ -282,6 +300,7 @@ internal static class RapidOcrEngine
 
     /// <summary>
     /// 3x 结果比 1x 好吗：非空 且 非 ASCII 字符数不增加（非 ASCII 变多说明认得更糟）。
+    /// 注意 S3 触发的两块（行-76 / 行-83）1x 与 3x 都是纯 ASCII，这条守卫不会把它们挡回去。
     /// </summary>
     private static bool IsBetterUpscaledResult(Pass before, Pass after)
     {
