@@ -141,13 +141,15 @@ internal static class AppSettings
     ///
     /// 【做什么】RapidOCR 1x 结果「空」或「有块含非 ASCII 字符」时，把同一张输入图放大 3 倍再认一次；
     ///   3x 结果非空且非 ASCII 字符数不增加才采用。**不改任何阈值、不动回退路径。**
-    /// 【为什么默认 false】离线 80 张模拟：只触发 2 张（行-68 `48 pε`→`3d 8h`、行-75 空→全对），
-    ///   L_行 49→51（+2.9pp）、L_整块 0 变化、回归 0；但收益面很窄（2/80），
-    ///   且行-75 的 3x 输出首字母是小写（`cLICK`），所以先默认关、等实机验证再决定。
-    /// 【怎么开】settings.json 里 <c>rapidOcrSmallBoxUpscale=true</c>。
-    ///   申请单与模拟数据见 tools\日志\阶段3-S4D-申请单-小框3倍重试.md。
+    /// 【为什么默认 true】离线 80 张实测：触发 4 张（行-68/75/76/83），L_行 50→53（+4.3pp）、
+    ///   L_整块 36→38（+3.9pp），其余 76 张逐字节不变，Z1/Z2/Z3/R1 逐字节不变，回归 0；
+    ///   实机也验过：长句/整块收益概率高、普通行无变差。
+    /// 【怎么关】settings.json 里 <c>rapidOcrSmallBoxUpscale=false</c>，等于回到 S4-D 之前。
+    /// 【已知小瑕疵】行-75 的 3x 输出首字母是小写（`cLICK`），量具不区分大小写故判对，用户能看到。
+    ///   申请单与模拟数据见 tools\日志\阶段3-S4D-申请单-小框3倍重试.md，
+    ///   三轮验收与信号定义见 tools\日志\阶段3-S3-分叉结论.md 第 19 节。
     /// </summary>
-    public static bool RapidOcrSmallBoxUpscale { get; private set; }
+    public static bool RapidOcrSmallBoxUpscale { get; private set; } = true;
 
     private static bool _loaded;
 
@@ -232,7 +234,7 @@ internal static class AppSettings
                     any = true;
                 }
 
-                // 2026-10-30 阶段三 S4-D：小框 3 倍重试开关（默认关）
+                // 2026-10-30 阶段三 S4-D：小框 3 倍重试开关（2026-10-31 起默认开）
                 if (doc.RootElement.TryGetProperty("rapidOcrSmallBoxUpscale", out var sbu)
                     && sbu.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
                 {
