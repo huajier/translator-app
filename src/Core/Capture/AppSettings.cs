@@ -151,6 +151,24 @@ internal static class AppSettings
     /// </summary>
     public static bool RapidOcrSmallBoxUpscale { get; private set; } = true;
 
+    /// <summary>
+    /// 翻译总开关（阶段四，2026-11-02）。**默认 false = 一个字都不外发。**
+    ///
+    /// 【为什么默认关】认字是离线的，打开它就变成「框到的文字发到微软」。
+    ///   用户没主动开之前，程序一次网络请求都不该发。
+    /// 【怎么开】托盘菜单里那个勾选项（文字本身就写着「把文字发给微软」）。
+    ///   菜单文字不许改成「开启翻译」这类不带披露的字样 —— 改了就等于偷偷外发。
+    /// </summary>
+    public static bool TranslateEnabled { get; private set; } = false;
+
+    /// <summary>
+    /// 首次提示是否已经弹过（阶段四）。**弹过一次就写 true，重启不再弹。**
+    ///
+    /// 【为什么必须存盘】提示框自己只活 3 秒，它记不住「弹过没有」；
+    ///   不存的话每次启动都会弹，用户会当成骚扰，最后干脆不看了。
+    /// </summary>
+    public static bool TranslateNoticeShown { get; private set; } = false;
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -242,9 +260,25 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-11-02 阶段四 T1a：翻译总开关（默认关）+ 首次提示是否弹过
+                if (doc.RootElement.TryGetProperty("translateEnabled", out var te)
+                    && te.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    TranslateEnabled = te.GetBoolean();
+                    any = true;
+                }
+
+                if (doc.RootElement.TryGetProperty("translateNoticeShown", out var tns)
+                    && tns.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    TranslateNoticeShown = tns.GetBoolean();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
-                    $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}（来自 {ConfigPath}）");
+                    $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}，" +
+                    $"翻译 = {(TranslateEnabled ? "开" : "关")}（来自 {ConfigPath}）");
 
                 if (any) return;
 
@@ -280,6 +314,10 @@ internal static class AppSettings
                         rapidOcrKeepTrailingPunct = RapidOcrKeepTrailingPunct,
                         blockFallbackHint = BlockFallbackHint,
                         rapidOcrSmallBoxUpscale = RapidOcrSmallBoxUpscale,
+                        // 2026-11-02 阶段四 T1a：这两行少一行，下次保存就把开关状态抹掉，
+                        // 用户会看到「我开的翻译怎么自己关了」。
+                        translateEnabled = TranslateEnabled,
+                        translateNoticeShown = TranslateNoticeShown,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
@@ -290,5 +328,32 @@ internal static class AppSettings
         {
             AppLogger.Warn($"保存设置失败：{ex.GetType().Name} {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 开/关翻译，并立刻存盘。
+    ///
+    /// 【为什么不给 Save 加参数】Save 一加参数，调用点迟早有人传错；
+    ///   改成「先改属性、再按现状存」，只有一条路，不会出现「存的和内存里不一致」。
+    /// </summary>
+    public static void SetTranslateEnabled(bool on)
+    {
+        lock (Gate)
+        {
+            if (TranslateEnabled == on) return;
+            TranslateEnabled = on;
+        }
+        Save(WindowsOnly);
+    }
+
+    /// <summary>记下「首次提示已经弹过」，并立刻存盘。只该在弹完之后调。</summary>
+    public static void SetTranslateNoticeShown()
+    {
+        lock (Gate)
+        {
+            if (TranslateNoticeShown) return;
+            TranslateNoticeShown = true;
+        }
+        Save(WindowsOnly);
     }
 }

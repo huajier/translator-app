@@ -217,6 +217,53 @@ public partial class App : System.Windows.Application
                         "（每取一次词就追加一段，认错的原文会一字不截地记下来）");
 
         AppLogger.Info("启动流程完成");
+
+        // 4) 翻译首次提示兜底（阶段四 T1a）。
+        //    放在最后：提示卡片要摆位置，此时窗口和托盘都已经就位。
+        //    这一段和托盘里点开关走的是同一个方法 —— 两条路只留一套逻辑。
+        EnsureTranslateNotice();
+    }
+
+    /// <summary>
+    /// 第一次打开翻译时，弹一次「文字会发到微软」的卡片；弹过就不再弹。
+    ///
+    /// 【为什么要有启动兜底这个入口】
+    ///   托盘点开关会调它；但用户也可能直接手改 settings.json 打开翻译。
+    ///   只在托盘回调里弹，手改的那次就漏掉了披露。两条路都进这里，就不会漏。
+    ///
+    /// 【为什么用卡片而不是确认对话框】
+    ///   托盘菜单项文字已经写着「把文字发给微软」，用户点它就是知情同意；
+    ///   再拦一个模态框只会挡路。⚠️ 一旦把菜单文字改成不带披露的说法，
+    ///   必须同时换成弹窗确认，否则等于偷偷外发。
+    /// </summary>
+    internal static void EnsureTranslateNotice()
+    {
+        try
+        {
+            if (!AppSettings.TranslateEnabled || AppSettings.TranslateNoticeShown) return;
+
+            const string title = "要开始翻译了";
+            const string detail = "框选到的文字会发到微软翻译服务，发完不留存。只发文字、不发截图、不发窗口标题。";
+
+            if (_activeToast is not null && _activeToast.IsVisible)
+            {
+                _activeToast.ShowNotice(title, detail);
+            }
+            else
+            {
+                var notice = new DebugToastWindow();
+                notice.ShowNotice(title, detail);
+                _activeToast = notice;
+            }
+
+            AppSettings.SetTranslateNoticeShown();   // 存盘：下次启动不再弹
+            AppLogger.Info("翻译首次提示已显示（之后不再弹）");
+        }
+        catch (Exception ex)
+        {
+            // 提示只是告知，它自己出问题绝不能影响取词
+            AppLogger.Warn($"翻译首次提示没显示出来：{ex.Message}");
+        }
     }
 
     // ------------------------------------------------------------------ 单实例

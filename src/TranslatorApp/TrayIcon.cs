@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Windows.Threading;
 using System.Windows.Forms;
+using TranslatorApp.Core.Capture;
 using TranslatorApp.Core.Logging;
 using TranslatorApp.Core.Native;
 
@@ -67,6 +68,28 @@ public static class TrayIcon
 
         _menu = new ContextMenuStrip();
         _menu.Items.Add("显示主窗口", null, (_, _) => App.ShowOrCreateMainWindow());
+        _menu.Items.Add(new ToolStripSeparator());
+
+        // 【2026-11-02 阶段四 T1a】翻译开关。
+        //
+        //   菜单文字本身就是隐私披露——「把文字发给微软」写在脸上，
+        //   用户点之前就知道会发生什么，所以第一次打开时那张卡片只是再提示一遍，不是唯一的告知。
+        //   ⚠️ 这段文字**不许**改成像「开启翻译」这种不带披露的说法。
+        //      一旦要改，就必须同时换成弹窗确认（用户不看菜单文字就等于被偷偷外发）。
+        var translateItem = new ToolStripMenuItem("翻译：把文字发给微软（勾选 = 开）")
+        {
+            Checked = AppSettings.TranslateEnabled,
+        };
+        translateItem.Click += (_, _) =>
+        {
+            bool on = !AppSettings.TranslateEnabled;
+            AppSettings.SetTranslateEnabled(on);   // 内部会存盘，重启后勾选态还在
+            translateItem.Checked = on;
+            AppLogger.Info($"托盘：翻译开关被点成「{(on ? "开" : "关")}」");
+            if (on) App.EnsureTranslateNotice();   // 只在第一次开时弹卡片，靠 translateNoticeShown 记住
+        };
+        _menu.Items.Add(translateItem);
+
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add("退出", null, (_, _) => Exit());
     }
