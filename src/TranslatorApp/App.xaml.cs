@@ -243,7 +243,11 @@ public partial class App : System.Windows.Application
             if (!AppSettings.TranslateEnabled || AppSettings.TranslateNoticeShown) return;
 
             const string title = "要开始翻译了";
-            const string detail = "框选到的文字会发到微软翻译服务，发完不留存。只发文字、不发截图、不发窗口标题。";
+            // 【别写「发完不留存」（2026-11-02 架构师 P0-C2）】
+            //   微软那边保留多久、怎么处理，不是我们能担保的事，
+            //   写上去就是替别人立保证。这里只陈述我们自己做什么、不做什么。
+            //   关于微软侧的任何说法，必须把官方链接抄进注释，不许凭印象写。
+            const string detail = "框选到的文字会发到微软翻译服务。只发文字，不发截图、不发窗口标题、不发进程名。";
 
             // 8 秒：这条 44 个字，3 秒读不完，等于没提示。其它提示仍走默认 3 秒。
             ShowTransientNotice(title, detail, 8);
