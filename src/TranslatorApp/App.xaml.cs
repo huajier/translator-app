@@ -245,16 +245,8 @@ public partial class App : System.Windows.Application
             const string title = "要开始翻译了";
             const string detail = "框选到的文字会发到微软翻译服务，发完不留存。只发文字、不发截图、不发窗口标题。";
 
-            if (_activeToast is not null && _activeToast.IsVisible)
-            {
-                _activeToast.ShowNotice(title, detail);
-            }
-            else
-            {
-                var notice = new DebugToastWindow();
-                notice.ShowNotice(title, detail);
-                _activeToast = notice;
-            }
+            // 8 秒：这条 44 个字，3 秒读不完，等于没提示。其它提示仍走默认 3 秒。
+            ShowTransientNotice(title, detail, 8);
 
             AppSettings.SetTranslateNoticeShown();   // 存盘：下次启动不再弹
             AppLogger.Info("翻译首次提示已显示（之后不再弹）");
@@ -263,6 +255,29 @@ public partial class App : System.Windows.Application
         {
             // 提示只是告知，它自己出问题绝不能影响取词
             AppLogger.Warn($"翻译首次提示没显示出来：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 弹一条短提示，**永远新开一张卡片**。
+    ///
+    /// 【为什么不复用 _activeToast（2026-11-02 架构师 P0-B1）】
+    ///   _activeToast 在框选后指向的是**刚出识别结果那张卡**。
+    ///   复用它 = ShowNotice 把 MainText 清空并 Collapsed，
+    ///   **用户正在读的识别结果当场消失**。少开一个窗口的代价是吃掉用户要的字，
+    ///   这笔账怎么算都亏，所以宁可多一张。
+    /// </summary>
+    private static void ShowTransientNotice(string title, string detail, int seconds = 3)
+    {
+        try
+        {
+            var notice = new DebugToastWindow();
+            notice.ShowNotice(title, detail, seconds);
+            _activeToast = notice;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"屏幕提示没显示出来：{ex.Message}");
         }
     }
 
@@ -480,9 +495,8 @@ public partial class App : System.Windows.Application
     ///   查下来图**其实存下来了**——**做了事但不吭声，等于没做**。
     ///   日志是给开发看的，用户不会去翻；**屏幕上看得见才算数**。
     ///
-    /// 【复用现成的提示框】
-    ///   不另外做一个窗口：多一个窗口就多一份焦点/层级的老问题。
-    ///   刚才框选时那个卡片多半还开着，直接用它；**已经关了就新开一个**。
+    /// 【不复用现成提示框，见 ShowTransientNotice 的注释】
+    ///   以前这里复用 _activeToast，会把刚出的识别结果清掉。现在永远新开一张。
     /// </summary>
     private static void ShowDebugNotice(string? savedPath)
     {
@@ -491,24 +505,7 @@ public partial class App : System.Windows.Application
             ? "请看日志里的原因（可能是还没框选过、或那块区域截不到）"
             : Path.GetFileName(savedPath);
 
-        try
-        {
-            if (_activeToast is not null && _activeToast.IsVisible)
-            {
-                _activeToast.ShowNotice(title, detail);
-            }
-            else
-            {
-                var notice = new DebugToastWindow();
-                notice.ShowNotice(title, detail);
-                _activeToast = notice;
-            }
-        }
-        catch (Exception ex)
-        {
-            // 提示框只是「锦上添花」，它自己出问题绝不能影响用户取词
-            AppLogger.Warn($"调试截图的屏幕提示没显示出来：{ex.Message}");
-        }
+        ShowTransientNotice(title, detail);
     }
 
     /// <summary>遮罩当前是不是因为「Ctrl+Alt 按着」而显示（避免反复 Show/Hide）。</summary>

@@ -342,8 +342,12 @@ public partial class DebugToastWindow : Window
     /// 【摆在哪】
     ///   · 刚框选过 → 摆在选区旁边（和识别结果卡片一个位置，不挡用户看内容）
     ///   · 从没框选过 → 摆在屏幕右下角
+    ///
+    /// 【seconds 为什么可调（2026-11-02 架构师 P1-B1）】
+    ///   默认 3 秒对「已保存」这种几字提示够用，但隐私披露那条 44 个字，
+    ///   3 秒读不完就关 = 等于没提示。只有隐私那条传 8，其它调用点一个字不改。
     /// </summary>
-    internal void ShowNotice(string title, string detail)
+    internal void ShowNotice(string title, string detail, int seconds = 3)
     {
         TitleText.Text = title;
         MainText.Text = "";
@@ -367,11 +371,11 @@ public partial class DebugToastWindow : Window
         }
 
         _closeTimer.Stop();
-        _closeTimer.Interval = TimeSpan.FromSeconds(CloseDelaySeconds);
+        _closeTimer.Interval = TimeSpan.FromSeconds(seconds);
         _closeTimer.Start();
 
         Core.Logging.AppLogger.Info(
-            $"短提示已显示：{title} —— {detail}");
+            $"短提示已显示（{seconds} 秒）：{title} —— {detail}");
     }
 
     /// <summary>

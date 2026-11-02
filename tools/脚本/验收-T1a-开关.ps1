@@ -1,4 +1,4 @@
-param([string]$Exe = "release\v0.2\TranslatorApp.exe")
+﻿param([string]$Exe = "release\v0.2\TranslatorApp.exe")
 
 # 阶段四 T1a 验收：翻译开关 + 首次提示持久化（真机，非肉眼）
 #
@@ -59,9 +59,21 @@ function Kill-App {
 function Reset-Settings([bool]$enabled, [bool]$shown) {
     $dir = Split-Path $SettingsPath
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-    $o = [ordered]@{ rapidOcrKeepTrailingPunct = $true; rapidOcrPrimary = $true; rapidOcrSkipFirstPass = $true; rapidOcrRec = "en"; windowsOnly = $false }
-    if ($enabled) { $o["translateEnabled"] = $true }
-    if ($shown) { $o["translateNoticeShown"] = $true }
+    # 这 10 个键必须与 AppSettings.Load() 认的那 10 个一字不差。
+    # ⚠️ 别写 rapidOcrSkipFirstPass：全仓 src\ 零引用（Load 不读、Save 不写），
+    #    写进去只会让「键是不是正好 10 个」这条断言变成假的。
+    $o = [ordered]@{
+        windowsOnly              = $false
+        rapidOcrPrimary          = $true
+        rapidOcrRec              = "en"
+        rapidOcrDumpDir          = $null
+        rapidOcrUseOriginal      = $false
+        rapidOcrKeepTrailingPunct = $true
+        blockFallbackHint        = $null
+        rapidOcrSmallBoxUpscale  = $false
+        translateEnabled         = $enabled
+        translateNoticeShown     = $shown
+    }
     ($o | ConvertTo-Json) | Set-Content -Path $SettingsPath -Encoding UTF8
     Start-Sleep -Milliseconds 400
 }
@@ -165,7 +177,32 @@ try {
     Say "END"
 }
 finally {
-    Flush
     Kill-App
-    if ($hadBackup) { Copy-Item $BackupPath $SettingsPath -Force; Remove-Item $BackupPath -Force }
+    if ($hadBackup) { Copy-Item $BackupPath $SettingsPath -Force }
+    else { if (Test-Path $SettingsPath) { Remove-Item $SettingsPath -Force } }   # 开跑前本来就没有，就该还原成「没有」
+
+    # 【终态断言（2026-11-02 架构师 P0-B2）】会撒谎的验收脚本比没有验收更糟：
+    #   只 Copy-Item 回去、不校验，备份脏或中途被打断就永久留脏，而脚本照样报 PASS。
+    #   所以跑完逐键比对开跑前快照，不一致就 FAIL 并非 0 退出。
+    $fail = $null
+    $now = if (Test-Path $SettingsPath) { Get-Content $SettingsPath -Raw -Encoding UTF8 | ConvertFrom-Json } else { $null }
+    if (-not $hadBackup) {
+        if ($now -ne $null) { $fail = "配置没还原：开跑前没有 settings.json，跑完却留下了" }
+    } else {
+        $old = Get-Content $BackupPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $oldKeys = @($old.PSObject.Properties.Name) | Sort-Object
+        $newKeys = @($now.PSObject.Properties.Name) | Sort-Object
+        if (($oldKeys -join ',') -ne ($newKeys -join ',')) {
+            $fail = "配置没还原：键不一致，开跑前=[$($oldKeys -join ',')] 现在=[$($newKeys -join ',')]"
+        } else {
+            foreach ($k in $oldKeys) {
+                $a = [string]$old.$k; $b = [string]$now.$k
+                if ($a -ne $b) { $fail = "配置没还原：$k 开跑前=$a 现在=$b"; break }
+            }
+        }
+    }
+    if ($fail) { Say "FAIL $fail" } else { Say "RESTORED-OK 配置与开跑前逐键一致" }
+    Flush
+    if ($hadBackup) { Remove-Item $BackupPath -Force }
+    if ($fail) { exit 1 }
 }
