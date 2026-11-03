@@ -709,6 +709,11 @@ public partial class App : System.Windows.Application
         Core.Translate.TranslationResult? translation = null;
         if (result.Success && AppSettings.TranslateEnabled)
         {
+            // 先让卡片动一下再等：端到端硬闸 2500ms，断网时那 2.5 秒里卡片一个像素
+            // 都不动，用户会以为程序卡死。只动译文区，原文一个字都不碰。
+            try { card.ShowTranslating(); }
+            catch (Exception ex) { AppLogger.Warn($"显示「正在翻译」失败（不影响翻译）：{ex.Message}"); }
+
             int budget = Core.Translate.TranslationService.HardTimeoutMs - (int)e2eSw.ElapsedMilliseconds;
             if (budget > 0)
             {

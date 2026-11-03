@@ -504,7 +504,7 @@ public partial class DebugToastWindow : Window
             // 缓存命中要说出来：同一个词连框两次，用户会觉得「怎么秒出」，得有个解释。
             if (translation.FromCache)
             {
-                DetailText.Text += Environment.NewLine + "译文来自本次运行的缓存，没有重复发送";
+                DetailText.Text += Environment.NewLine + "这段字刚翻过，直接用了上次的结果（没有再发出去）";
             }
             return;
         }
@@ -523,6 +523,24 @@ public partial class DebugToastWindow : Window
         // 失败：原文一个字都不动，只在详情末尾追加一句。
         string msg = translation.Failure.ToUserMessage();
         if (msg.Length > 0) DetailText.Text += Environment.NewLine + msg;
+    }
+
+    /// <summary>
+    /// 翻译还没回来时先摆一行「正在翻译…」。
+    ///
+    /// 为什么要这个：端到端硬闸 2500ms，断网时那 2.5 秒里卡片一个像素都不动，
+    /// 用户会以为程序卡死，或者以为这块字就是没译文。有一个动作在，等待才可解释。
+    ///
+    /// 注意：**只动译文区，不碰原文和详情**。原文任何时候都必须完整可读。
+    /// </summary>
+    internal void ShowTranslating()
+    {
+        if (!IsVisible) return;
+        TranslationText.Text = "正在翻译…";
+        TransScroll.Visibility = Visibility.Visible;
+        TransSep.Visibility = Visibility.Visible;
+        // 留一条日志：验收要看得到「这段等待真的被表达出来了」，不能靠肉眼。
+        Core.Logging.AppLogger.Info("译文区已切到「正在翻译…」");
     }
 
     private void HideTranslation()

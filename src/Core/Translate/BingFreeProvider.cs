@@ -158,8 +158,10 @@ internal sealed class BingFreeProvider : ITranslationProvider
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            // 2.5 秒硬闸打断的。**这不是服务端的错**，别记成 Unknown。
-            return Fail(TranslationFailure.Timeout, "超过 2.5 秒硬闸", sw);
+            // 被上游的硬闸打断的。**这不是服务端的错**，别记成 Unknown。
+            // 这里不写具体毫秒数：提供方只知道「时间到了」，不知道总预算是多少，
+            // 写死 2500 会让 400ms 就超的断网场景在日志里自相矛盾。
+            return Fail(TranslationFailure.Timeout, "时间到了，还没译完", sw);
         }
         catch (HttpRequestException ex)
         {
@@ -318,7 +320,8 @@ internal sealed class BingFreeProvider : ITranslationProvider
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            return AuthTicket.Fail(TranslationFailure.Timeout, "取授权页面超时");
+            // 说清「哪一步被打断」，不说「超时」——实际可能只跑了 4ms（预算早用完了）。
+            return AuthTicket.Fail(TranslationFailure.Timeout, "取授权页面时被硬闸打断");
         }
         catch (HttpRequestException ex)
         {

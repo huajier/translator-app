@@ -145,7 +145,9 @@ internal sealed class TranslationService
             result = new TranslationResult
             {
                 Failure = TranslationFailure.Timeout,
-                Detail = $"超过端到端 {HardTimeoutMs} ms 硬闸（翻译这段只剩 {budgetMs} ms）",
+                // 不写死 2500：断网那条 400ms 就超了，报「超过 2500ms 硬闸」
+                // 会让人以为翻译真跑满了 2.5 秒。只报实际发生的事。
+                Detail = $"超过硬闸（这段只剩 {budgetMs} ms 预算）",
                 ElapsedMs = sw.ElapsedMilliseconds,
                 Provider = provider.Name,
             };
