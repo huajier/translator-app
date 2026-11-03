@@ -16,12 +16,20 @@
 import io, json, os, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-EXE = os.path.join(ROOT, "release", "v1.6", "TranslatorApp.exe")
+EXE = os.path.join(ROOT, "release", "v1.7", "TranslatorApp.exe")
 CFG = os.path.join(os.environ["APPDATA"], "TranslatorApp", "settings.json")
 MOCK = os.path.join(ROOT, "tools", "脚本", "模拟操作.ps1")
 LOG = os.path.join(ROOT, "tools", "日志", "app-" + time.strftime("%Y%m%d") + ".log")
 SHOT_DIR = os.path.join(ROOT, "tools", "日志", "取证截图")
 PORT = 5099
+
+# 【2026-11-03 第十二轮 ⑧ 打回】
+#   原来这里只有假服务器，`setcfg(True, "http://127.0.0.1:5099")`。
+#   可假服务器 2ms 就返回，预算怎么设都不会被饿死 —— **这个测试条件本身
+#   消灭了它要测的东西**（P0-F1：冷启动认字 1922~4031ms 把翻译预算吃光，
+#   一个请求都不发）。所以 ⑧ 拿假服务器跑出来的「成功」是假证据。
+#   加 --真bing 走真 Bing（endpoint 置空）。默认仍是假服务器，用于回归。
+REAL_BING = "--真bing" in sys.argv
 
 # 文字窗口 100~1000 × 100~520；框往内缩 60px（第十轮 §4.1）
 BOX = ("160", "160", "940", "480")
@@ -101,9 +109,10 @@ def main():
     original = io.open(CFG, encoding="utf-8-sig").read()
     srv = show = app = None
     try:
-        srv = subprocess.Popen(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                                "-File", os.path.join(ROOT, "tools", "脚本", "假译服务器.ps1")],
-                               cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if not REAL_BING:
+            srv = subprocess.Popen(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                                    "-File", os.path.join(ROOT, "tools", "脚本", "假译服务器.ps1")],
+                                   cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         txt = os.path.join(ROOT, "tools", "临时", "f3-text.txt")
         showps = os.path.join(ROOT, "tools", "临时", "_f3_show.ps1")
         io.open(txt, "w", encoding="utf-8", newline="").write("\r\n" + TEXT)
@@ -114,7 +123,9 @@ def main():
                                 cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(3.5)
 
-        setcfg(True, "http://127.0.0.1:%d" % PORT)
+        # 真 Bing 时 endpoint 必须置空（走默认 cn.bing.com）。
+        # ⑧ 打回的铁证第 ① 条就是这个参数写成了假服务器地址。
+        setcfg(True, "" if REAL_BING else "http://127.0.0.1:%d" % PORT)
         stamp = time.strftime("%Y%m%d_%H%M%S")
         shot = os.path.join(SHOT_DIR, "t3a补_%s.png" % stamp)
         os.makedirs(SHOT_DIR, exist_ok=True)
@@ -122,9 +133,12 @@ def main():
         base = nlines()
         app = subprocess.Popen([EXE], cwd=ROOT)
         time.sleep(5.0)                      # 冷启动，不热身
-        # 截图必须跟框选同时进行：卡片只活 3 秒，串行拍必然漏
+        # 截图必须跟框选同时进行：卡片只活 3 秒，串行拍必然漏。
+        # 真 Bing 要等译文落地才拍（翻译中 8 秒计时 → 落地后重置 3 秒，
+        # 所以 4.5s 时卡片上正好是译文或失败原因）。
         import threading
-        th = threading.Thread(target=lambda: (time.sleep(2.4), screenshot(shot)))
+        shot_delay = 4.5 if REAL_BING else 2.4
+        th = threading.Thread(target=lambda: (time.sleep(shot_delay), screenshot(shot)))
         th.start()
         subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", MOCK,
                         "-场景", "正常框选", "-x1", BOX[0], "-y1", BOX[1],
@@ -186,6 +200,56 @@ def main():
         import re
         checks.append(("⑥没有「预算用完」", not any("预算用完" in r for r in rows)))
 
+        # ==========================================================
+        # 【2026-11-03 第十二轮 ⑧ 打回：这五条必须用真 Bing 验】
+        #   假服务器 2ms 返回，预算怎么设都不会被饿死，
+        #   所以它验不出 P0-F1（冷启动认字把翻译预算吃光）。
+        #   真 Bing 下要证明的是「请求真的发出去了」：
+        #     成功 → 译文字数 ≠ 原文+5（不是【假译文】）、用时 ≥1700ms；
+        #     放弃 → 必须是硬闸拦的（日志有「超过硬闸」），这也是有效结果。
+        #   超了硬闸就如实报超时，不许换回假服务器重跑掩盖。
+        # ==========================================================
+        if REAL_BING:
+            ok_rows = [r for r in done if "翻译：成功" in r]
+            give_rows = [r for r in done if "翻译：放弃" in r]
+            ms = []
+            for r in ok_rows:
+                mm = re.search(r"用时 (\d+) ms", r)
+                if mm:
+                    ms.append(int(mm.group(1)))
+            use_ms = max(ms) if ms else 0
+
+            def tr_chars(r):
+                mm = re.search(r"→ 译 (\d+) 字", r)
+                return int(mm.group(1)) if mm else -1
+
+            pairs = [(len(TEXT), tr_chars(r)) for r in ok_rows]
+            # 原文 275 字，【假译文】 恰好 5 字符 → 275+5=280 就是假证据的指纹
+            fake = [p for p in pairs if p[1] == p[0] + 5]
+            # 硬闸有两层，文案不同但都是硬闸：
+            #   TranslationService 层「超过硬闸（这段只剩 X ms 预算）」= 预算早被认字吃光
+            #   BingFreeProvider 层「时间到了，还没译完」= 预算还在，但 2500ms 内没返回
+            # 真 Bing 冷启动第一次框选多半落在后者（含取票 424ms + 翻译 2000ms+）。
+            hard_gate = [r for r in give_rows
+                         if "超过硬闸" in r or "时间到了" in r]
+            sent = bool(ok_rows) or bool(hard_gate)
+
+            say("")
+            say("-- ⑧ 真 Bing 五条硬要求 --")
+            say("  1 冷启动第一次框选（未热身）：是")
+            say("  2 译文字数：%s（原文 %d）"
+                % (("%d" % pairs[0][1]) if pairs else "无", len(TEXT)))
+            say("  3 用时：%s ms" % (use_ms if use_ms else "无"))
+            say("  4 截图待人工确认：%s" % shot)
+            say("  5 结果：%s" % ("成功" if ok_rows else
+                                  ("硬闸拦下（有效结果）" if hard_gate else "没结果")))
+            checks.append(("⑧-1 真的发出去了（成功或硬闸拦下）", sent))
+            checks.append(("⑧-2 不是假译文（字数 != 原文+5）", not fake))
+            checks.append(("⑧-3 成功则耗时 >=1700ms（不是 300ms 级）",
+                           (not ok_rows) or use_ms >= 1700))
+            checks.append(("⑧-4 放弃必须是硬闸拦的",
+                           (not give_rows) or bool(hard_gate)))
+
         say("")
         for name, ok in checks:
             say("  %s：%s" % (name, "PASS" if ok else "FAIL"))
@@ -201,8 +265,11 @@ def main():
         say("原文+日志：%s" % os.path.join(SHOT_DIR, "t3a补_%s_原文.txt" % stamp))
 
     finally:
-        io.open(CFG, "w", encoding="utf-8", newline="").write(original)
+        # 必须先杀进程再还原配置：TranslatorApp 退出时会再 Save 一次，
+        # 顺序反了会撞 PermissionError（实测 2026-11-03 第十二轮）。
         subprocess.run(["taskkill", "/F", "/IM", "TranslatorApp.exe"], capture_output=True)
+        time.sleep(1.0)
+        io.open(CFG, "w", encoding="utf-8", newline="").write(original)
         for p in (srv, show, app):
             try:
                 p.kill()
