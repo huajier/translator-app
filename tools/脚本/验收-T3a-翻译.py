@@ -32,7 +32,7 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_EXE = os.path.join(ROOT, "release", "v1.5", "TranslatorApp.exe")
+DEFAULT_EXE = os.path.join(ROOT, "release", "v1.6", "TranslatorApp.exe")
 SERVER = os.path.join(ROOT, "tools", "脚本", "假译服务器.ps1")
 TRUTH = os.path.join(ROOT, "tools", "素材", "行真值.json")
 CFG = os.path.join(os.environ["APPDATA"], "TranslatorApp", "settings.json")
