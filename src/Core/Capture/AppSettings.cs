@@ -169,6 +169,26 @@ internal static class AppSettings
     /// </summary>
     public static bool TranslateNoticeShown { get; private set; } = false;
 
+    /// <summary>
+    /// 翻译成哪种语言（阶段四 T3a，2026-11-02）。**默认 zh-Hans。**
+    ///
+    /// 【为什么是 "zh-Hans" 而不是 "zh"】真 Bing 抓回来的响应里 `to` 就是 `zh-Hans`，
+    ///   照它写省得每次请求都被服务端纠正一遍。
+    /// 【不做语言校验表】填错就让服务端报错（Bing 回 statusCode:400），
+    ///   本地再维护一张语言码表只会两边不一致。
+    /// </summary>
+    public static string TranslateTargetLang { get; private set; } = "zh-Hans";
+
+    /// <summary>
+    /// 翻译服务地址。**默认空 = 用真 Bing（https://cn.bing.com）。**
+    ///
+    /// 【为什么可改】验收要把请求指到本地假服务器（tools\脚本\假译服务器.ps1），
+    ///   真去把额度烧光、真去断网都不现实。
+    /// 【为什么空串代表默认】写成 "https://cn.bing.com" 会让「用户没配」和「配成真地址」
+    ///   看起来一样，将来换默认地址时改不干净。
+    /// </summary>
+    public static string TranslateEndpoint { get; private set; } = "";
+
     private static bool _loaded;
 
     /// <summary>配置文件位置（放用户目录，不放程序目录）。</summary>
@@ -275,10 +295,29 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-11-02 阶段四 T3a：翻成哪种语言 + 翻译服务地址（默认空 = 真 Bing）
+                if (doc.RootElement.TryGetProperty("translateTargetLang", out var ttl)
+                    && ttl.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    string s = (ttl.GetString() ?? "").Trim();
+                    // 空串当没配：写空进去会把「用默认值」变成「永久空」，请求必 400。
+                    if (s.Length > 0) { TranslateTargetLang = s; any = true; }
+                }
+
+                if (doc.RootElement.TryGetProperty("translateEndpoint", out var tep)
+                    && tep.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    // 空串是合法值（= 用真 Bing），所以这里不判长度，照收。
+                    TranslateEndpoint = (tep.GetString() ?? "").Trim();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}，" +
-                    $"翻译 = {(TranslateEnabled ? "开" : "关")}（来自 {ConfigPath}）");
+                    $"翻译 = {(TranslateEnabled ? "开" : "关")}（译成 {TranslateTargetLang}，" +
+                    $"地址 = {(TranslateEndpoint.Length == 0 ? "默认 Bing" : TranslateEndpoint)}，" +
+                    $"来自 {ConfigPath}）");
 
                 if (any) return;
 
@@ -318,6 +357,10 @@ internal static class AppSettings
                         // 用户会看到「我开的翻译怎么自己关了」。
                         translateEnabled = TranslateEnabled,
                         translateNoticeShown = TranslateNoticeShown,
+                        // 2026-11-02 阶段四 T3a：同理，这两行少一行，
+                        // 用户设的目标语言和服务地址会被下一次保存抹回默认。
+                        translateTargetLang = TranslateTargetLang,
+                        translateEndpoint = TranslateEndpoint,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 

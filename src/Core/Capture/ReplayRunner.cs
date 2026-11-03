@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TranslatorApp.Core.Logging;
 using TranslatorApp.Core.Native;
+using TranslatorApp.Core.Translate;
 
 namespace TranslatorApp.Core.Capture;
 
@@ -100,6 +101,41 @@ internal static class ReplayRunner
                     .CaptureAsync(request, CancellationToken.None)
                     .ConfigureAwait(true);
 
+                // 2026-11-02 阶段四 T3a（第一轮 P0-1）：回放路径也要走翻译，
+                // 否则端到端 P95 全是纸面数字 —— 回放根本不经过 App.xaml.cs。
+                // 预算同样要扣掉认字：回放的端到端数字就是验收指标本身，
+                // 这里给满 2.5 秒的话，回放数字会比真机好看，等于自己骗自己。
+                TranslationResult? translation = null;
+                if (result.Success && AppSettings.TranslateEnabled)
+                {
+                    // 预算必须按**真实墙钟**扣，不能按 result.ElapsedMs：
+                    // 后者只算认字内部，dispatcher 前后那点开销不在里面，
+                    // 拿它扣会稳定多出几十毫秒（S3 实测 max 2573，超 73ms）。
+                    int budget = TranslationService.HardTimeoutMs - (int)itemSw.ElapsedMilliseconds;
+                    if (budget > 0)
+                    {
+                        try
+                        {
+                            translation = await TranslationService.Shared
+                                .TranslateAsync(result.Text, budget, CancellationToken.None)
+                                .ConfigureAwait(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            AppLogger.Warn($"回放 {id}：翻译出错（不影响认字结果）：{ex.GetType().Name} {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        translation = new TranslationResult
+                        {
+                            Failure = TranslationFailure.Timeout,
+                            Detail = $"认字用了 {itemSw.ElapsedMilliseconds} ms，端到端预算已用完",
+                        };
+                    }
+                }
+                itemSw.Stop();
+
                 // 换行必须折成 ⏎ 再落盘：结果文件是「一行一段」，
                 // 直接把带换行的文字写进去会被拆成好几行，比对那边只读到第一行，
                 // 看着像「只认出了第一行」，其实全认出来了（这个坑踩过）。
@@ -110,8 +146,10 @@ internal static class ReplayRunner
                     .Replace('\r', '⏎');
                 results.Add($"{id}|{oneLine}");
                 if (result.Success) ok++; else failed++;
-                itemSw.Stop();
-                AppLogger.Info($"回放 {id}：{(result.Success ? "成功" : "失败")}，{result.Text.Length} 字，耗时 {itemSw.ElapsedMilliseconds} ms");
+                // 注意：这里的 itemSw 现在**含翻译**，是端到端耗时（S2 的 P95 就从这条读）。
+                AppLogger.Info($"回放 {id}：{(result.Success ? "成功" : "失败")}，{result.Text.Length} 字，" +
+                               $"翻译 = {(translation is null ? "没走" : translation.Success ? $"成功 {translation.Text.Length} 字" : translation.Failure.ToString())}，" +
+                               $"端到端 {itemSw.ElapsedMilliseconds} ms");
                 Console.WriteLine($"[{idx}/{total}] {id}  {result.Text.Length} 字  {itemSw.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)

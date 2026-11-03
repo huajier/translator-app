@@ -683,6 +683,8 @@ public partial class App : System.Windows.Application
 
     private static async Task RunCaptureAsync(CaptureRequest request, DebugToastWindow card)
     {
+        // 端到端硬闸从**进这个方法**开始算 —— 用户的时间不是从「认字完成」才开始走的。
+        var e2eSw = System.Diagnostics.Stopwatch.StartNew();
         CaptureResult result;
         try
         {
@@ -699,9 +701,47 @@ public partial class App : System.Windows.Application
             };
         }
 
+        // 认字成功才谈翻译。认字都没成，把原文（其实是错误说明）发出去没有任何意义。
+        // 【硬闸是端到端的】2.5 秒管的是「用户从框选到看见卡片」总共等多久。
+        // 认字已经花掉的部分要从预算里扣掉，否则翻译再守时也架不住两层各自「没超时」。
+        // S3 实测：本机连一个拒绝连接的回环端口单次就要 2060 ms，扣掉认字只剩 400 多毫秒，
+        // 这一档必然超时 —— 那是**对的**，用户不该等 3 秒。
+        Core.Translate.TranslationResult? translation = null;
+        if (result.Success && AppSettings.TranslateEnabled)
+        {
+            int budget = Core.Translate.TranslationService.HardTimeoutMs - (int)e2eSw.ElapsedMilliseconds;
+            if (budget > 0)
+            {
+                try
+                {
+                    translation = await Core.Translate.TranslationService.Shared
+                        .TranslateAsync(result.Text, budget, CancellationToken.None)
+                        .ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    // TranslateAsync 自己说「永远不抛」，这里再兜一层：
+                    // 翻译整个崩了也必须走到下面那次 UpdateWith，原文才能显出来。
+                    AppLogger.Warn($"翻译出错（不影响原文显示）：{ex.GetType().Name} {ex.Message}");
+                }
+            }
+            else
+            {
+                AppLogger.Warn($"翻译：到这一步已用 {e2eSw.ElapsedMilliseconds} ms，端到端预算用完，直接显原文（不外发）");
+                translation = new Core.Translate.TranslationResult
+                {
+                    Failure = Core.Translate.TranslationFailure.Timeout,
+                    Detail = $"到这一步已用 {e2eSw.ElapsedMilliseconds} ms，端到端预算用完",
+                };
+            }
+        }
+
         try
         {
-            card.UpdateWith(result);
+            // 【必须只调一次】UpdateWith 每次进来都会重启自动关闭计时器
+            // （DebugToastWindow.xaml.cs:442-444）。先显示原文、2 秒后再塞译文，
+            // 用户就只剩 1 秒能看。所以译文到手才一次性交进去。
+            card.UpdateWith(result, translation);
         }
         catch (Exception ex)
         {

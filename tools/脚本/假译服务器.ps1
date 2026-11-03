@@ -1,28 +1,36 @@
 ﻿<#
-假译服务器.ps1 — 阶段四 T2 量具：一个能装成微软翻译接口的本地假服务器
+假译服务器.ps1 — 阶段四量具：一个能装成 **Bing 网页翻译** 的本地假服务器
 
 它干嘛的：
-  阶段四要验证「翻译失败只追加详情行、绝不覆盖原文」。真去断网、真去把额度烧光
-  都不现实，所以本地起一个可以按需返回 401 / 403 / 408 / 429 / 空串 / 超时 / 非 JSON 的服务器，
-  T3 的程序把 translateEndpoint 指过来，就能把每一条失败路径都跑一遍。
+  阶段四要验证「翻译失败只追加详情行、绝不覆盖原文」。真去断网、真去把对方
+  限流打爆都不现实，所以本地起一个可以按需返回各种失败的服务器，
+  程序把 translateEndpoint 指过来，就能把每一条失败路径都跑一遍。
 
-【协议照官方抄，不许凭印象写（2026-11-02 审阅第四轮 P0-D1 打回重做）】
-  上一版只认 GET + 查询串，微软真接口是 POST + JSON body + 密钥头。
-  T3 照着上一版写 → 本地全绿、真机第一次就 405。所以这一版认 POST，并且校验密钥头。
+【协议照 2026-11-02 抓到的原始报文抄，不许凭印象写】
+  第一版照 Azure 写（POST JSON + 密钥头），被审阅第四轮打回过一次：
+  假服务器讲的不是真协议，程序照着假的写 → 本地全绿、真机第一次就废。
+  所以 T3a 这一版整体改成 **Bing 网页翻译** 的协议，报文出处：
+    %TEMP%\t3_spike2.txt（探针-免密钥通道-2.ps1 在 2026-11-02 抓的）
 
-  官方文档（链接抄在这里，改协议前先点开看一眼）：
-    · 请求/响应格式 https://learn.microsoft.com/en-us/azure/ai-services/translator/text-translation/reference/v3/translate
-    · 错误码表     https://learn.microsoft.com/en-us/azure/ai-services/translator/text-translation/reference/status-response-codes
-    · 认证头       https://learn.microsoft.com/en-us/azure/ai-services/translator/text-translation/reference/authentication
+  GET  /translator                 → 200，一张 HTML，里面有：
+         IG                           32 位十六进制
+         data-iid="translator.5023"
+         params_AbusePreventionHelper = [<时间戳>,"<token>",3600000]
+         ★ params[0] 是时间戳（作 key），params[1] 才是 token，搞反回 400（踩过）
 
-  要点（照抄官方）：
-    POST /translate?api-version=3.0&to=zh-Hans
-    必填头：Ocp-Apim-Subscription-Key（区域资源再加 Ocp-Apim-Subscription-Region）
-            Content-Type: application/json; charset=UTF-8
-    body：  [{"Text":"..."}]           ← 官方示例 Text/text 混用，解析不区分大小写
-    响应：  [{"detectedLanguage":{"language":"en","score":1.0},
-              "translations":[{"text":"...","to":"zh-Hans"}]}]
-            不传 from 时服务端自动检测，detectedLanguage 恒给（我们恒不传 from）
+  POST /ttranslatev3?isVertical=1&&IG=..&IID=..
+       Content-Type: application/x-www-form-urlencoded
+       body: fromLang=auto-detect&to=<lang>&text=<text>&token=<params[1]>&key=<params[0]>
+       ★ 字段名是 fromLang，不是 from（第一版写 from= 回 400）
+
+  成功：HTTP 200
+        [{"translations":[{"text":"你好","to":"zh-Hans","transliteration":{...}}],
+          "usedLLM":true,"detectedLanguage":{"language":"en"}}]
+
+  ★★ 失败**也是 HTTP 200**，错误藏在 body 里（这条通道最大的坑）：
+        {"statusCode":205,"errorMessage":""}   ← token / key 不认
+        {"statusCode":400,"errorMessage":""}   ← 目标语言无效 / 文字为空 / IG 置空
+     所以程序必须 **HTTP 状态和 body.statusCode 都判**，只看 HTTP 会全当成功。
 
 为什么不用 HttpListener（架构师实测，硬阻断）：
   HttpListener 在本机（Win10 19045 / PS 5.1.19041.7291）localhost:5099 与 127.0.0.1:5098
@@ -31,34 +39,71 @@
   所以这里手写最小 HTTP。
 
 怎么用：
-  1) 起服务器（另开一个窗口 / 后台作业）：
+  1) 独立进程起（Start-Job 在本机沙箱起不来，别用）：
        powershell -ExecutionPolicy Bypass -File "tools\脚本\假译服务器.ps1"
-     它会打印实际端口（5099 被占用就往后 +1，最多试 8 个）。
-  2) 打它：
-       POST http://127.0.0.1:<端口>/translate?api-version=3.0&to=zh-Hans&mode=ok
-       Header: Ocp-Apim-Subscription-Key: 假密钥
-       Body:   [{"Text":"Hello"}]
+     它会打印「实际端口 = N」（5099 被占就 +1，最多试 8 个）。
+     ★ 验收脚本必须解析这行 stdout 拿真端口，不许写死 5099。
 
-模式（?mode=xxx）：
-  ok       200，返回中文假译文（中文是为了压住 Content-Length 那个坑：字节数 ≠ 字符数）
-  401      凭据缺失或无效     error.code=401000
-  403      免费额度用尽       error.code=403001
-  408      自定义系统未就绪   error.code=408001   ← 注意：这不是网络超时
-  429      限流               error.code=429001
-  empty    200，但译文是空串
-  timeout  拖 ?ms=（默认 6000）毫秒才回；客户端 2.5s 硬闸应该先打断它
-  badjson  200，但响应体不是 JSON
+  2) 程序把 settings.json 的 translateEndpoint 设成 http://127.0.0.1:<端口>
+
+  3) 想模拟「token 过期」：换个 -TokenSalt 重启（同端口），
+     程序手里那张旧 token 就变成脏值 → 一次 205 → 强制刷新 → 成功。
+     这就是 S6 的造法，**不需要在程序里留任何测试钩子**。
+
+模式（?mode=xxx，加在 POST 的 URL 上）——全部按 Bing 语义，HTTP 恒 200：
+  ok       200 + 正常译文数组
+  401      200 + {"statusCode":205}   ← Bing 真正的「凭证不认」
+  403      200 + {"statusCode":403}   ← 假造额度码（真 Bing 上没有，是模拟场景）
+  408      200 + {"statusCode":408}   ← 假造
+  429      200 + {"statusCode":429}   ← 假造
+  empty    200 + 数组但 text 是空串
+  timeout  拖 ?ms=（默认 6000）毫秒才回；程序 2.5s 硬闸应该先打断它
+  badjson  200 + 不是 JSON 的响应体
 
 ⚠️ 单线程：一次只处理一个请求。够用（测试工具），但别并发打。
-⚠️ timeout 模式会占住线程，所以放最后测；默认 6000ms 而不是 20 秒（别让整套测试停半分钟）。
+⚠️ timeout 模式会占住线程，所以放最后测。
 #>
 
 param(
     [int]$Port = 5099,
-    [int]$MaxPortTries = 8
+    [int]$MaxPortTries = 8,
+    [string]$TokenSalt = 'v1',
+    # 请求 URL 上没带 ?mode= 时用这个。
+    # 为什么要它：程序的 endpoint 只是个根地址，它自己不会往 URL 上加 mode，
+    # 所以「让程序撞上 timeout / 205」只能靠这个默认值 —— 重启服务器换一个默认模式即可。
+    [string]$DefaultMode = 'ok',
+    # 【S6 专用】成功翻够 N 次后自动换票。
+    # 为什么要它：S6 要验的是「同一个进程里先成功、token 失效、205、刷新、再成功」。
+    # 重启服务器换 -TokenSalt 只能让**下个进程**拿到新票，走不到 205 分支。
+    # 0 = 关闭。
+    [int]$RotateAfter = 0
 )
 
 $ErrorActionPreference = 'Stop'
+
+# ---- 页面里的固定素材（改这里就等于换一张票）
+$fakeIg = '6B73902BABED4415A2AFF1805CE213A9'
+$fakeKey = '1793589918800'
+$fakeToken = 'FAKE' + $TokenSalt + 'TOKEN0123456789'
+
+# 页面是每请求现拼的（不是常量），因为 -RotateAfter 要在运行中换票。
+function Get-PageHtml {
+    param([string]$Token)
+    return @"
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Bing Translator (fake)</title></head>
+<body>
+<div id="rich_tta" data-iid="translator.5023"></div>
+<script>
+var params_AbusePreventionHelper = [$fakeKey,"$Token",3600000];
+var _G = { IG: "$fakeIg" };
+</script>
+</body></html>
+"@
+}
+
+$currentToken = $fakeToken   # -RotateAfter 会在运行中改它
+$okCount = 0
 
 # ---- 找一个能绑的端口（5099 被占就 +1）
 $listener = $null
@@ -77,19 +122,21 @@ for ($i = 0; $i -lt $MaxPortTries; $i++) {
 }
 if ($null -eq $listener) { Write-Host "没有可用端口，放弃"; exit 1 }
 
-Write-Host ("假译服务器已起：http://127.0.0.1:{0}/translate?api-version=3.0" -f $actualPort)
+Write-Host ("假译服务器（Bing 协议）已起：http://127.0.0.1:{0}/translator" -f $actualPort)
 Write-Host ("实际端口 = {0}" -f $actualPort)
+Write-Host ("token 盐 = {0}（换一个重启就模拟 token 过期）" -f $TokenSalt)
 Write-Host "（Ctrl+C 停。单线程，一次一个请求。）"
 
 # ---- 回包：Content-Length 必须是 UTF-8 字节数，不是字符数
 function Send-Json {
-    param($Stream, [int]$Code, [string]$Reason, [string]$Body, [int]$DelayMs = 0)
+    param($Stream, [int]$Code, [string]$Reason, [string]$Body, [int]$DelayMs = 0,
+          [string]$ContentType = 'application/json; charset=utf-8')
 
     if ($DelayMs -gt 0) { Start-Sleep -Milliseconds $DelayMs }
 
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($Body)
     $head = "HTTP/1.1 $Code $Reason`r`n" +
-            "Content-Type: application/json; charset=utf-8`r`n" +
+            "Content-Type: $ContentType`r`n" +
             "Content-Length: $($bytes.Length)`r`n" +
             "Connection: close`r`n" +
             "`r`n"
@@ -100,10 +147,10 @@ function Send-Json {
     $Stream.Flush()
 }
 
-# 官方错误响应形态：{"error":{"code":"NNNNNN","message":"..."}}
-function Error-Body {
-    param([string]$Code, [string]$Message)
-    return '{"error":{"code":"' + $Code + '","message":"' + $Message + '"}}'
+# Bing 的错误体形态：{"statusCode":N,"errorMessage":"..."}，**配 HTTP 200**
+function Bing-Error {
+    param([int]$Code, [string]$Message)
+    return '{"statusCode":' + $Code + ',"errorMessage":' + (ConvertTo-Json -InputObject $Message -Compress) + '}'
 }
 
 function Get-QueryValue {
@@ -111,6 +158,15 @@ function Get-QueryValue {
     $m = [regex]::Match($Path, "[?&]$([regex]::Escape($Key))=([^&\s]*)")
     if (-not $m.Success) { return $null }
     return [System.Uri]::UnescapeDataString($m.Groups[1].Value)
+}
+
+function Get-FormValue {
+    param([string]$Body, [string]$Key)
+    if ([string]::IsNullOrEmpty($Body)) { return $null }
+    $m = [regex]::Match($Body, "(?:^|&)$([regex]::Escape($Key))=([^&]*)")
+    if (-not $m.Success) { return $null }
+    $raw = $m.Groups[1].Value -replace '\+', ' '
+    return [System.Uri]::UnescapeDataString($raw)
 }
 
 # ---- 读一次完整请求：先读到 \r\n\r\n 拿头，再按 Content-Length 读 body
@@ -171,22 +227,6 @@ function Read-Request {
     }
 }
 
-# 从各种 body 形态里抠出要翻的文字（官方示例 Text / text 混用）
-function Get-TextFromBody {
-    param([string]$Body)
-    if ([string]::IsNullOrWhiteSpace($Body)) { return $null }
-    try { $parsed = $Body | ConvertFrom-Json } catch { return $null }
-    $items = @($parsed)          # 单元素数组在 PS 5.1 里会退化成对象，包一层
-    if ($items.Count -lt 1) { return $null }
-    $first = $items[0]
-    if ($null -eq $first) { return $null }
-    foreach ($name in @('Text', 'text')) {   # PowerShell 取属性本来就不区分大小写，这是双保险
-        $v = $first.PSObject.Properties[$name]
-        if ($null -ne $v) { return [string]$v.Value }
-    }
-    return $null
-}
-
 try {
     while ($true) {
         $client = $listener.AcceptTcpClient()
@@ -200,89 +240,108 @@ try {
 
             $pathMatch = [regex]::Match($req.RequestLine, '^(\w+)\s+([^\s]+)')
             if (-not $pathMatch.Success) {
-                Send-Json -Stream $stream -Code 400 -Reason "Bad Request" -Body (Error-Body '400000' 'Bad request line.')
+                Send-Json -Stream $stream -Code 400 -Reason "Bad Request" -Body (Bing-Error 400 'Bad request line.')
                 continue
             }
             $method = $pathMatch.Groups[1].Value.ToUpperInvariant()
             $path = $pathMatch.Groups[2].Value
+            $pathOnly = ($path -split '\?')[0]
 
             $mode = Get-QueryValue -Path $path -Key 'mode'
-            if ([string]::IsNullOrEmpty($mode)) { $mode = 'ok' }
-            $to = Get-QueryValue -Path $path -Key 'to'
+            if ([string]::IsNullOrEmpty($mode)) { $mode = $DefaultMode }
             $delay = Get-QueryValue -Path $path -Key 'ms'
 
-            $key = $req.Headers['ocp-apim-subscription-key']
-            $hasKey = -not [string]::IsNullOrWhiteSpace($key)
+            Write-Host ("[{0}] {1} {2}  mode={3}" -f (Get-Date -Format 'HH:mm:ss.fff'), $method, $path, $mode)
 
-            Write-Host ("[{0}] {1} {2}  mode={3} to={4} key={5}" -f `
-                (Get-Date -Format 'HH:mm:ss.fff'), $method, $path, $mode, $to, $(if ($hasKey) { '有' } else { '**没带**' }))
-
-            # ---- 【P1-D2】密钥头必须先校验：否则 T3 忘了送这个头，本地照样全绿
-            if (-not $hasKey) {
-                Send-Json -Stream $stream -Code 401 -Reason "Unauthorized" `
-                    -Body (Error-Body '401000' 'Access denied due to missing subscription key. Make sure to include subscription key when making requests to an API.')
+            # ---- ① 授权页面（程序从这里拿 IG / token / key）
+            if ($pathOnly -eq '/translator' -or $pathOnly -eq '/translator/') {
+                if ($method -ne 'GET') {
+                    Send-Json -Stream $stream -Code 405 -Reason "Method Not Allowed" -Body (Bing-Error 400 'Use GET.')
+                    continue
+                }
+                Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Get-PageHtml -Token $currentToken) -ContentType 'text/html; charset=utf-8'
                 continue
             }
 
-            # ---- GET 兜底：方便人眼在浏览器里看一眼，但**不算验收通过**
+            # ---- ② 翻译（Bing 只认 POST + 表单，GET 一律 405）
+            if ($pathOnly -ne '/ttranslatev3') {
+                Send-Json -Stream $stream -Code 404 -Reason "Not Found" -Body (Bing-Error 400 ("No such path: " + $pathOnly))
+                continue
+            }
             if ($method -ne 'POST') {
-                Send-Json -Stream $stream -Code 405 -Reason "Method Not Allowed" `
-                    -Body (Error-Body '405000' 'Use POST. This GET fallback exists for eyeballing only and does not count as an acceptance run.')
+                Send-Json -Stream $stream -Code 405 -Reason "Method Not Allowed" -Body (Bing-Error 400 'Use POST. GET fallback does not count as an acceptance run.')
                 continue
             }
 
-            # ---- 官方要求必填 to，缺了就是 400036（目标语言缺失或无效）
+            $to = Get-FormValue -Body $req.Body -Key 'to'
+            $text = Get-FormValue -Body $req.Body -Key 'text'
+            $token = Get-FormValue -Body $req.Body -Key 'token'
+            $keyIn = Get-FormValue -Body $req.Body -Key 'key'
+            $fromLang = Get-FormValue -Body $req.Body -Key 'fromLang'
+
+            Write-Host ("        fromLang={0} to={1} text={2} 字 token={3} key={4}" -f `
+                $fromLang, $to, $([string]$text).Length, `
+                $(if ([string]::IsNullOrEmpty($token)) { '**没带**' } else { '有' }), `
+                $(if ([string]::IsNullOrEmpty($keyIn)) { '**没带**' } else { '有' }))
+
+            # ---- 目标语言必填（真 Bing 缺 to 回 400）
             if ([string]::IsNullOrWhiteSpace($to)) {
-                Send-Json -Stream $stream -Code 400 -Reason "Bad Request" `
-                    -Body (Error-Body '400036' 'The target language is not valid or missing.')
+                Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 400 'target language missing')
                 continue
             }
-            # 回显进响应，让程序能自证传对了；顺手挡掉拼 JSON 的注入
             $to = ($to -replace '[^A-Za-z0-9\-]', '')
             if ([string]::IsNullOrWhiteSpace($to)) { $to = 'zh-Hans' }
 
-            $text = Get-TextFromBody -Body $req.Body
-            if ($null -eq $text) {
-                Send-Json -Stream $stream -Code 400 -Reason "Bad Request" `
-                    -Body (Error-Body '400000' 'The request body is not a valid JSON array of {"Text": "..."}.')
+            # ---- 文字必填（真 Bing 空 text 回 400）
+            if ([string]::IsNullOrEmpty($text)) {
+                Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 400 'text missing')
                 continue
             }
 
-            $translated = if ([string]::IsNullOrEmpty($text)) { "你好，世界。这是一条假译文。" } else { "【假译文】" + $text }
+            # ---- 【P1-D2 的 Bing 版】token/key 必须校验：
+            #      程序忘了送 token，本地照样全绿，真机第一次就 205。
+            if ($token -ne $currentToken -or [string]::IsNullOrEmpty($keyIn)) {
+                Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 205 '')
+                continue
+            }
+
+            # 【S6】成功够 N 次就换票：下一次带旧 token 的请求会拿到 205，
+            #       程序应强制刷新一次并成功 —— 这才是真·205 路径。
+            $okCount++
+            if ($RotateAfter -gt 0 -and $okCount -eq $RotateAfter) {
+                $currentToken = 'FAKE' + $TokenSalt + 'ROTATED' + $okCount
+                Write-Host ("       >>> 已换票（第 {0} 次成功后），旧 token 从此回 205：{1}" -f $okCount, $currentToken)
+            }
+
+            $translated = "【假译文】" + $text
 
             # ConvertTo-Json 负责把引号/反斜杠/换行转义对，比自己拼省事
-            $okBody = '[{"detectedLanguage":{"language":"en","score":1.0},"translations":[{"text":' +
-                      (ConvertTo-Json -InputObject $translated -Compress) + ',"to":"' + $to + '"}]}]'
+            $okBody = '[{"translations":[{"text":' +
+                      (ConvertTo-Json -InputObject $translated -Compress) +
+                      ',"to":"' + $to + '"}],"usedLLM":true,"detectedLanguage":{"language":"en"}}]'
 
             switch ($mode) {
                 'ok' {
                     Send-Json -Stream $stream -Code 200 -Reason "OK" -Body $okBody
                 }
                 '401' {
-                    Send-Json -Stream $stream -Code 401 -Reason "Unauthorized" `
-                        -Body (Error-Body '401000' 'Access denied due to invalid subscription key or wrong API endpoint.')
+                    Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 205 '')
                 }
                 '403' {
-                    # 额度用尽只能靠 error.code 判，不许拿 HTTP 403 直接当结论
-                    Send-Json -Stream $stream -Code 403 -Reason "Forbidden" `
-                        -Body (Error-Body '403001' 'Out of call volume quota. Quota will be replenished in 5 days.')
+                    Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 403 'fake quota exceeded')
                 }
                 '408' {
-                    # 【P1-D1】官方对 408 的描述是「资源缺失 / 自定义系统未就绪」，**不是网络超时**。
-                    # 我们真正的超时是客户端那 2.5s 硬闸，跟这个状态码无关。
-                    Send-Json -Stream $stream -Code 408 -Reason "Request Timeout" `
-                        -Body (Error-Body '408001' 'The custom system is not ready yet. Please retry in a minute or two.')
+                    Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 408 'fake resource missing')
                 }
                 '429' {
-                    Send-Json -Stream $stream -Code 429 -Reason "Too Many Requests" `
-                        -Body (Error-Body '429001' 'Rate limit is exceeded. Try again later.')
+                    Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 429 'fake rate limit')
                 }
                 'empty' {
                     Send-Json -Stream $stream -Code 200 -Reason "OK" `
-                        -Body ('[{"detectedLanguage":{"language":"en","score":1.0},"translations":[{"text":"","to":"' + $to + '"}]}]')
+                        -Body ('[{"translations":[{"text":"","to":"' + $to + '"}],"detectedLanguage":{"language":"en"}}]')
                 }
                 'timeout' {
-                    # 【P1-D3】延迟可配，默认 6 秒：够超过 2.5s 硬闸，又不至于让整套测试停半分钟
+                    # 延迟可配，默认 6 秒：够超过 2.5s 硬闸，又不至于让整套测试停半分钟
                     $ms = 6000
                     if (-not [string]::IsNullOrEmpty($delay)) { [void][int]::TryParse($delay, [ref]$ms) }
                     if ($ms -lt 100) { $ms = 100 }
@@ -292,9 +351,7 @@ try {
                     Send-Json -Stream $stream -Code 200 -Reason "OK" -Body '这不是 JSON，程序应该当失败处理'
                 }
                 default {
-                    # 400036 官方含义是「目标语言缺失」，别拿来当「未知模式」
-                    Send-Json -Stream $stream -Code 400 -Reason "Bad Request" `
-                        -Body (Error-Body '400000' ("Unknown fake mode: " + $mode))
+                    Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 400 ("Unknown fake mode: " + $mode))
                 }
             }
         } catch {

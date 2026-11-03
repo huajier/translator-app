@@ -3,6 +3,8 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using TranslatorApp.Core.Input;
 using TranslatorApp.Core.Native;
+// 为了让 translation.Failure.ToUserMessage() 这个扩展方法找得到（T3a 加的，别删）
+using TranslatorApp.Core.Translate;
 
 // RECT 是嵌套在 NativeMethods 里的结构体，得用 using 别名单独引进来
 using RECT = TranslatorApp.Core.Native.NativeMethods.RECT;
@@ -357,6 +359,8 @@ public partial class DebugToastWindow : Window
         //   也占着一行高度，短提示卡片底下会多出一块空白。所以这里直接收起来。
         MainText.Visibility = Visibility.Collapsed;
         TextScroll.MaxHeight = 80;   // 短提示不需要很高
+        // 短提示和识别结果是共用的窗口，不主动清掉上一张的译文会串台。
+        HideTranslation();
 
         Left = 0;
         Top = 0;
@@ -391,6 +395,22 @@ public partial class DebugToastWindow : Window
     ///   所以换完文字必须重新摆一次。
     /// </summary>
     internal void UpdateWith(Core.Capture.CaptureResult result)
+        => UpdateWith(result, null);
+
+    /// <summary>
+    /// 一次把「原文 + 译文」交进来。
+    ///
+    /// 【为什么只有这一个重载，不许先 UpdateWith(result) 再补译文】
+    ///   方法末尾会 `_closeTimer.Stop(); …Start()`（3 秒从这一刻算）。
+    ///   分两次调，第二次会把这 3 秒重置一遍，译文晚到 2 秒用户就只剩 1 秒能看。
+    ///   所以翻译没跑完就别进这个方法。
+    ///
+    /// 【翻译失败绝不动原文】
+    ///   MainText 永远只放 `result.Text`，译文单独一个控件。
+    ///   失败时译文区保持隐藏，只在 DetailText 末尾追加一句人话，
+    ///   用户看到的字和翻译关着时一模一样，只多一行说明。
+    /// </summary>
+    internal void UpdateWith(Core.Capture.CaptureResult result, Core.Translate.TranslationResult? translation)
     {
         if (!IsVisible) return;   // 用户已经等不及关掉了
 
@@ -405,6 +425,8 @@ public partial class DebugToastWindow : Window
             //   所以超出部分由 ScrollViewer 负责滚动，
             //   并在下面明确告诉用户「可以滚」，免得以为又被省略了。
             MainText.Text = result.Text;
+            // ShowNotice 把 MainText 藏起来过，这里显式恢复，免得复用同一个窗口时原文是空的。
+            MainText.Visibility = Visibility.Visible;
 
             bool needScroll = result.Text.Length > 120;
             DetailText.Text =
@@ -415,13 +437,18 @@ public partial class DebugToastWindow : Window
                 // 【2026-10-29 阶段三 S4】整块没认好时加一行小字，引导逐行框。
                 //   只加提示，不改上面任何文字，也不阻断翻译。
                 (result.BlockLooksBad ? Environment.NewLine + "这块字没认好，切成一行一行框会更准" : string.Empty);
+
+            ApplyTranslation(translation);
         }
         else
         {
             // 失败要说清楚为什么，别让用户对着空气发呆
             TitleText.Text = "没取到文字";
             MainText.Text = result.ToUserMessage();
+            MainText.Visibility = Visibility.Visible;
             DetailText.Text = result.Detail.Length > 90 ? result.Detail[..90] + "…" : result.Detail;
+            // 认字都没成，不可能有译文；万一传进来了也不显示，免得两张卡讲矛盾的话。
+            HideTranslation();
         }
 
         PlaceBesideSelection();
@@ -444,6 +471,49 @@ public partial class DebugToastWindow : Window
         _closeTimer.Start();
     }
 
+    /// <summary>
+    /// 把译文塞进卡片下半截，或者藏起来并在详情里说一句人话。
+    ///
+    /// 【什么时候藏】没有译文 / 翻译关着 / 判成中文不翻（都是 Disabled）—— 完全静默，
+    ///   用户看不出程序「本来打算翻」，卡片和阶段三一模一样。
+    /// 【什么时候只加一行字】真失败了（超时、断网、服务端不认）——
+    ///   原文照旧在上面，详情末尾多一句「翻译超时，原文已保留」之类。
+    /// 【什么时候显示译文】只有 Success。
+    /// </summary>
+    private void ApplyTranslation(Core.Translate.TranslationResult? translation)
+    {
+        if (translation is null || translation.Failure is Core.Translate.TranslationFailure.None
+                                                   or Core.Translate.TranslationFailure.Disabled)
+        {
+            HideTranslation();
+            return;
+        }
+
+        if (translation.Success)
+        {
+            TranslationText.Text = translation.Text;
+            TranslationText.Visibility = Visibility.Visible;
+            TransSep.Visibility = Visibility.Visible;
+            // 缓存命中要说出来：同一个词连框两次，用户会觉得「怎么秒出」，得有个解释。
+            DetailText.Text += translation.FromCache
+                ? Environment.NewLine + "译文来自本次运行的缓存，没有重复发送"
+                : string.Empty;
+            return;
+        }
+
+        // 失败：原文一个字都不动，只在详情末尾追加一句。
+        HideTranslation();
+        string msg = translation.Failure.ToUserMessage();
+        if (msg.Length > 0) DetailText.Text += Environment.NewLine + msg;
+    }
+
+    private void HideTranslation()
+    {
+        TranslationText.Text = string.Empty;
+        TranslationText.Visibility = Visibility.Collapsed;
+        TransSep.Visibility = Visibility.Collapsed;
+    }
+
     private static string ChannelNameOf(string channel) => channel switch
     {
         "Clipboard" => "来自复制（原始文字）",
@@ -451,6 +521,9 @@ public partial class DebugToastWindow : Window
         // 2026-10-09 引擎分工：英文/俄文由 Tesseract 认，必须如实告诉用户是谁认的，
         // 不能明明用了它却还显示「来自文字识别」
         "Tesseract" => "来自 Tesseract（英文/俄文专用引擎）",
+        // 2026-11-02 阶段四 T3a：阶段三起外文默认走 RapidOCR 主通道，
+        // 但这里一直漏了这一支，卡片上直接显示英文类名「RapidOCR」，用户看不懂。
+        "RapidOCR" => "来自 RapidOCR（外文主通道）",
         _ => channel
     };
 
