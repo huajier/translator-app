@@ -546,20 +546,34 @@ public partial class DebugToastWindow : Window
             return;
         }
 
-        HideTranslation();
-
         // Disabled = 开关关着，或原文本来就是目标语言；None 但 Text 空 = 服务端没回译文。
         // 这两种都是正常状态，不该在卡片上留一行解释去打扰用户。
         if (translation is null
             || translation.Failure is Core.Translate.TranslationFailure.None
                                                    or Core.Translate.TranslationFailure.Disabled)
         {
+            HideTranslation();
             return;
         }
 
-        // 失败：原文一个字都不动，只在详情末尾追加一句。
+        // ==========================================================
+        // 【2026-11-03 P1-G1：失败时不要收起译文区，卡片会跳】
+        //   原来这里先 HideTranslation() 再往详情行追加一句。可是译文区此刻已经
+        //   因为「翻译中…」撑开了约 213px，失败一瞬间整块收起 —— 用户眼前就是
+        //   卡片先长高再缩回去，像闪了一下。
+        //   原因本来就该出现在「本该有译文的地方」，用户的眼睛在那里。
+        //   所以：失败原因写进译文块，保留可见；不再往详情行重复一遍。
+        //   以后要往译文区加东西（比如「重试」按钮），失败态就是这一支，别忘了一起改。
+        // ==========================================================
         string msg = translation.Failure.ToUserMessage();
-        if (msg.Length > 0) DetailText.Text += Environment.NewLine + msg;
+        if (msg.Length == 0)
+        {
+            HideTranslation();
+            return;
+        }
+        TranslationText.Text = msg;
+        TransScroll.Visibility = Visibility.Visible;
+        TransSep.Visibility = Visibility.Visible;
     }
 
     private void HideTranslation()
