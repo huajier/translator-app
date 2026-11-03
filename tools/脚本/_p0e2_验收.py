@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """P0-E2 卡片高度 A/B：受控长文本 + 先热身再正式框选 + 常驻采样器。"""
-import json, os, subprocess, time
+import json, os, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXE = os.path.join(ROOT, "release", "v1.4", "TranslatorApp.exe")
@@ -169,6 +169,18 @@ def case(tag, on, port, baseline):
     return peak
 
 def main():
+    # 【别再犯】跑验收会把用户配置改成指向假服务器。开跑前备份、finally 还原，
+    # 并逐键校验终态——只 Copy-Item 不校验的话，还原失败也没人知道。
+    # （第九轮 P0-B2 就是这条：验收脚本把用户的 translateEnabled/translateEndpoint 改脏了。）
+    import shutil
+    bak = CFG + ".p0e2-bak"
+    had = os.path.exists(CFG)
+    original = None
+    if had:
+        with open(CFG, encoding="utf-8-sig") as f:
+            original = f.read()
+        shutil.copy2(CFG, bak)
+
     show = os.path.join(ROOT, "tools", "临时", "_p0e2_show.ps1")
     os.makedirs(os.path.dirname(show), exist_ok=True)
     long_txt = os.path.join(ROOT, "tools", "临时", "p0e2-long.txt")
@@ -204,6 +216,21 @@ def main():
     finally:
         subprocess.run(["taskkill", "/F", "/IM", "TranslatorApp.exe"], capture_output=True)
         src.kill(); srv.kill()
+        # 还原 + 逐键校验
+        if had and original is not None:
+            with open(CFG, "w", encoding="utf-8", newline="") as f:
+                f.write(original)
+            if os.path.exists(bak):
+                os.remove(bak)
+            now = json.load(open(CFG, encoding="utf-8-sig"))
+            want = json.loads(original)
+            if now == want:
+                print("RESTORED-OK 配置与开跑前逐键一致（%d 键）" % len(now))
+            else:
+                diff = {k: (want.get(k), now.get(k)) for k in set(want) | set(now)
+                        if want.get(k) != now.get(k)}
+                print("FAIL 配置没还原：%s" % diff)
+                sys.exit(1)
 
 if __name__ == "__main__":
     main()
