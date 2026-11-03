@@ -16,7 +16,7 @@
 import io, json, os, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-EXE = os.path.join(ROOT, "release", "v1.7", "TranslatorApp.exe")
+EXE = os.path.join(ROOT, "release", "v1.8", "TranslatorApp.exe")
 CFG = os.path.join(os.environ["APPDATA"], "TranslatorApp", "settings.json")
 MOCK = os.path.join(ROOT, "tools", "脚本", "模拟操作.ps1")
 LOG = os.path.join(ROOT, "tools", "日志", "app-" + time.strftime("%Y%m%d") + ".log")

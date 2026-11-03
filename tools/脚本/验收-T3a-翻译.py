@@ -12,10 +12,10 @@
 六条断言口径（架构师第九轮 §5 与第八轮 §7）：
   S1  假服务器八模式 + 边界：逐模式贴 HTTP 码 + body.statusCode
   P0-E1 中文原文 + 目标语言=en → 必须翻成功（原来会被中文判据死锁）
-  S2  80 张全量回放：端到端 P50/P95/max，超 2500ms 必须 0 条
+  S2  80 张全量回放：端到端 P50/P95/max，超 5000ms 必须 0 条
   S5  同一张连跑两次：第二次命中缓存，本次命中耗时 < 10ms
   S6  -RotateAfter 1：205 被拒 1 次 / 取票 2 次 / 成功 3 次 / 放弃 0 次
-  S3  endpoint 指向拒连端口：80 条全降级，原文为空 0 行，max < 2500ms
+  S3  endpoint 指向拒连端口：80 条全降级，原文为空 0 行，max < 5000ms
   S4  开关关：外发相关日志 0 行，80 条全「翻译=没走」
 
 用法：
@@ -32,7 +32,7 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_EXE = os.path.join(ROOT, "release", "v1.6", "TranslatorApp.exe")
+DEFAULT_EXE = os.path.join(ROOT, "release", "v1.8", "TranslatorApp.exe")
 SERVER = os.path.join(ROOT, "tools", "脚本", "假译服务器.ps1")
 TRUTH = os.path.join(ROOT, "tools", "素材", "行真值.json")
 CFG = os.path.join(os.environ["APPDATA"], "TranslatorApp", "settings.json")
@@ -388,8 +388,9 @@ def s2(exe):
     ms = e2e_of(lines)
     e2e = ms["total"]
     trs = ms["tr"]
-    # 硬闸从 T3a-补 起只管翻译那一段（2500ms 独立预算），认字不算在内。
-    over = [x for x in trs if x > 2500]
+    # 硬闸从 T3a-补 起只管翻译那一段（独立预算），认字不算在内。
+    # 2026-11-03 第十三轮：硬闸提到 5 秒，这里跟着改，否则正常长文本会被误判成超闸。
+    over = [x for x in trs if x > 5000]
     okc = sum(1 for ln in lines if "翻译：成功" in ln)
     # 命中缓存不重打「翻译：成功」，要单独算，否则 80 张里会有几张凭空少掉
     hitc = sum(1 for ln in lines if "命中缓存" in ln)
@@ -407,7 +408,7 @@ def s2(exe):
                sum(e2e) // len(e2e), wall))
     if trs:
         say("  翻译段 P50 %d / P95 %d / max %d ms" % (pct(trs, .5), pct(trs, .95), max(trs)))
-    say("  翻译段超 2500ms 的样本 %d 条" % len(over))
+    say("  翻译段超 5000ms 的样本 %d 条" % len(over))
     ok = len(out) == total and len(over) == 0
     say("  判定：%s" % ("PASS" if ok else "FAIL"))
     return ok
@@ -492,7 +493,7 @@ def s3(exe):
     ms = e2e_of(lines)
     e2e = ms["total"]
     trs = ms["tr"]
-    over = [x for x in trs if x > 2500]
+    over = [x for x in trs if x > 5000]
     empty = [l for l in out if not l.split("|", 1)[-1].strip()]
     bad = sum(1 for ln in lines if "翻译：放弃" in ln)
     okc = sum(1 for ln in lines if "翻译：成功" in ln)
@@ -508,7 +509,7 @@ def s3(exe):
     if e2e:
         say("  译文可见(合计) P50 %d / P95 %d / max %d ms"
             % (pct(e2e, .5), pct(e2e, .95), max(e2e)))
-    say("  失败 %d ｜ 成功 %d ｜ 结果行 %d/%d ｜ 原文为空 %d 行 ｜ 翻译段超 2500ms %d 条"
+    say("  失败 %d ｜ 成功 %d ｜ 结果行 %d/%d ｜ 原文为空 %d 行 ｜ 翻译段超 5000ms %d 条"
         % (bad, okc, len(out), total, len(empty), len(over)))
     for k, v in sorted(msgs.items(), key=lambda x: -x[1]):
         say("  文案「%s」x%d" % (k, v))
