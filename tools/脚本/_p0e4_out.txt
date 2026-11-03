@@ -1,0 +1,76 @@
+== 授权页 GET https://cn.bing.com/translator ==
+  状态 = 200  耗时 = 424 ms  长度 = 630847
+  IG = 21C349AB20DB4DCB9EB3067CDAE57FEB
+  IID = translator.5023
+  key(params[0]) = 1793668804888
+  token(params[1]) = 1jzzk5uc...(打码)
+
+---- A. fromLang=auto-detect（代码现在用的） ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = fromLang=auto-detect&to=zh-Hans&text=Hello%20world&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 1008 ms
+响应 body = [{"translations":[{"text":"你好，世界","to":"zh-Hans","transliteration":{"text":"Nǐ hǎo, shìjiè","script":"Latn"}}],"usedLLM":true,"detectedLanguage":{"language":"en"}}]
+
+---- B. from=auto-detect（T3-spike-2 汇报写的） ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = from=auto-detect&to=zh-Hans&text=Hello%20world&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 224 ms
+响应 body = {"statusCode":400,"errorMessage":""}
+
+---- C. 完全不传源语言字段 ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = to=zh-Hans&text=Hello%20world&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 210 ms
+响应 body = {"statusCode":400,"errorMessage":""}
+
+== 单项耗时（fromLang 路径，各 6 次） ==
+
+---- 第 1 次 ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = fromLang=auto-detect&to=zh-Hans&text=line%200%20test&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 1087 ms
+响应 body = [{"translations":[{"text":"第0行测试","to":"zh-Hans"}],"usedLLM":true,"detectedLanguage":{"language":"en"}}]
+
+---- 第 2 次 ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = fromLang=auto-detect&to=zh-Hans&text=line%201%20test&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 1194 ms
+响应 body = [{"translations":[{"text":"第1行测试","to":"zh-Hans"}],"usedLLM":true,"detectedLanguage":{"language":"en"}}]
+
+---- 第 3 次 ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = fromLang=auto-detect&to=zh-Hans&text=line%202%20test&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 954 ms
+响应 body = [{"translations":[{"text":"第2行测试","to":"zh-Hans"}],"usedLLM":true,"detectedLanguage":{"language":"en"}}]
+
+---- 第 4 次 ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = fromLang=auto-detect&to=zh-Hans&text=line%203%20test&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 992 ms
+响应 body = [{"translations":[{"text":"第3行测试","to":"zh-Hans"}],"usedLLM":true,"detectedLanguage":{"language":"en"}}]
+
+---- 第 5 次 ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = fromLang=auto-detect&to=zh-Hans&text=line%204%20test&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 1240 ms
+响应 body = [{"translations":[{"text":"第4行测试","to":"zh-Hans"}],"usedLLM":true,"detectedLanguage":{"language":"en"}}]
+
+---- 第 6 次 ----
+请求行长 = 102 字节
+请求 URL  = https://cn.bing.com/ttranslatev3?isVertical=1&&IG=21C349AB20DB4DCB9EB3067CDAE57FEB&IID=translator.5023
+表单 body = fromLang=auto-detect&to=zh-Hans&text=line%205%20test&token=<TOKEN>&key=1793668804888
+HTTP 状态 = 200  耗时 = 875 ms
+响应 body = [{"translations":[{"text":"第5行测试","to":"zh-Hans"}],"usedLLM":true,"detectedLanguage":{"language":"en"}}]
+
+== 汇总 ==
+fromLang 成功 = 200   from 结果 = 200   无源语言字段 = 200
+单项耗时 = 1087, 1194, 954, 992, 1240, 875
+P50 = 1040 ms   P95 = 1240 ms   min = 875   max = 1240

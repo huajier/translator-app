@@ -284,6 +284,15 @@ try {
                 $(if ([string]::IsNullOrEmpty($token)) { '**没带**' } else { '有' }), `
                 $(if ([string]::IsNullOrEmpty($keyIn)) { '**没带**' } else { '有' }))
 
+            # ---- 源语言字段必填（真 Bing 实测：不传 fromLang 或写成 from 都回 400）
+            # 这条必须校验，不能只打印：否则程序漏了 fromLang 本地照样全绿，
+            # 到真机上才变成「翻译老是失败」。2026-11-03 真 Bing 对照实测：
+            #   fromLang=auto-detect → 200 + 译文；from=auto-detect → 400；不传 → 400。
+            if ([string]::IsNullOrWhiteSpace($fromLang)) {
+                Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 400 'fromLang missing')
+                continue
+            }
+
             # ---- 目标语言必填（真 Bing 缺 to 回 400）
             if ([string]::IsNullOrWhiteSpace($to)) {
                 Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 400 'target language missing')
