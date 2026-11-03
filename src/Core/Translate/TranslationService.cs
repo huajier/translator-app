@@ -92,12 +92,21 @@ internal sealed class TranslationService
         if (string.IsNullOrWhiteSpace(text))
             return new TranslationResult { Failure = TranslationFailure.Disabled };
 
-        // 母语不翻：判成中文就直接返回。
-        // 判据和卡片上显示的语言是同一个（LanguageDetector），不会出现「卡片说中文、翻译又翻了」。
-        if (LanguageDetector.Detect(text) == LanguageDetector.Chinese)
+        // 母语不翻 —— 但**母语指的是目标语言，不是中文**。
+        // 用户原话：「让用户选择一种语言，然后除了这种语言外识别出来的所有都翻译」。
+        // 所以只有目标语言是中文时，「本地判成中文就跳过」才成立。
+        //
+        // 目标语言不是中文时，本地判不出来（LanguageDetector 只有中文/俄文/拉丁三档，
+        // 判不出英法德日），一律交给服务端自动检测 —— 宁可发出去让 Bing 判，
+        // 也不要本地猜着跳过。这条以前硬编码 Chinese，导致目标语言选成英文后
+        // 中文原文永远不翻，是功能死锁，不是边缘情况。
+        //
+        // 已知代价（明确接受）：目标语言=英文、原文本来就是英文时，会白发一次请求拿回原文。
+        // 多烧一次额度、多花几百毫秒，换「中文原文能翻成英文」。**能翻比省一次额度重要。**
+        string target = AppSettings.TranslateTargetLang;
+        if (IsChineseTarget(target) && LanguageDetector.Detect(text) == LanguageDetector.Chinese)
             return new TranslationResult { Failure = TranslationFailure.Disabled };
 
-        string target = AppSettings.TranslateTargetLang;
         string key = Normalize(text) + "|" + target;
 
         // 命中的代价要单独量：hit.ElapsedMs 是**当初那次网络请求**的耗时，
@@ -182,6 +191,14 @@ internal sealed class TranslationService
             _order.Clear();
         }
     }
+
+    /// <summary>
+    /// 目标语言是不是中文（含 zh-Hans / zh-Hant / zh / zh-CN 等）。
+    /// 只用来决定「本地中文判据要不要生效」：目标语言是中文时，中文原文不用翻；
+    /// 目标语言是别的语言时，中文原文**必须翻**，本地判据一律不生效。
+    /// </summary>
+    private static bool IsChineseTarget(string to)
+        => to.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// 规范化：去掉首尾空白、把连续空白（含换行）压成一个空格。
