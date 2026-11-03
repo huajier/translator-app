@@ -77,15 +77,26 @@
                       所以「翻译关着」和「现在没有翻译」的卡片跟阶段三长得一模一样。
                     译文用 TextBox 而不是 TextBlock：和 MainText 一样要能拖选 + Ctrl+C
                       （用户框到一段外文，多半是想把译文复制走，而不是光看）。
+                    【2026-11-03 P0-E2：译文必须限高】
+                      原来只限 MaxWidth，一段 300 字的剧情文本译完会撑到 250~350px，
+                      加原文区 80px 就顶出屏幕，详情行和失败原因看不见，
+                      卡片还会被 PlaceBesideSelection() 摆到屏幕外，用户以为程序没反应。
+                      现在套进 ScrollViewer 限高 200：原文 80 + 译文 200 = 正文最多 280px。
+                      显隐只动 TransScroll 和 TransSep，TranslationText 自己不管 Visibility。
                 -->
                 <Border x:Name="TransSep" Height="1" Background="#FF1E293B"
                         Margin="0,6,0,6" Visibility="Collapsed" />
-                <TextBox x:Name="TranslationText" Foreground="#FFE2E8F0"
-                         FontSize="13" TextWrapping="Wrap" MaxWidth="420"
-                         IsReadOnly="True" Visibility="Collapsed"
-                         Background="Transparent" BorderThickness="0" Padding="0"
-                         VerticalScrollBarVisibility="Disabled"
-                         HorizontalScrollBarVisibility="Disabled" />
+                <ScrollViewer x:Name="TransScroll" MaxHeight="200"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Visibility="Collapsed">
+                    <TextBox x:Name="TranslationText" Foreground="#FFE2E8F0"
+                             FontSize="13" TextWrapping="Wrap" MaxWidth="420"
+                             IsReadOnly="True"
+                             Background="Transparent" BorderThickness="0" Padding="0"
+                             VerticalScrollBarVisibility="Disabled"
+                             HorizontalScrollBarVisibility="Disabled" />
+                </ScrollViewer>
 
                 <TextBlock x:Name="DetailText" Foreground="#FFCBD5E1"
                            FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap" MaxWidth="420" />

@@ -482,27 +482,45 @@ public partial class DebugToastWindow : Window
     /// </summary>
     private void ApplyTranslation(Core.Translate.TranslationResult? translation)
     {
-        if (translation is null || translation.Failure is Core.Translate.TranslationFailure.None
-                                                   or Core.Translate.TranslationFailure.Disabled)
+        // ==========================================================
+        // 【2026-11-03 P0-E2 真机验收时发现的真 bug，务必记住】
+        //   原来第一行是把 `Failure is None or Disabled` 当作「没译文」直接隐藏——
+        //   可是**成功时 Failure 恰恰就等于 None**（见 TranslationResult.Success）。
+        //   结果就是：译文永远不显示，翻译跑得好好的、日志里全是「翻译：成功」，
+        //   卡片上却一个字都没有。
+        //
+        //   这个 bug 从 T3a 起就存在，之前的 S2/S3/S4/S5/S6 全是走 `--回放`，
+        //   **回放不建卡片窗口**，所以六条验收全绿也没人看见。
+        //   教训：只验日志不验界面，等于没验界面。以后翻译相关的改动必须在真机上
+        //   确认卡片上真的出现了译文那一块。
+        //
+        //   正确顺序：**先判成功**，再判「本来就不该有译文」，最后才当失败处理。
+        // ==========================================================
+        if (translation is not null && translation.Success)
         {
-            HideTranslation();
+            TranslationText.Text = translation.Text;
+            TransScroll.Visibility = Visibility.Visible;
+            TransSep.Visibility = Visibility.Visible;
+            // 缓存命中要说出来：同一个词连框两次，用户会觉得「怎么秒出」，得有个解释。
+            if (translation.FromCache)
+            {
+                DetailText.Text += Environment.NewLine + "译文来自本次运行的缓存，没有重复发送";
+            }
             return;
         }
 
-        if (translation.Success)
+        HideTranslation();
+
+        // Disabled = 开关关着，或原文本来就是目标语言；None 但 Text 空 = 服务端没回译文。
+        // 这两种都是正常状态，不该在卡片上留一行解释去打扰用户。
+        if (translation is null
+            || translation.Failure is Core.Translate.TranslationFailure.None
+                                                   or Core.Translate.TranslationFailure.Disabled)
         {
-            TranslationText.Text = translation.Text;
-            TranslationText.Visibility = Visibility.Visible;
-            TransSep.Visibility = Visibility.Visible;
-            // 缓存命中要说出来：同一个词连框两次，用户会觉得「怎么秒出」，得有个解释。
-            DetailText.Text += translation.FromCache
-                ? Environment.NewLine + "译文来自本次运行的缓存，没有重复发送"
-                : string.Empty;
             return;
         }
 
         // 失败：原文一个字都不动，只在详情末尾追加一句。
-        HideTranslation();
         string msg = translation.Failure.ToUserMessage();
         if (msg.Length > 0) DetailText.Text += Environment.NewLine + msg;
     }
@@ -510,7 +528,7 @@ public partial class DebugToastWindow : Window
     private void HideTranslation()
     {
         TranslationText.Text = string.Empty;
-        TranslationText.Visibility = Visibility.Collapsed;
+        TransScroll.Visibility = Visibility.Collapsed;
         TransSep.Visibility = Visibility.Collapsed;
     }
 
