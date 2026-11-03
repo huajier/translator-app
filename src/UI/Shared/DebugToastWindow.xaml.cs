@@ -395,22 +395,36 @@ public partial class DebugToastWindow : Window
     ///   所以换完文字必须重新摆一次。
     /// </summary>
     internal void UpdateWith(Core.Capture.CaptureResult result)
-        => UpdateWith(result, null);
+        => UpdateWith(result, null, translating: false);
 
     /// <summary>
-    /// 一次把「原文 + 译文」交进来。
+    /// 把「原文 + 译文（或翻译态）」交进来。
     ///
-    /// 【为什么只有这一个重载，不许先 UpdateWith(result) 再补译文】
-    ///   方法末尾会 `_closeTimer.Stop(); …Start()`（3 秒从这一刻算）。
-    ///   分两次调，第二次会把这 3 秒重置一遍，译文晚到 2 秒用户就只剩 1 秒能看。
-    ///   所以翻译没跑完就别进这个方法。
+    /// 【2026-11-03 用户拍板，显示时序改成两段 —— 旧的「必须一次 UpdateWith」硬要求已撤销】
+    ///   用户原话：「识别后先把原文识别出来，然后等待翻译就显示[翻译中...]，
+    ///             翻译出来后再显示全文。」
+    ///
+    ///   所以现在是**故意分两次调**：
+    ///     1) OCR 完成 → UpdateWith(result, null, translating: true)   原文 + 「翻译中…」
+    ///     2) 译文到手 → UpdateWith(result, translation)                译文补上
+    ///
+    ///   为什么当初禁止、现在可以：早先担心的「译文晚到只剩 1 秒能看」，
+    ///   前提是两次都在同一个 3 秒倒计时里倒着走。但方法末尾每次都会
+    ///   `_closeTimer.Stop(); Interval=…; Start()` 重置计时器，
+    ///   第二次进来用户就重新拿到完整倒计时，那个担心不成立。
+    ///   **不要看到旧记录（第九轮 P1-C2）就把这里改回一次调用。**
     ///
     /// 【翻译失败绝不动原文】
     ///   MainText 永远只放 `result.Text`，译文单独一个控件。
     ///   失败时译文区保持隐藏，只在 DetailText 末尾追加一句人话，
     ///   用户看到的字和翻译关着时一模一样，只多一行说明。
+    ///
+    /// <param name="translating">true = 译文还在路上，译文区显示「翻译中…」，
+    /// 倒计时用长的 PendingCloseDelay，别在译文到达前把卡片关掉。</param>
     /// </summary>
-    internal void UpdateWith(Core.Capture.CaptureResult result, Core.Translate.TranslationResult? translation)
+    internal void UpdateWith(Core.Capture.CaptureResult result,
+                            Core.Translate.TranslationResult? translation,
+                            bool translating = false)
     {
         if (!IsVisible) return;   // 用户已经等不及关掉了
 
@@ -438,7 +452,7 @@ public partial class DebugToastWindow : Window
                 //   只加提示，不改上面任何文字，也不阻断翻译。
                 (result.BlockLooksBad ? Environment.NewLine + "这块字没认好，切成一行一行框会更准" : string.Empty);
 
-            ApplyTranslation(translation);
+            ApplyTranslation(translation, translating);
         }
         else
         {
@@ -463,11 +477,19 @@ public partial class DebugToastWindow : Window
         //   原来倒计时是在 `ShowFor()`（框选刚完成、识别还没跑完）就启动的，
         //   识别慢的时候窗口先关掉，这里走 `if (!IsVisible) return;`，
         //   **用户连识别出来的字都没看见**。
-        //   现在必须把 Interval 显式改回 3 秒——
+        //   现在必须把 Interval 显式改回来——
         //   ShowFor() 那里把它设成了 8 秒兜底，定时器是同一个，不能忘了改回来。
+        //
+        // 【2026-11-03 翻译态必须是 8 秒，不能用 3 秒】
+        //   原文出来就 3 秒关，而翻译最坏 2.5 秒 —— 余量只剩 0.5 秒，
+        //   I/O 一抖就关在译文到达之前，用户永远看不到译文。
+        //   8 秒的意义是「有个东西还在路上」：认字期间是这个语义，翻译期间同理，
+        //   所以复用同一个 PendingCloseDelay，不新造常数。
+        //   译文真正落地时会再进一次 UpdateWith(translating:false)，
+        //   那时才换回 3 秒 —— 用户重新拿到完整 3 秒看译文。
         // ==========================================================
         _closeTimer.Stop();
-        _closeTimer.Interval = TimeSpan.FromSeconds(CloseDelaySeconds);
+        _closeTimer.Interval = translating ? PendingCloseDelay : TimeSpan.FromSeconds(CloseDelaySeconds);
         _closeTimer.Start();
     }
 
@@ -480,8 +502,23 @@ public partial class DebugToastWindow : Window
     ///   原文照旧在上面，详情末尾多一句「翻译超时，原文已保留」之类。
     /// 【什么时候显示译文】只有 Success。
     /// </summary>
-    private void ApplyTranslation(Core.Translate.TranslationResult? translation)
+    private void ApplyTranslation(Core.Translate.TranslationResult? translation, bool translating = false)
     {
+        // ==========================================================
+        // 【翻译态】原文已经显示出来了，这里只是把「还有一个东西在路上」说出来。
+        //   只动译文区，**不碰原文和详情** —— 用户此刻正在读原文。
+        //   措辞「翻译中…」：用户原话写的是「翻译中...」（三个点），
+        //   项目里其它文案一律用中文省略号，跟着项目走。
+        // ==========================================================
+        if (translating)
+        {
+            TranslationText.Text = "翻译中…";
+            TransScroll.Visibility = Visibility.Visible;
+            TransSep.Visibility = Visibility.Visible;
+            Core.Logging.AppLogger.Info("译文区已切到「翻译中…」");
+            return;
+        }
+
         // ==========================================================
         // 【2026-11-03 P0-E2 真机验收时发现的真 bug，务必记住】
         //   原来第一行是把 `Failure is None or Disabled` 当作「没译文」直接隐藏——
@@ -523,24 +560,6 @@ public partial class DebugToastWindow : Window
         // 失败：原文一个字都不动，只在详情末尾追加一句。
         string msg = translation.Failure.ToUserMessage();
         if (msg.Length > 0) DetailText.Text += Environment.NewLine + msg;
-    }
-
-    /// <summary>
-    /// 翻译还没回来时先摆一行「正在翻译…」。
-    ///
-    /// 为什么要这个：端到端硬闸 2500ms，断网时那 2.5 秒里卡片一个像素都不动，
-    /// 用户会以为程序卡死，或者以为这块字就是没译文。有一个动作在，等待才可解释。
-    ///
-    /// 注意：**只动译文区，不碰原文和详情**。原文任何时候都必须完整可读。
-    /// </summary>
-    internal void ShowTranslating()
-    {
-        if (!IsVisible) return;
-        TranslationText.Text = "正在翻译…";
-        TransScroll.Visibility = Visibility.Visible;
-        TransSep.Visibility = Visibility.Visible;
-        // 留一条日志：验收要看得到「这段等待真的被表达出来了」，不能靠肉眼。
-        Core.Logging.AppLogger.Info("译文区已切到「正在翻译…」");
     }
 
     private void HideTranslation()

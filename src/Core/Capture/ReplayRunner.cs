@@ -103,36 +103,30 @@ internal static class ReplayRunner
 
                 // 2026-11-02 阶段四 T3a（第一轮 P0-1）：回放路径也要走翻译，
                 // 否则端到端 P95 全是纸面数字 —— 回放根本不经过 App.xaml.cs。
-                // 预算同样要扣掉认字：回放的端到端数字就是验收指标本身，
-                // 这里给满 2.5 秒的话，回放数字会比真机好看，等于自己骗自己。
+                int ocrMs = (int)itemSw.ElapsedMilliseconds;
                 TranslationResult? translation = null;
+                int translateMs = 0;
                 if (result.Success && AppSettings.TranslateEnabled)
                 {
-                    // 预算必须按**真实墙钟**扣，不能按 result.ElapsedMs：
-                    // 后者只算认字内部，dispatcher 前后那点开销不在里面，
-                    // 拿它扣会稳定多出几十毫秒（S3 实测 max 2573，超 73ms）。
-                    int budget = TranslationService.HardTimeoutMs - (int)itemSw.ElapsedMilliseconds;
-                    if (budget > 0)
+                    // ==========================================================
+                    // 【2026-11-03 预算改固定 2500ms，删掉减法 —— 和 App.xaml.cs 同一处改动】
+                    //   原来按墙钟扣（2500 - 认字耗时），认字慢就一个请求都不发。
+                    //   现在翻译拿独立预算，从翻译开始算：认字慢不该让用户没有译文。
+                    //   那个 budget <= 0 的分支整个删掉 —— 它只在减法存在时才有意义。
+                    // ==========================================================
+                    var transSw = System.Diagnostics.Stopwatch.StartNew();
+                    try
                     {
-                        try
-                        {
-                            translation = await TranslationService.Shared
-                                .TranslateAsync(result.Text, budget, CancellationToken.None)
-                                .ConfigureAwait(true);
-                        }
-                        catch (Exception ex)
-                        {
-                            AppLogger.Warn($"回放 {id}：翻译出错（不影响认字结果）：{ex.GetType().Name} {ex.Message}");
-                        }
+                        translation = await TranslationService.Shared
+                            .TranslateAsync(result.Text, TranslationService.HardTimeoutMs, CancellationToken.None)
+                            .ConfigureAwait(true);
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        translation = new TranslationResult
-                        {
-                            Failure = TranslationFailure.Timeout,
-                            Detail = $"认字用了 {itemSw.ElapsedMilliseconds} ms，端到端预算已用完",
-                        };
+                        AppLogger.Warn($"回放 {id}：翻译出错（不影响认字结果）：{ex.GetType().Name} {ex.Message}");
                     }
+                    transSw.Stop();
+                    translateMs = (int)transSw.ElapsedMilliseconds;
                 }
                 itemSw.Stop();
 
@@ -146,10 +140,15 @@ internal static class ReplayRunner
                     .Replace('\r', '⏎');
                 results.Add($"{id}|{oneLine}");
                 if (result.Success) ok++; else failed++;
-                // 注意：这里的 itemSw 现在**含翻译**，是端到端耗时（S2 的 P95 就从这条读）。
+                // 【2026-11-03 拆两段】真机上原文是认字一完成就出现的，
+                //   用户感知的「等了多久才看到字」是 ocrMs，不是合计。
+                //   验收统计因此分两个数：
+                //     · 原文可见 P95 = ocrMs   （主指标，用户真正在等的东西）
+                //     · 译文可见 P50/P95 = itemSw（合计）
+                //   别再打一个「端到端」把两件事混成一个数。
                 AppLogger.Info($"回放 {id}：{(result.Success ? "成功" : "失败")}，{result.Text.Length} 字，" +
-                               $"翻译 = {(translation is null ? "没走" : translation.Success ? $"成功 {translation.Text.Length} 字" : translation.Failure.ToString())}，" +
-                               $"端到端 {itemSw.ElapsedMilliseconds} ms");
+                               $"认字 {ocrMs} ms / 翻译 {translateMs} ms / 合计 {itemSw.ElapsedMilliseconds} ms，" +
+                               $"翻译 = {(translation is null ? "没走" : translation.Success ? $"成功 {translation.Text.Length} 字" : translation.Failure.ToString())}");
                 Console.WriteLine($"[{idx}/{total}] {id}  {result.Text.Length} 字  {itemSw.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)

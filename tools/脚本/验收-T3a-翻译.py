@@ -32,7 +32,7 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_EXE = os.path.join(ROOT, "release", "v1.4", "TranslatorApp.exe")
+DEFAULT_EXE = os.path.join(ROOT, "release", "v1.5", "TranslatorApp.exe")
 SERVER = os.path.join(ROOT, "tools", "脚本", "假译服务器.ps1")
 TRUTH = os.path.join(ROOT, "tools", "素材", "行真值.json")
 CFG = os.path.join(os.environ["APPDATA"], "TranslatorApp", "settings.json")
@@ -254,9 +254,27 @@ def pct(arr, q):
 
 
 def e2e_of(lines):
-    """从日志行抽端到端耗时（回放每条打一行「端到端 N ms」）。"""
-    return [int(m.group(1)) for ln in lines
-            for m in [re.search(r"端到端 (\d+) ms", ln)] if m]
+    """从日志行抽耗时（回放每条打一行「认字 N ms / 翻译 N ms / 合计 N ms」）。
+
+    【2026-11-03 T3a-补：拆成两个数】
+      真机上原文是认字一完成就出现的，用户感知的「等了多久才看到字」是认字数，
+      不是合计。所以验收分两个指标：
+        · 原文可见 = 认字数（主指标）
+        · 译文可见 = 合计数
+      旧格式「端到端 N ms」已废弃，这个正则同时兼容旧日志。
+    """
+    ocr, tr, tot = [], [], []
+    for ln in lines:
+        m = re.search(r"认字 (\d+) ms / 翻译 (\d+) ms / 合计 (\d+) ms", ln)
+        if m:
+            ocr.append(int(m.group(1)))
+            tr.append(int(m.group(2)))
+            tot.append(int(m.group(3)))
+            continue
+        m = re.search(r"端到端 (\d+) ms", ln)          # 兼容 T3a-补之前的日志
+        if m:
+            tot.append(int(m.group(1)))
+    return {"ocr": ocr, "tr": tr, "total": tot}
 
 
 # ---------------------------------------------------------------- S1
@@ -359,7 +377,7 @@ def p0e1(exe):
 # ---------------------------------------------------------------- S2
 
 def s2(exe):
-    say("== S2 80 张全量回放（假服务器，端到端耗时）==")
+    say("== S2 80 张全量回放（假服务器，拆两段：原文可见 / 译文可见）==")
     port = start_srv()
     set_cfg(True, "http://127.0.0.1:%d" % port)
     lst = os.path.join(os.environ.get("TEMP", "."), "t3a_full.txt")
@@ -367,8 +385,11 @@ def s2(exe):
     n = log_len()
     out, wall = run_replay(exe, lst, "s2")
     lines = log_since(n)
-    e2e = e2e_of(lines)
-    over = [x for x in e2e if x > 2500]
+    ms = e2e_of(lines)
+    e2e = ms["total"]
+    trs = ms["tr"]
+    # 硬闸从 T3a-补 起只管翻译那一段（2500ms 独立预算），认字不算在内。
+    over = [x for x in trs if x > 2500]
     okc = sum(1 for ln in lines if "翻译：成功" in ln)
     # 命中缓存不重打「翻译：成功」，要单独算，否则 80 张里会有几张凭空少掉
     hitc = sum(1 for ln in lines if "命中缓存" in ln)
@@ -376,11 +397,17 @@ def s2(exe):
     skip = sum(1 for ln in lines if "翻译 = 没走" in ln)
     say("  清单 %d 张 ｜ 认字成功 %d ｜ 翻译成功 %d（其中命中缓存 %d）失败 %d 没走 %d"
         % (total, len(out), okc + hitc, hitc, failc, skip))
+    ocr = ms["ocr"]
+    if ocr:
+        say("  原文可见(认字) min %d / P50 %d / P95 %d / max %d ms"
+            % (min(ocr), pct(ocr, .5), pct(ocr, .95), max(ocr)))
     if e2e:
-        say("  端到端 min %d / P50 %d / P95 %d / max %d / 平均 %d ms ｜ 墙钟 %.1f 秒"
+        say("  译文可见(合计) min %d / P50 %d / P95 %d / max %d / 平均 %d ms ｜ 墙钟 %.1f 秒"
             % (min(e2e), pct(e2e, .5), pct(e2e, .95), max(e2e),
                sum(e2e) // len(e2e), wall))
-    say("  超 2500ms 的样本 %d 条" % len(over))
+    if trs:
+        say("  翻译段 P50 %d / P95 %d / max %d ms" % (pct(trs, .5), pct(trs, .95), max(trs)))
+    say("  翻译段超 2500ms 的样本 %d 条" % len(over))
     ok = len(out) == total and len(over) == 0
     say("  判定：%s" % ("PASS" if ok else "FAIL"))
     return ok
@@ -462,8 +489,10 @@ def s3(exe):
     n = log_len()
     out, wall = run_replay(exe, lst, "s3")
     lines = log_since(n)
-    e2e = e2e_of(lines)
-    over = [x for x in e2e if x > 2500]
+    ms = e2e_of(lines)
+    e2e = ms["total"]
+    trs = ms["tr"]
+    over = [x for x in trs if x > 2500]
     empty = [l for l in out if not l.split("|", 1)[-1].strip()]
     bad = sum(1 for ln in lines if "翻译：放弃" in ln)
     okc = sum(1 for ln in lines if "翻译：成功" in ln)
@@ -473,10 +502,13 @@ def s3(exe):
             m = re.search(r"放弃，(.+?)（", ln)
             if m:
                 msgs[m.group(1)] = msgs.get(m.group(1), 0) + 1
+    if trs:
+        say("  翻译段(断网) P50 %d / P95 %d / max %d ms ｜ 墙钟 %.1f 秒"
+            % (pct(trs, .5), pct(trs, .95), max(trs), wall))
     if e2e:
-        say("  端到端 P50 %d / P95 %d / max %d ms ｜ 墙钟 %.1f 秒"
-            % (pct(e2e, .5), pct(e2e, .95), max(e2e), wall))
-    say("  失败 %d ｜ 成功 %d ｜ 结果行 %d/%d ｜ 原文为空 %d 行 ｜ 超 2500ms %d 条"
+        say("  译文可见(合计) P50 %d / P95 %d / max %d ms"
+            % (pct(e2e, .5), pct(e2e, .95), max(e2e)))
+    say("  失败 %d ｜ 成功 %d ｜ 结果行 %d/%d ｜ 原文为空 %d 行 ｜ 翻译段超 2500ms %d 条"
         % (bad, okc, len(out), total, len(empty), len(over)))
     for k, v in sorted(msgs.items(), key=lambda x: -x[1]):
         say("  文案「%s」x%d" % (k, v))

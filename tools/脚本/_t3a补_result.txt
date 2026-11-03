@@ -1,0 +1,23 @@
+== T3a-补 真机验收（冷启动第一次框选，框 160/160/940/480）==
+-- 认字：1 条
+   [2026-11-03 12:40:16.531] [INFO] 取词成功：通道=RapidOCR 字数=275 语言=外文（拉丁字母）（中文 0 %，西里尔 0 %） 总耗时=1125 毫秒（识别耗时 47 毫秒    RapidOCR 平均分 0.98）
+-- 翻译中：1 条
+   [2026-11-03 12:40:16.538] [INFO] 译文区已切到「翻译中…」
+-- 翻译结果：1 条
+   [2026-11-03 12:40:16.956] [INFO] 翻译：成功，275 字 → 译 280 字，用时 397 ms（Bing 网页翻译（免密钥），检测到源语言「en」）
+-- UpdateWith：2 条
+   [2026-11-03 12:40:16.549] [INFO] 提示框已更新为取词结果：位置=(952,160) 尺寸=439×240，文字 275 字
+   [2026-11-03 12:40:16.968] [INFO] 提示框已更新为取词结果：位置=(952,160) 尺寸=440×356，文字 275 字
+  认出的原文：The ancient gate stood silent at the edge of the valley. Nobody in the village / remembered who had carved the runes, / 
+  开头20字在=True 结尾20字在=True 长度 285 / 原文 275 = 104%
+
+  ①认字内容对（框没歪）：PASS
+  ②出现「翻译中…」：PASS
+  ③两次 UpdateWith（原文+译文）：PASS
+  ④翻译态早于第一次 UpdateWith：PASS
+  ⑤第一次框选就翻译成功：PASS
+  ⑥没有「预算用完」：PASS
+总判定：PASS
+截图：D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t3a补_20261103_124007.png
+原文+日志：D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t3a补_20261103_124007_原文.txt
+配置已还原：enabled=False endpoint='' keys=12

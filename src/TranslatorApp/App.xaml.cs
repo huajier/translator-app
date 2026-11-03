@@ -683,8 +683,6 @@ public partial class App : System.Windows.Application
 
     private static async Task RunCaptureAsync(CaptureRequest request, DebugToastWindow card)
     {
-        // 端到端硬闸从**进这个方法**开始算 —— 用户的时间不是从「认字完成」才开始走的。
-        var e2eSw = System.Diagnostics.Stopwatch.StartNew();
         CaptureResult result;
         try
         {
@@ -702,50 +700,56 @@ public partial class App : System.Windows.Application
         }
 
         // 认字成功才谈翻译。认字都没成，把原文（其实是错误说明）发出去没有任何意义。
-        // 【硬闸是端到端的】2.5 秒管的是「用户从框选到看见卡片」总共等多久。
-        // 认字已经花掉的部分要从预算里扣掉，否则翻译再守时也架不住两层各自「没超时」。
-        // S3 实测：本机连一个拒绝连接的回环端口单次就要 2060 ms，扣掉认字只剩 400 多毫秒，
-        // 这一档必然超时 —— 那是**对的**，用户不该等 3 秒。
+        bool wantTranslate = result.Success && AppSettings.TranslateEnabled;
         Core.Translate.TranslationResult? translation = null;
-        if (result.Success && AppSettings.TranslateEnabled)
-        {
-            // 先让卡片动一下再等：端到端硬闸 2500ms，断网时那 2.5 秒里卡片一个像素
-            // 都不动，用户会以为程序卡死。只动译文区，原文一个字都不碰。
-            try { card.ShowTranslating(); }
-            catch (Exception ex) { AppLogger.Warn($"显示「正在翻译」失败（不影响翻译）：{ex.Message}"); }
 
-            int budget = Core.Translate.TranslationService.HardTimeoutMs - (int)e2eSw.ElapsedMilliseconds;
-            if (budget > 0)
+        // ==========================================================
+        // 【2026-11-03 用户拍板：显示时序改两段】
+        //   用户原话：「识别后先把原文识别出来，然后等待翻译就显示[翻译中...]，
+        //             翻译出来后再显示全文。」
+        //
+        //   所以是**故意分两次** UpdateWith，不是又踩了旧坑：
+        //     1) 认字一完成 → 原文 + 「翻译中…」一次到位（用户马上有字可读）
+        //     2) 译文到手   → 补上译文，倒计时重新计时
+        //   旧的「必须只调一次」硬要求已由架构师第十轮撤销，原因见
+        //   DebugToastWindow.xaml.cs 的 UpdateWith 注释。
+        //
+        //   翻译没开时（!TranslateEnabled）只调一次，和阶段三完全一致，一行不多。
+        // ==========================================================
+        if (wantTranslate)
+        {
+            try { card.UpdateWith(result, null, translating: true); }
+            catch (Exception ex) { AppLogger.Warn($"显示「翻译中…」失败（不影响原文）：{ex.Message}"); }
+
+            // ==========================================================
+            // 【2026-11-03 预算改固定 2500ms，删掉「从认字时间里扣」的减法】
+            //   原来 budget = 2500 - 认字耗时。真机实测认字冷启动 1922~4031 ms，
+            //   budget 直接 ≤0 → 翻译一个请求都不发 → 用户第一次用看到
+            //   原文 +「翻译超时」，以为功能坏了。那是每个用户的第一印象，
+            //   不是边缘情况。
+            //
+            //   现在翻译拿独立的 2500ms，从翻译开始算：
+            //     · 用户此刻已经有原文可读，翻译不是阻塞项；
+            //     · 2500ms 是实测真 Bing P95 1240ms 的两倍余量；
+            //     · 删掉减法 = 删掉一整类边界情况（「只剩 300 ms 预算」彻底消失）。
+            // ==========================================================
+            int budget = Core.Translate.TranslationService.HardTimeoutMs;
+            try
             {
-                try
-                {
-                    translation = await Core.Translate.TranslationService.Shared
-                        .TranslateAsync(result.Text, budget, CancellationToken.None)
-                        .ConfigureAwait(true);
-                }
-                catch (Exception ex)
-                {
-                    // TranslateAsync 自己说「永远不抛」，这里再兜一层：
-                    // 翻译整个崩了也必须走到下面那次 UpdateWith，原文才能显出来。
-                    AppLogger.Warn($"翻译出错（不影响原文显示）：{ex.GetType().Name} {ex.Message}");
-                }
+                translation = await Core.Translate.TranslationService.Shared
+                    .TranslateAsync(result.Text, budget, CancellationToken.None)
+                    .ConfigureAwait(true);
             }
-            else
+            catch (Exception ex)
             {
-                AppLogger.Warn($"翻译：到这一步已用 {e2eSw.ElapsedMilliseconds} ms，端到端预算用完，直接显原文（不外发）");
-                translation = new Core.Translate.TranslationResult
-                {
-                    Failure = Core.Translate.TranslationFailure.Timeout,
-                    Detail = $"到这一步已用 {e2eSw.ElapsedMilliseconds} ms，端到端预算用完",
-                };
+                // TranslateAsync 自己说「永远不抛」，这里再兜一层：
+                // 翻译整个崩了也必须走到下面那次 UpdateWith，原文才能显出来。
+                AppLogger.Warn($"翻译出错（不影响原文显示）：{ex.GetType().Name} {ex.Message}");
             }
         }
 
         try
         {
-            // 【必须只调一次】UpdateWith 每次进来都会重启自动关闭计时器
-            // （DebugToastWindow.xaml.cs:442-444）。先显示原文、2 秒后再塞译文，
-            // 用户就只剩 1 秒能看。所以译文到手才一次性交进去。
             card.UpdateWith(result, translation);
         }
         catch (Exception ex)
