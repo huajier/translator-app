@@ -399,4 +399,24 @@ internal static class AppSettings
         }
         Save(WindowsOnly);
     }
+
+    /// <summary>
+    /// 改「翻成哪种语言」，并立刻存盘（阶段四 T3b，2026-11-04）。
+    ///
+    /// 【为什么不给 Save 加参数】同 SetTranslateEnabled：只有一条路，不会出现「存的和内存里不一致」。
+    /// 【为什么不校验语言码】见 TranslateTargetLang 的注释：本地维护一张表只会和服务端不一致，
+    ///   填错让 Bing 回 400 就行。这里只挡一种情况 —— **空串**（存空 = 每次都必 400）。
+    /// </summary>
+    public static void SetTranslateTargetLang(string code)
+    {
+        code = (code ?? "").Trim();
+        if (code.Length == 0) return;   // 空串不许存，保留原值
+
+        lock (Gate)
+        {
+            if (TranslateTargetLang == code) return;
+            TranslateTargetLang = code;
+        }
+        Save(WindowsOnly);
+    }
 }

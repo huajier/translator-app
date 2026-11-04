@@ -863,6 +863,19 @@ public partial class App : System.Windows.Application
         }
     }
 
+    /// <summary>
+    /// 让主窗口的翻译开关跟着配置文件变（阶段四 T3b，2026-11-04）。
+    ///
+    /// 【为什么要有它】托盘菜单和主窗口各有一个开关，改一处不通知另一处，
+    ///   用户会看到「托盘勾着、主窗口没勾」这种自相矛盾的界面。
+    /// 【为什么窗口可能是 null】主窗口点 × 就藏起来，但对象还在；真正的 null 只出现在
+    ///   还没建窗口的极短窗口期（比如托盘在 Loaded 里就挂上了）。所以这里必须判空。
+    /// </summary>
+    internal static void SyncTranslateUiFromSettings()
+    {
+        if (Current?.MainWindow is MainWindow win) win.SyncFromSettings();
+    }
+
     internal static void ExitApplication()
     {
         IsExiting = true;

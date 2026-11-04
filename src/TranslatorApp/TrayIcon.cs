@@ -85,10 +85,20 @@ public static class TrayIcon
             bool on = !AppSettings.TranslateEnabled;
             AppSettings.SetTranslateEnabled(on);   // 内部会存盘，重启后勾选态还在
             translateItem.Checked = on;
+            App.SyncTranslateUiFromSettings();     // 主窗口那个勾也跟着变（窗口没建就什么也不做）
             AppLogger.Info($"托盘：翻译开关被点成「{(on ? "开" : "关")}」");
             if (on) App.EnsureTranslateNotice();   // 只在第一次开时弹卡片，靠 translateNoticeShown 记住
         };
         _menu.Items.Add(translateItem);
+
+        // 【2026-11-04 阶段四 T3b】每次弹菜单前重读一遍配置，让勾选态跟主窗口同步。
+        //
+        //   为什么不用一个静态字段存 translateItem 再在别处刷新（本来的方案 a）：
+        //   那等于把「谁是当前勾选态」记在两个地方 —— 字段一份、配置文件一份，
+        //   什么时候忘了刷新就会不一致。这里每次打开菜单现读配置，
+        //   **配置是唯一真相**，永远同步，也就不需要谁去记得刷新。
+        //   闭包直接捕获上面这个 translateItem，连字段都不用加。
+        _menu.Opening += (_, _) => translateItem.Checked = AppSettings.TranslateEnabled;
 
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add("退出", null, (_, _) => Exit());
