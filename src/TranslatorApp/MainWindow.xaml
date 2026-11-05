@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="翻译软件"
-        Height="360"
+        Height="200"
         Width="540"
         WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True"
@@ -38,6 +38,21 @@
         【版本号不在这里写】改 TranslatorApp.csproj 的 Version，标题自动跟着变。
 
         【x:Name 一个都不能改名】TranslateCheck / LangBox 被 .xaml.cs 十几个事件方法引用。
+    -->
+    <!--
+        【2026-11-05 第19轮：Height 360 → 200】
+
+        360 是第 17 轮定的，那会儿要装「三个粗体标题 + 两条横线 + 三大段正文 + 两个图标」。
+        第 18 轮删掉一整段、删掉一个图标、把三大段压成一行 —— 内容从 ~330px 掉到 ~128px，
+        高度却没跟着改，窗口下面空了 205px，超过窗口一半，看着像没做完。
+
+        【规矩：删内容必须回头看容器尺寸，内容缩了容器也要缩。】
+
+        为什么不是别的解法：
+          · 不用 SizeToContent="Height" —— 这里有 ScrollViewer 兜底，
+            SizeToContent 和它一起用会「滚动条出来 → 变高 → 滚动条又消失」地抖。
+          · 不改 Width，540 是对的。
+          · 不靠 Padding/Margin 去「撑满」—— 空白就是空白，把窗口改小才是正解。
     -->
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"

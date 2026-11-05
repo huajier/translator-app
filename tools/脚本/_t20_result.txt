@@ -1,0 +1,6 @@
+TITLE=翻译软件 v0.4.2.0 · 框选
+WINDOW L=690 T=420 R=1230 B=620 => 540x200
+TEXT name=[打开翻译] bottom=486 top=469
+TEXT name=[?] bottom=487 top=469
+TEXT name=[翻译语言：] bottom=522 top=505
+TEXT name=[按住 Ctrl + Alt 在屏幕上拖出一个框，松手就能识别并翻译。] bottom=558 top=541

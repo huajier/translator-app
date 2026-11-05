@@ -1,0 +1,2 @@
+ICON cx=805 cy=478
+TIPSHOT D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t20_s2_tip.png
