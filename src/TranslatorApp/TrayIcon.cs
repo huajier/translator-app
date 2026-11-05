@@ -272,10 +272,18 @@ public static class TrayIcon
         {
             if (_menu == null) return;
 
-            // 2026-11-04 T3b-补：先抢前台。虽然实测这一招并不能让菜单自动关
-            // （真正管用的是 CloseMenuIfClickOutside），但抢了前台菜单才会正常高亮、
-            // 键盘也能用，先留着。
-            if (_ownerHwnd != IntPtr.Zero) NativeMethods.SetForegroundWindow(_ownerHwnd);
+            // ==========================================================
+            // 【2026-11-05 第16轮 P1-J2：不抢前台了】
+            //   原来这里有一行 `SetForegroundWindow(_ownerHwnd)`，理由是「抢了前台
+            //   菜单才会正常高亮、键盘也能用」—— 那是推断，没验过。
+            //   实测（v2.2，把这行注释掉跑三条）：
+            //     · 点菜单外面 → 菜单照样收起（靠 CloseMenuIfClickOutside）
+            //     · 鼠标移到菜单项上 → 照样蓝色高亮
+            //     · 按方向键 → 照样能选菜单项
+            //   三条全过，代价却是实打实的：抢前台会把焦点从当前程序拿走，
+            //   Windows 的前台锁还可能让任务栏闪一下。
+            //   所以这行永久删掉 —— 不需要抢前台。
+            // ==========================================================
 
             _menu.Show(Cursor.Position);
         }

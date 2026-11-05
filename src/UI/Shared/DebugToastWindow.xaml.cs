@@ -448,13 +448,19 @@ public partial class DebugToastWindow : Window
             //   太长、太密，一个 400px 宽的卡片上要折成两行，
             //   而「3 行」「外文（拉丁字母）」对用户没有任何用处（他看得见原文长什么样）。
             //   新格式只留三段有用的：**谁认的 · 花了多久 · 认了多少字**。
-            //   「可滚动」从「共 N 字，可滚动查看」缩成一个尾巴 `· 可滚动`，
-            //   字数已经在第二段里了，不用再写一遍。
+            //
+            // 【2026-11-05 第16轮 P1-J1：删掉「· 可滚动」，它现在会撒谎】
+            //   旧世界有个 Truncate(120) 会把字**砍掉**，所以必须提示「去滚动看剩下的」。
+            //   现在全文都塞进 TextScroll 了，而且它的 VerticalScrollBarVisibility="Auto"
+            //   —— 真滚得动的时候滚动条自己会出来，不需要再说一句。
+            //   那条 120 字阈值本身也不成立：MaxHeight=300 / MaxWidth=420 / FontSize=13 下，
+            //   英文每行约 64 字符（444 字只占 ~7 行 ≈133px，压根不滚），
+            //   中文每行约 32 字（触发线要 500 字左右），差了 4 倍，一个 120 谁都不对。
+            //   444 字长文实测卡片 442×295、滚动条没出来、文字却写着「可滚动」，
+            //   等于程序在说谎。用户要的格式就是「引擎 · 用时 · 字数」三项，多一句都别加。
             // ==========================================================
-            bool needScroll = result.Text.Length > 120;
             DetailText.Text =
                 $"{ChannelNameOf(result.Channel)} · {result.ElapsedMs} ms · {result.Text.Length} 字" +
-                (needScroll ? " · 可滚动" : string.Empty) +
                 // 【2026-10-29 阶段三 S4】整块没认好时加一行小字，引导逐行框。
                 //   只加提示，不改上面任何文字，也不阻断翻译。
                 (result.BlockLooksBad ? Environment.NewLine + "这块字没认好，切成一行一行框会更准" : string.Empty);

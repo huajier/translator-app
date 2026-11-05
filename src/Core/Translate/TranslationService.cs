@@ -221,8 +221,10 @@ internal sealed class TranslationService
     /// 目标语言是不是中文（含 zh-Hans / zh-Hant / zh / zh-CN 等）。
     /// 只用来决定「本地中文判据要不要生效」：目标语言是中文时，中文原文不用翻；
     /// 目标语言是别的语言时，中文原文**必须翻**，本地判据一律不生效。
+    /// 【2026-11-05 第16轮 P0-J2】改成 internal：`App.xaml.cs` 要用它提前判断
+    /// 「这段本来就是目标语言，连『翻译中…』都别画」。逻辑一个字没动。
     /// </summary>
-    private static bool IsChineseTarget(string to)
+    internal static bool IsChineseTarget(string to)
         => to.StartsWith("zh", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>

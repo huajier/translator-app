@@ -1,0 +1,9 @@
+== menu-tri（基线 / 悬停 / 方向键） ==
+   A menu=0
+   B menu=0
+   C menu=0
+   SHOTS D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t17_j2_A_base.png|D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t17_j2_B_hover.png|D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t17_j2_C_keys.png
+   BEFORE menu=0
+   AFTER menu=0 clickAt=300,700
+   BEFORE menu=0
+   AFTER menu=0 clickAt=300,760

@@ -397,6 +397,136 @@ try {
             $g2.Dispose(); $bmp2.Dispose()
             Say ("AFTER menu=" + $(if ($after -ne [IntPtr]::Zero) { 1 } else { 0 }) + " clickAt=" + $parts[0])
         }
+        'menu-hover' {
+            # 【第16轮 P1-J2 试验】不抢前台时，鼠标移到菜单项上还有没有高亮？
+            #   Value 形如 "1700,45|D:\...\shot.png"（坐标 + 整屏截图路径）。
+            $parts = $Value.Split('|')
+            $xy = $parts[0].Split(',')
+            Open-TrayMenu $proc
+            Start-Sleep -Milliseconds 600
+            $mh = Find-MenuHwnd $proc
+            Say ("MENU menu=" + $(if ($mh -ne [IntPtr]::Zero) { 1 } else { 0 }))
+            [void][Win32.U]::SetCursorPos([int]$xy[0], [int]$xy[1])
+            Start-Sleep -Milliseconds 800
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap($b.Width, $b.Height)
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+            $bmp.Save($parts[1], [System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose(); $bmp.Dispose()
+            # 顺带把每一项的选中态读出来（能读就读，读不到写 ?）
+            $menu = Find-MenuWindow $proc
+            if ($menu) {
+                foreach ($i in $menu.FindAll($TS::Descendants, $True_)) {
+                    $sel = '?'
+                    try {
+                        $sp = $i.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)
+                        $sel = $sp.Current.IsSelected
+                    } catch { }
+                    Say ("ITEM|" + $i.Current.ControlType.ProgrammaticName + "|" + $i.Current.Name + "|sel=" + $sel)
+                }
+            }
+            Say ("HOVER " + $parts[1] + " at=" + $parts[0])
+        }
+        'menu-keys' {
+            # 【第16轮 P1-J2 试验】不抢前台时，方向键能不能选菜单项？
+            #   Value 形如 "DOWN|D:\...\shot.png"。只按两下，按完不再按别的，
+            #   免得把按键送进别的窗口干出别的事。
+            $parts = $Value.Split('|')
+            Open-TrayMenu $proc
+            Start-Sleep -Milliseconds 600
+            $fg = [Win32.U]::GetForegroundWindow()
+            $fgPid = [uint32]0
+            [void][Win32.U]::GetWindowThreadProcessId($fg, [ref]$fgPid)
+            Say ("FG beforekeys pid=" + $fgPid + " appPid=" + $proc.Id + " isApp=" + $(if ($fgPid -eq $proc.Id) { 1 } else { 0 }))
+            [System.Windows.Forms.SendKeys]::SendWait("{" + $parts[0] + "}")
+            Start-Sleep -Milliseconds 300
+            [System.Windows.Forms.SendKeys]::SendWait("{" + $parts[0] + "}")
+            Start-Sleep -Milliseconds 700
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap($b.Width, $b.Height)
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+            $bmp.Save($parts[1], [System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose(); $bmp.Dispose()
+            $menu = Find-MenuWindow $proc
+            if ($menu) {
+                foreach ($i in $menu.FindAll($TS::Descendants, $True_)) {
+                    $sel = '?'
+                    try {
+                        $sp = $i.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)
+                        $sel = $sp.Current.IsSelected
+                    } catch { }
+                    Say ("ITEM|" + $i.Current.ControlType.ProgrammaticName + "|" + $i.Current.Name + "|sel=" + $sel)
+                }
+            } else {
+                Say "MENU gone-after-keys"
+            }
+            Say ("KEYS " + $parts[0] + " " + $parts[1])
+        }
+        'menu-tri' {
+            # 【第16轮 P1-J2】Value 形如 "A.png|B.png|C.png"（基线 / 悬停 / 方向键）
+            $p = $Value.Split('|')
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            function _Snap($path) {
+                $bmp = New-Object System.Drawing.Bitmap($b.Width, $b.Height)
+                $g = [System.Drawing.Graphics]::FromImage($bmp)
+                $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+                $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+                $g.Dispose(); $bmp.Dispose()
+            }
+
+            # 1) 基线：光标在屏幕左下角（离菜单很远），弹菜单
+            [void][Win32.U]::SetCursorPos(60, 900)
+            Start-Sleep -Milliseconds 300
+            Open-TrayMenu $proc
+            Start-Sleep -Milliseconds 1300
+            $m1 = Find-MenuHwnd $proc
+            Say ("A menu=" + $(if ($m1 -ne [IntPtr]::Zero) { 1 } else { 0 }) + " appHwnd=" + (Find-AppHwnd $proc) + " procId=" + $proc.Id)
+            _Snap $p[0]
+
+            # 2) 悬停：光标移到菜单第二项上
+            #   【坐标必须实测】菜单 1646,20 274x82，里面 3 项 + 2 条分隔线，
+            #   1700,45 落在分隔线附近（第一版就是这么误判成「悬停没高亮」的）。
+            #   Value 第 4 段可覆盖悬停坐标，默认 1700,58 = 第二项中心。
+            $hx = 1700; $hy = 58
+            if ($p.Length -ge 4 -and $p[3]) { $hz = $p[3].Split(','); $hx = [int]$hz[0]; $hy = [int]$hz[1] }
+            [void][Win32.U]::SetCursorPos($hx, $hy)
+            Start-Sleep -Milliseconds 900
+            Say ("B menu=" + $(if ((Find-MenuHwnd $proc) -ne [IntPtr]::Zero) { 1 } else { 0 }))
+            _Snap $p[1]
+
+            # 3) 方向键：光标先挪远（保证高亮只可能来自键盘），再按两下 DOWN
+            [void][Win32.U]::SetCursorPos(60, 900)
+            Start-Sleep -Milliseconds 500
+            [System.Windows.Forms.SendKeys]::SendWait("{DOWN}")
+            Start-Sleep -Milliseconds 350
+            [System.Windows.Forms.SendKeys]::SendWait("{DOWN}")
+            Start-Sleep -Milliseconds 800
+            Say ("C menu=" + $(if ((Find-MenuHwnd $proc) -ne [IntPtr]::Zero) { 1 } else { 0 }))
+            _Snap $p[2]
+
+            Say ("SHOTS " + $Value)
+        }
+        'menu-trace' {
+            # 【量具自查】弹菜单后连续采样 10 次（每 250ms），报 0/1 序列。
+            #   Value 形如 "far"（先把光标挪到 60,900 再弹）或 "near"（不挪）。
+            if ($Value -eq 'far') { [void][Win32.U]::SetCursorPos(60, 900); Start-Sleep -Milliseconds 400 }
+            Open-TrayMenu $proc
+            $seq = ''
+            for ($i = 0; $i -lt 10; $i++) {
+                $h = Find-MenuHwnd $proc
+                $seq += $(if ($h -ne [IntPtr]::Zero) { '1' } else { '0' })
+                Start-Sleep -Milliseconds 250
+            }
+            Say ("TRACE " + $Value + " " + $seq)
+            $h = Find-MenuHwnd $proc
+            if ($h -ne [IntPtr]::Zero) {
+                $rr = New-Object Win32.U+RECT
+                [void][Win32.U]::GetWindowRect($h, [ref]$rr)
+                Say ("RECT x=" + $rr.Left + " y=" + $rr.Top + " w=" + ($rr.Right - $rr.Left) + " h=" + ($rr.Bottom - $rr.Top))
+            }
+        }
         'shot' {
             $r = Shot $Value
             Say ("SHOT " + $r.path + " x=" + $r.x + " y=" + $r.y + " w=" + $r.w + " h=" + $r.h)

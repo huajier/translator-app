@@ -716,19 +716,32 @@ public partial class App : System.Windows.Application
         Core.Translate.TranslationResult? translation = null;
 
         // ==========================================================
-        // 【2026-11-03 用户拍板：显示时序改两段】
-        //   用户原话：「识别后先把原文识别出来，然后等待翻译就显示[翻译中...]，
-        //             翻译出来后再显示全文。」
+        // 【2026-11-05 第16轮 P0-J2：原文本来就是目标语言 → 连「翻译中…」都不画】
+        //   原来只要开关开着就先进翻译态，而「本地判成中文就跳过」那个判断在
+        //   TranslationService.TranslateAsync 里才发生 —— 那时卡片上已经画出了
+        //   「翻译中…」，几十毫秒后才收起。用户框中文界面，每次都看到闪一下，
+        //   像程序在干傻事。
         //
-        //   所以是**故意分两次** UpdateWith，不是又踩了旧坑：
-        //     1) 认字一完成 → 原文 + 「翻译中…」一次到位（用户马上有字可读）
-        //     2) 译文到手   → 补上译文，倒计时重新计时
-        //   旧的「必须只调一次」硬要求已由架构师第十轮撤销，原因见
-        //   DebugToastWindow.xaml.cs 的 UpdateWith 注释。
+        //   这里提前判一次，命中就直接把原文交出去（只调一次 UpdateWith，
+        //   和「翻译关着」那条路径长得一模一样）。
         //
-        //   翻译没开时（!TranslateEnabled）只调一次，和阶段三完全一致，一行不多。
+        //   【为什么 TranslationService 里那个判断要留着，这不是重复】
+        //     服务层那道是**最后防线**：万一这里判错、或者将来有人改坏这里、
+        //     或者别的地方直接调 TranslateAsync —— 中文照样不会被发到必应。
+        //     「不出网」这件事必须有两道锁，一道在调用方（省一次白等），
+        //     一道在服务层（保底不发）。删掉任何一道都是拿隐私赌运气。
         // ==========================================================
-        if (wantTranslate)
+        bool skipAsNative =
+            Core.Translate.TranslationService.IsChineseTarget(AppSettings.TranslateTargetLang)
+            && Core.Capture.LanguageDetector.IsMostlyChinese(result.Text);
+
+        if (wantTranslate && skipAsNative)
+        {
+            // 原文本来就是目标语言，翻也翻不出东西 —— 直接把原文交出去，
+            // **连「翻译中…」都不画**。translation 保持 null，下面是 else 分支同款收尾。
+            AppLogger.Info("翻译：跳过（原文已经是目标语言，没有发出去）");
+        }
+        else if (wantTranslate)
         {
             try { card.UpdateWith(result, null, translating: true); }
             catch (Exception ex) { AppLogger.Warn($"显示「翻译中…」失败（不影响原文）：{ex.Message}"); }

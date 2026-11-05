@@ -71,6 +71,17 @@
                 </ScrollViewer>
 
                 <!--
+                    【2026-11-05 第16轮 P0-J1：原文详情紧跟原文】
+                      这块原来在整张卡片的最底下，原文的详情跟原文之间隔了一整个译文块，
+                      用户读译文时不知道这是谁翻的。现在顺序是：
+                        原文 / 原文详情 / 分隔线 / 译文 / 译文详情
+                      每块字下面跟自己的身份证 —— 原文详情紧跟原文，译文详情紧跟译文。
+                      只挪了位置，逻辑代码一行没动（显隐还是原来那套 Collapsed/Visible）。
+                -->
+                <TextBlock x:Name="DetailText" Foreground="#FFCBD5E1"
+                           FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap" MaxWidth="420" />
+
+                <!--
                     【2026-11-02 阶段四 T3a：译文区】
                       原文在上（蓝、加粗），译文在下（白、不加粗），中间一条细线分开。
                       默认 Visibility="Collapsed"：没有译文时**一行都不占**，
@@ -108,9 +119,6 @@
                            FontSize="11" Margin="0,3,0,0"
                            TextWrapping="Wrap" MaxWidth="420"
                            Visibility="Collapsed" />
-
-                <TextBlock x:Name="DetailText" Foreground="#FFCBD5E1"
-                           FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap" MaxWidth="420" />
             </StackPanel>
         </Grid>
     </Border>
