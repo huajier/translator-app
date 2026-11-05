@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
@@ -954,7 +954,7 @@ public partial class App : System.Windows.Application
     private static string GetVersion()
     {
         var v = Assembly.GetEntryAssembly()?.GetName().Version;
-        if (v == null) return "v0.3.2.10";
+        if (v == null) return "v0.4.0.0";
 
         // 【2026-10-10 顺带修的老毛病】
         //   原来只显示 `v{Major}.{Minor}`，也就是 **v0.3.1 和 v0.3.2 显示出来一模一样**。

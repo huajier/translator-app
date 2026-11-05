@@ -1,0 +1,162 @@
+时间: 09:46:36
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 62 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 406
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all.
+##### 记录结束 #####
+时间: 09:46:49
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 63 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 406
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all.
+##### 记录结束 #####
+时间: 09:48:29
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 406
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all.
+##### 记录结束 #####
+时间: 09:48:41
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 63 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 406
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all.
+##### 记录结束 #####
+时间: 09:50:31
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 94 毫秒
+说明: RapidOCR 平均分 0.87；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 579
+原文: no⏎Search - Microsoft...⏎DeepSeek -…⏎DeepSeek….⏎o- Mode...⏎Now, the belt bottom extension. The belt currently 'bottom:118px and sellbox height is 142. The visi..⏎ops_read_files - {"files":{["path":"/_shot19.js"]}⏎· The belt issue: bottom:118px— sellbox is at bottom, height 142. The stack has sellbox at absolute b..⏎· ops_bash - Re-shoot screenshots after carry fﬁx⏎· Screenshots refreshed. Now the belt bottom: "bottom:118px while sellbox height is 142 → belt ends …⏎C⏎ops_bash - Run full regression verification suite⏎_One item failed: "l"but look at the data: 3 "":1, "":4.….
+##### 记录结束 #####
+时间: 09:52:10
+窗口: TranslatorApp.exe
+通道: WindowsOcr
+语言: 中文（中文 34 %，西里尔 0 %）
+耗时: 234 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 501
+原文: 爻⏎Search - Microsoft..⏎咔咔果铺游戏开发⏎DeepSeek⏎标；式⏎- 探索耒一⏎DeepSeek 开放半台多功能到片转换器 " _ Mode..⏎0 1 个后台任务运行中对话轨迹上下文⏎14582 囗双页版⏎path： D:\111」 4de9 一 87b4 一 5d8d55 b \ 一 s19 一 be boxes-af2edb47-crop-8& 〕一2& 〕一1120 一 7 〕． png⏎囵思考到 N ow let me check the crop for the belt lower end. Actually, 《 already got vision describe on the full i..⏎工具调朋到 vision_describe。右下角机器柱：那条带横向条老〕竖带最下筛，⏎疒 # vO 43⏎工具调朋到 ops_read files。「 fi： [ { mit "： 40 地 ff t ．： 185,"path ':" 夏威夷果囵思考到 Let me check the ．旧礼魚会自已上带子踔． failure. Result: 买彐
+##### 记录结束 #####
+时间: 09:54:13
+窗口: TranslatorApp.exe
+通道: WindowsOcr
+语言: 中文（中文 31 %，西里尔 0 %）
+耗时: 312 毫秒
+说明: 中文：Windows 自带认出来了，Tesseract 中文模型没认出来，保留 Windows 自带；⚠️ 选区的右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 715
+原文: 众凵 toC 众⏎2027 一一些小⏎8rothE utilitie 8rothe⏎Creatl⏎F ℃ lash.E⏎气⏎C 侖气令⏎0 0 0⏎兮爻⏎Search - Microsoft..⏎0 127 ． 0 ． 0 ． 1： 3081⏎DeepSeek - 探索耒一⏎0 "⏎DeepSeek 开放半台⏎0⏎多功能到片转换器 " _ Mode..⏎咔咔果铺游戏开发对话轨迹标；式上下文⏎1 个后台任务运行中双页版囵思考到 N ow let me check the crop for the belt lower end. Actually, 《 already got vision describe on the full i..⏎工具调朋到 vision_describe。右下角机器柱：那条带横向条老〕竖带最下筛，和售卖台的红色遮旧醣顶之间，⏎工具调朋到 ops_read files。「 fi： [ { mit "： 40 ff t ．： 185,"path 夏夷果游 / v all.js"}]}⏎囵思考到 Let me check the 剂日礼魚会自已上带子扌卓． fa 刂 u Result: 买后彐⏎# vO.3.4.3 0 过远工具调朋到 ops bash。 Locate belt transport code⏎囵思考到 The 'data-belt' attribute check _ beltRun sets •nut.dataset.belt•. Let⏎工具调朋到 ops_read files ．「 fi s ℃ limi 70 ． ℃ ff t ．： 1402， " path 夏威夷
+##### 记录结束 #####
+时间: 09:54:56
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 78 毫秒
+说明: RapidOCR 平均分 0.87；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 423
+原文: Search - Microsoft...⏎DeepSeek - …⏎DeepSeek⏎©-Mode..⏎ETX⏎voipng⏎ Now let me check the crop for the belt lower end. Actually, 1 already got vision_describe on the ful i..⏎vision_describe·⏎ ops_read_iles - {"files":["limit":40,"offset":185,"path":"/_verify_all.js"}}⏎Let me check the "l" failure. Result:3⏎v0.3.4.3·⏎C⏎Tops_bash · Locate belt transport code⏎The *data-belt attribute check— beltRun sets 'nut.dataset.belt'. Let
+##### 记录结束 #####
+时间: 09:56:52
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 78 毫秒
+说明: RapidOCR 平均分 0.83；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 362
+原文: QSearch - Microsoft..⏎DeepSeek -….⏎DeepSeek⏎-Mod..⏎6⏎TX⏎/timelinejs 1KB +3 -1⏎· Also need to update_play_simjs silary (ts used for te 95.2 STD). Let me first check if te STD co..⏎/timelinejs 1KB +3 -1⏎0⏎ ops_bash - Recompute timeline with marketing upgrades⏎ v0.3.4.3·⏎Ct⏎The timeline changed dramatically: 56.1 minutes, 155 purchases, med⏎/sweep_mkjs 4KB +79 -0
+##### 记录结束 #####
+时间: 09:57:07
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 78 毫秒
+说明: RapidOCR 平均分 0.89；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 391
+原文: no⏎Search - Microsof...⏎DeepSeek -….⏎DeepSeek⏎- Mode..⏎ET⏎/_timeline.js 1KB+3 -1⏎· ops_bash - Recompute timeline with marketing upgrades⏎· The timeline changed dramatically: 56.1 minutes, 155 purchases, median interval 11 seconds. That's b..⏎/_sweep_mkjs 4KB +79 -0⏎ v0.3.4.3·⏎· ops_bash - Sweep marketing upgrade price tiers⏎C⏎The marketing upgrades made the game much faster (56 min at 500
+##### 记录结束 #####
+时间: 09:58:51
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 124 毫秒
+说明: RapidOCR 平均分 0.85；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 313
+原文: oo⏎Search - Microsoft...⏎DeepSeek - …⏎DeepSeek⏎©-Mode..⏎ET⏎· ops_bash · Compare skewed marketing price variants⏎A/B→avgValueC⏎/_sweepmkjs 2KB +12 -10⏎· ops_bash · Test steep price curves for marketing upgrades⏎T⏎ v0.3.4.3·⏎C⏎The problem: cheap early upgrades get bought immediately, giving⏎/_sweep_mkjs 2KB +6 -12
+##### 记录结束 #####
+时间: 09:59:07
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 62 毫秒
+说明: RapidOCR 平均分 0.88；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 361
+原文: Search - Microsoft...⏎DeepSeek - …⏎DeepSeek….⏎©-Mode..⏎ET⏎The problem: cheap early upgrades get bought immediately, giving huge value. The simulator's gree.⏎/_sweep_mkjs 2KB +6 -12⏎· ops_bash - Test marketing high with cheap steep collector⏎Variant H:8000/1.80 + 9000/1.85,40 1.45 →⏎T⏎v0.3.4.3·⏎C⏎/_sweepmkjs 1KB +5 -5⏎ops_bash - Narrow marketing base near 6000
+##### 记录结束 #####
+时间: 10:01:15
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.80；⚠️ 选区的左边和右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 279
+原文: co⏎QSearch - Microsoft..⏎DeepSeek -….⏎DeepSeek⏎-Mod..⏎6⏎X⏎ Let me setle. The target is~121.7 min, ~107-110 buys, median ~65-75s. Variant P ( 8001.80, ….⏎/apply20j 4KB +45 -0⏎· Wait — need to check the actual colectspeed line formatting first.Lt me verify before running.⏎Ct⏎5940…
+##### 记录结束 #####
+时间: 10:01:30
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 62 毫秒
+说明: RapidOCR 平均分 0.81；⚠️ 选区的左边和右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 277
+原文: co⏎QSearch - Microsoft..⏎DeepSeek -….⏎DeepSeek⏎-Mod..⏎X⏎ Let me setle. The target is~121.7 min, ~107-110 buys, median ~65-75s. Variant P ( 8001.80, ….⏎/apply20j 4KB +45 -0⏎· Wait — need to check the actual colectspeed line formatting first.Lt me verify before running.⏎Ct⏎5955…
+##### 记录结束 #####
+时间: 10:02:34
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 62 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 406
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all.
+##### 记录结束 #####
+时间: 10:02:41
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 406
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all.
+##### 记录结束 #####
+时间: 10:02:57
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 63 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 406
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all.
+##### 记录结束 #####
+时间: 10:03:05
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 46 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 406
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all.
+##### 记录结束 #####

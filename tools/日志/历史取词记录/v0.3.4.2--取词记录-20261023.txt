@@ -1,0 +1,180 @@
+时间: 09:14:58
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: Tesseract 置信度只有 0.74（低于 0.78），但裁掉四周噪声边后重新识别拿到 0.90，采用它；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:15:01
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: Tesseract 置信度只有 0.70（低于 0.78），但裁掉四周噪声边后重新识别拿到 0.90，采用它；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:15:03
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: Tesseract 置信度只有 0.77（低于 0.78），但裁掉四周噪声边后重新识别拿到 0.90，采用它；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:15:06
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: Tesseract 置信度只有 0.53（低于 0.78），但裁掉四周噪声边后重新识别拿到 0.90，采用它；⚠️ 选区的右边和上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:15:08
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.84，11 个有效字符，用的是择优二值化后的图）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:15:11
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.79，11 个有效字符，用的是择优二值化后的图）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:15:13
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.84，11 个有效字符）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 12
+原文: BATTLEBOARD.
+##### 记录结束 #####
+时间: 09:15:15
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.84，11 个有效字符，用的是择优二值化后的图）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:15:17
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.82，11 个有效字符）；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 12
+原文: BATTLEBOARD.
+##### 记录结束 #####
+时间: 09:15:20
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: Tesseract 置信度只有 0.23（低于 0.78），但裁掉四周噪声边后重新识别拿到 0.90，采用它；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:28:46
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.87，35 个有效字符，用的是择优二值化后的图）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:28:54
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.87，35 个有效字符，用的是择优二值化后的图）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:29:04
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:29:08
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:29:13
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.87，35 个有效字符，用的是择优二值化后的图）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:29:20
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（chi_sim 模型，置信度 0.87，35 个有效字符，用的是择优二值化后的图）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:30:45
+窗口: DeepSeek Harness.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:30:49
+窗口: DeepSeek Harness.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:30:53
+窗口: DeepSeek Harness.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####
+时间: 09:30:58
+窗口: DeepSeek Harness.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.95，35 个有效字符）
+字数: 43
+原文: The quick brown fox jumps over the lazy dog
+##### 记录结束 #####

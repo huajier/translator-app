@@ -49,6 +49,62 @@
              只读 TextBox 是原生做法：无边框、透明底、只读，外观和 TextBlock 一致，
              但能拖选 + Ctrl+C。**不引第三方控件。**
     -->
+    <!--
+        【2026-11-05 第17轮：卡片里的滚动条改成深色】
+          用户原话「很出戏」—— WPF 默认滚动条是浅灰底 + 上下两个白色箭头按钮，
+          贴在这张深蓝卡片上像贴了两个白补丁。
+          不带 x:Key 的隐式样式，一次覆盖卡片里两个滚动区（TextScroll / TransScroll），
+          不用给两个 ScrollViewer 各写一份。
+          四个颜色全部取自卡片里已有的色值（#FF1E293B 是 TransSep 那条横线、
+          #FF38BDF8 是原文的字色），没有新颜色。
+          不做上下箭头按钮：Track 里只放 Thumb 一个元素，直接铺满 8px 宽。
+    -->
+    <Window.Resources>
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Background" Value="#FF1E293B" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Border Background="#FF1E293B" CornerRadius="4">
+                            <!-- 四个 TemplateBinding 不能省：Track 靠它们跟 ScrollViewer
+                                 互通位置，漏一个就变成「滑块画得出来但拖不动 / 不跟着走」。 -->
+                            <Track x:Name="PART_Track"
+                                   IsDirectionReversed="True"
+                                   Maximum="{TemplateBinding Maximum}"
+                                   Minimum="{TemplateBinding Minimum}"
+                                   Value="{TemplateBinding Value}"
+                                   ViewportSize="{TemplateBinding ViewportSize}">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbBorder"
+                                                        Background="#FF475569"
+                                                        CornerRadius="3"
+                                                        Margin="2" />
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbBorder"
+                                                                Property="Background" Value="#FF38BDF8" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbBorder"
+                                                                Property="Background" Value="#FF38BDF8" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Border Background="#F20F172A" CornerRadius="6" Padding="10,7"
             BorderBrush="#FF38BDF8" BorderThickness="1">
         <Grid>

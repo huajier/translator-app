@@ -1,0 +1,954 @@
+时间: 09:08:39
+窗口: powershell.exe
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.86，23 个有效字符）；Windows 读出来的是【这是一段中文测试文字，用来确认中文原文不会被翻译。】，请核对
+字数: 25
+原文: 了是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:08:51
+窗口: powershell.exe
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.90）
+字数: 25
+原文: 这是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:09:02
+窗口: powershell.exe
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.90）
+字数: 25
+原文: 这是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:09:17
+窗口: powershell.exe
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.86，23 个有效字符）；Windows 读出来的是【这是一段中文测试文字，用来确认中文原文不会被翻译。】，请核对
+字数: 25
+原文: 了是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:10:43
+窗口: powershell.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 24
+原文: THIEF⏎Dagger⏎Light Armor
+##### 记录结束 #####
+时间: 09:10:59
+窗口: powershell.exe
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.90）
+字数: 25
+原文: 这是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:13:12
+窗口: powershell.exe
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.86，23 个有效字符）；Windows 读出来的是【这是一段中文测试文字，用来确认中文原文不会被翻译。】，请核对
+字数: 25
+原文: 了是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:13:27
+窗口: powershell.exe
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.86，23 个有效字符）；Windows 读出来的是【这是一段中文测试文字，用来确认中文原文不会被翻译。】，请核对
+字数: 25
+原文: 了是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:13:41
+窗口: powershell.exe
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.86，23 个有效字符）；Windows 读出来的是【这是一段中文测试文字，用来确认中文原文不会被翻译。】，请核对
+字数: 25
+原文: 了是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:15:52
+窗口: powershell.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 444
+原文: The caravan reached the northern pass three days late, and the gatekeeper refused to⏎open the gate until the merchant produced a seal he had lost in the river. They⏎argued for hours in the rain while the mules stood shivering, and by evening the⏎whole village had gathered to watch a stranger explain, over and over, why a man⏎with no seal and no papers and no letter from the capital still deserved a warm bed⏎and a bowl of soup for the night.
+##### 记录结束 #####
+时间: 09:16:10
+窗口: powershell.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 109 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 971
+原文: The caravan reached the northern pass three days late, and the gatekeeper refused to⏎open the gate until the merchant produced a seal he had lost in the river. They⏎argued for hours in the rain while the mules stood shivering, and by evening the⏎whole village had gathered to watch a stranger explain, over and over, why a man⏎with no seal and no papers and no letter from the capital still deserved a warm bed⏎and a bowl of soup for the night. Before dawn the gatekeeper relented, but only⏎after the merchant agreed to leave his youngest mule behind as a pledge, and to⏎return within the month with the seal or the money to buy the animal twice over. The⏎stranger walked through the gate at first light with his head down, and the village⏎talked about him for a week, mostly about the mule. Nobody ever saw him again, and⏎the gatekeeper kept the mule, which turned out to be a very good mule, and for years⏎afterwards people told the story as if it had happened to them.
+##### 记录结束 #####
+时间: 09:17:18
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 24
+原文: THIEF⏎Dagger⏎Light Armor
+##### 记录结束 #####
+时间: 09:17:33
+窗口: chrome.exe
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.90）
+字数: 25
+原文: 这是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:19:44
+窗口: chrome.exe
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.90）
+字数: 25
+原文: 这是一段中文测试文字，用来确认中文原文不会被翻译。
+##### 记录结束 #####
+时间: 09:20:00
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 24
+原文: THIEF⏎Dagger⏎Light Armor
+##### 记录结束 #####
+时间: 09:20:14
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 32 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 24
+原文: THIEF⏎Dagger⏎Light Armor
+##### 记录结束 #####
+时间: 09:20:30
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 444
+原文: The caravan reached the northern pass three days late, and the gatekeeper refused to⏎open the gate until the merchant produced a seal he had lost in the river. They⏎argued for hours in the rain while the mules stood shivering, and by evening the⏎whole village had gathered to watch a stranger explain, over and over, why a man⏎with no seal and no papers and no letter from the capital still deserved a warm bed⏎and a bowl of soup for the night.
+##### 记录结束 #####
+时间: 09:20:48
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 110 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 971
+原文: The caravan reached the northern pass three days late, and the gatekeeper refused to⏎open the gate until the merchant produced a seal he had lost in the river. They⏎argued for hours in the rain while the mules stood shivering, and by evening the⏎whole village had gathered to watch a stranger explain, over and over, why a man⏎with no seal and no papers and no letter from the capital still deserved a warm bed⏎and a bowl of soup for the night. Before dawn the gatekeeper relented, but only⏎after the merchant agreed to leave his youngest mule behind as a pledge, and to⏎return within the month with the seal or the money to buy the animal twice over. The⏎stranger walked through the gate at first light with his head down, and the village⏎talked about him for a week, mostly about the mule. Nobody ever saw him again, and⏎the gatekeeper kept the mule, which turned out to be a very good mule, and for years⏎afterwards people told the story as if it had happened to them.
+##### 记录结束 #####
+时间: 09:35:35
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 未识别（没有文字）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.90
+字数: 1
+原文: 、
+##### 记录结束 #####
+时间: 09:35:47
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的右边和上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: BATTLEBOARD
+##### 记录结束 #####
+时间: 09:36:02
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 65
+原文: All elemental⏎damage is⏎increased by 25%⏎when wearing⏎this amulet
+##### 记录结束 #####
+时间: 09:36:11
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.95
+字数: 110
+原文: SORTIESELECT⏎AIRCRAFT&SELECT SP WEAPON 1SELECT SP⏎WEAPON 2BELECT⏎WINGMEN AIRCRAFTSELECT⏎PARTS LEAVE THE HANGAR
+##### 记录结束 #####
+时间: 09:36:20
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.98；⚠️ 选区的下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 31
+原文: Sortie using the current setup.
+##### 记录结束 #####
+时间: 09:36:32
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.89
+字数: 20
+原文: UndeFEATed⏎HIDEYOSHI
+##### 记录结束 #####
+时间: 09:36:44
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.89
+字数: 11
+原文: Borba.rio.n
+##### 记录结束 #####
+时间: 09:36:48
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.92
+字数: 9
+原文: Borborion
+##### 记录结束 #####
+时间: 09:36:55
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.91
+字数: 9
+原文: Barbarion
+##### 记录结束 #####
+时间: 09:37:00
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.90
+字数: 9
+原文: Barbarion
+##### 记录结束 #####
+时间: 09:37:04
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.92
+字数: 9
+原文: Barbarion
+##### 记录结束 #####
+时间: 09:37:15
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 5
+原文: VALVE
+##### 记录结束 #####
+时间: 09:37:27
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 44
+原文: [MISSION BENCHMARK]⏎AIR-TO-AIR⏎AIR-TO-GROUND
+##### 记录结束 #####
+时间: 09:37:37
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.95；⚠️ 选区的下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 31
+原文: Sortie using the current setup.
+##### 记录结束 #####
+时间: 09:37:41
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边和右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 109
+原文: SORTIE⏎SELECT AIRCRAFT⏎SELECT SP WEAPON⏎SELECT SP WEAPON 2⏎ECT WINGMEN AIRCRAFT⏎SELECT PARTS⏎LEAVE THE HANGAR
+##### 记录结束 #####
+时间: 09:37:51
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的左边、右边和上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 7
+原文: STANDBY
+##### 记录结束 #####
+时间: 09:37:59
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 4
+原文: INFO
+##### 记录结束 #####
+时间: 09:38:02
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 21
+原文: NAME⏎TYPE⏎PRICE⏎RANGE
+##### 记录结束 #####
+时间: 09:38:06
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 6
+原文: SLOWER
+##### 记录结束 #####
+时间: 09:38:10
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 20
+原文: SLOWER⏎SLOWS ENEMIES
+##### 记录结束 #####
+时间: 09:38:18
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 9
+原文: AVAILABLE
+##### 记录结束 #####
+时间: 09:38:21
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 6
+原文: CHOSEN
+##### 记录结束 #####
+时间: 09:38:28
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 26
+原文: MORE MONEY AND⏎HEART DROPS
+##### 记录结束 #####
+时间: 09:38:33
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 51
+原文: INCREASES CHANCE⏎TO GET ADDITIONAL⏎MONEY AND HEARTS
+##### 记录结束 #####
+时间: 09:38:41
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 44
+原文: ATTACK RANGE⏎INCREASES⏎PLAYERS BULLETS⏎RANGE
+##### 记录结束 #####
+时间: 09:38:45
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 29
+原文: CHOSE ONE BLESSING FROM BELON
+##### 记录结束 #####
+时间: 09:38:50
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 42
+原文: ATTACK SPEED⏎INCREASES PLAYER⏎ATTACK SPEED
+##### 记录结束 #####
+时间: 09:38:58
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.96
+字数: 178
+原文: DAMAGE:⏎40⏎ATTACK SPEED:⏎1,55⏎ATTACK RANGE:⏎14⏎MOVEMENT SPEED:⏎HOLY WAVE USES:⏎2⏎SHOOT TYPE:⏎TRIPLE⏎CRIT CHANCE:⏎0%⏎CRIT MULTIPLIER:⏎2X⏎ADDITIONAL DROP⏎CHANCE CHEARTS / COINS)⏎IZ
+##### 记录结束 #####
+时间: 09:39:55
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.95；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 51
+原文: Boat Speed: 24 kn⏎Fishing Speed: 130%.⏎Lights: O Im
+##### 记录结束 #####
+时间: 09:40:08
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的左边和右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 50
+原文: CARGO⏎Catchable Fish Types:⏎COASTAL⏎SHALLOW⏎DREDGE
+##### 记录结束 #####
+时间: 09:40:16
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.94
+字数: 6
+原文: DREDGE
+##### 记录结束 #####
+时间: 09:40:22
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.97；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 12
+原文: Monday, Day1
+##### 记录结束 #####
+时间: 09:40:30
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 20
+原文: Announcement trailer
+##### 记录结束 #####
+时间: 09:40:37
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.85；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 79
+原文: Use parts to research new equpent. esearched equipment willaearforsale inshops.
+##### 记录结束 #####
+时间: 09:40:50
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.96
+字数: 29
+原文: next attack on day 30⏎10x⏎31x
+##### 记录结束 #####
+时间: 09:41:00
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 57
+原文: turret⏎outpost⏎barracks⏎reloader⏎sniper tower⏎watch tower
+##### 记录结束 #####
+时间: 09:41:16
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 10
+原文: WHITE MAGE
+##### 记录结束 #####
+时间: 09:41:19
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.89；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 17
+原文: Staff⏎Light Armor
+##### 记录结束 #####
+时间: 09:41:51
+窗口: ApplicationFrameHost.exe
+通道: Tesseract
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: 识别到的不是中文，改用 Tesseract（eng 模型，置信度 0.86，18 个有效字符，用的是择优二值化后的图）；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 23
+原文: STR⏎DEX⏎CON⏎INT⏎PER⏎CHR
+##### 记录结束 #####
+时间: 09:42:08
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.94
+字数: 172
+原文: Provides reduced visibility to enemies, bonus melee⏎stealth atto.ck domoge, and odditional vision while⏎sneo.King⏎Use the Block commond without holding o. shield to⏎snea.k.
+##### 记录结束 #####
+时间: 09:42:37
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.96；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 60
+原文: Race - Race to the goal as quickly as possbe. Do you have wi
+##### 记录结束 #####
+时间: 09:42:49
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.96；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 26
+原文: 1 hours 11 mins remaining!
+##### 记录结束 #####
+时间: 09:42:56
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.96；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 90
+原文: Race - Race to the goal as quickly as possible. Do you have wi⏎31 hours 11 mins remaining!
+##### 记录结束 #####
+时间: 09:43:06
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.85；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 10
+原文: CHALENGES?
+##### 记录结束 #####
+时间: 09:43:08
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.90；⚠️ 选区的左边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 5
+原文: IGES?
+##### 记录结束 #####
+时间: 09:43:10
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的左边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 11
+原文: CHALLENGES?
+##### 记录结束 #####
+时间: 09:43:13
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 16
+原文: What⏎CHALLENGES:
+##### 记录结束 #####
+时间: 09:43:17
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 19
+原文: What ar⏎CHALLENGES?
+##### 记录结束 #####
+时间: 09:43:20
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 4
+原文: INFO
+##### 记录结束 #####
+时间: 09:43:23
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.98；⚠️ 选区的左边和右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 19
+原文: Galactic Challenges
+##### 记录结束 #####
+时间: 09:43:31
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 51
+原文: POWER⏎FIRERATE⏎STABILITY⏎MAGAZINE⏎RANGE⏎UNSTOPPABLE
+##### 记录结束 #####
+时间: 09:43:37
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 14
+原文: PRIMARY WEAPON
+##### 记录结束 #####
+时间: 09:43:44
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.95
+字数: 19
+原文: ENVIRONMENT: DESERT
+##### 记录结束 #####
+时间: 09:43:48
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00；⚠️ 选区的左边和右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 19
+原文: LOADOUT⏎ENEMY: BUGS
+##### 记录结束 #####
+时间: 09:43:54
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 46
+原文: D-Silva⏎25 Grand Lord⏎PERKS⏎Displacement Field
+##### 记录结束 #####
+时间: 09:44:05
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.96
+字数: 52
+原文: Ronged ATK Bonus:⏎Thrown ATK Bonus:⏎DEX Speed Bonus:
+##### 记录结束 #####
+时间: 09:44:14
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 23
+原文: MUTANT SPIDER⏎Quad shot
+##### 记录结束 #####
+时间: 09:44:23
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.96
+字数: 93
+原文: Increoses ronged ond thrown ATK⏎domoge⏎• Improves mouement speed while⏎corrying smoll weights
+##### 记录结束 #####
+时间: 09:44:41
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 126
+原文: CLICK and DRAG with left mouse button to create new walls⏎or rooms. Confirm any changes by clicking oRDER at the⏎bottom right.
+##### 记录结束 #####
+时间: 09:44:59
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.95；⚠️ 选区的右边和上边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 16
+原文: Standard Bicycle
+##### 记录结束 #####
+时间: 09:45:01
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.97；⚠️ 选区的左边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 10
+原文: MiniCar F1
+##### 记录结束 #####
+时间: 09:45:04
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 9
+原文: CONTRACTS
+##### 记录结束 #####
+时间: 09:45:08
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.91
+字数: 7
+原文: Stealth
+##### 记录结束 #####
+时间: 09:45:13
+窗口: ApplicationFrameHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 72
+原文: * (Playfully crinkling through⏎the leaves fills you with⏎determination.)
+##### 记录结束 #####
+时间: 09:45:30
+窗口: explorer.exe
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.92，43 个有效字符）；Windows 读出来的是【你芸试览的交仁可苣乥对你的计巨几有喜。如果你信任此交仁以宗源，适打开此交仁以苷】，请核对
+字数: 46
+原文: 你尝试预览的文件可能对你的计算机有害。如果你信任此文件以及其来源，请打开此文件以查看其内容。
+##### 记录结束 #####
+时间: 09:45:37
+窗口: explorer.exe
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 中文：两个引擎读出来不一样，但 Tesseract 置信度只有 0.47（低于 0.78，判定为乱码），保留 Windows 自带；⚠️ 选区的下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 5
+原文: 田釒部反向
+##### 记录结束 #####
+时间: 09:46:01
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 15
+原文: Sign in methods
+##### 记录结束 #####
+时间: 09:46:04
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 32
+原文: Email⏎1 vrified email configured
+##### 记录结束 #####
+时间: 09:46:08
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.95
+字数: 19
+原文: Password⏎Configured
+##### 记录结束 #####
+时间: 09:46:12
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.98；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 63
+原文: Public profile⏎3 Account⏎Appearance⏎Accessibility⏎Notifications
+##### 记录结束 #####
+时间: 09:46:24
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 0.96；⚠️ 选区的左边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 132
+原文: Billing and licensing⏎Emails⏎Password and authentication⏎Sessions⏎SSH and GPG keys⏎Credentials⏎Organizations⏎Enterprises⏎|Moderation
+##### 记录结束 #####
+时间: 09:46:55
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 251
+原文: Link Patreon account⏎Connect a Patreon account for @huajier to sponsor maintainers with. Get⏎recognition on GitHub for sponsorships made on Patreon when the sponsored⏎person has linked Patreon and GitHub, too, and has a public GitHub Sponsors⏎profile.
+##### 记录结束 #####
+时间: 09:47:20
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 115
+原文: Export account data⏎Export all repositories and profile metadata for @huajier. Exports wil be available⏎for 7 days.
+##### 记录结束 #####
+时间: 09:47:38
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 46 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 464
+原文: Successor settings⏎By clicking "Add Successor" below, Iacknowledge that Iam the owner of the @huajier account,⏎and am authorizing GitHub to transfer content within that account to my GitHub Successor,⏎designated below, in the event of my death. I understand that this appointment of a successor⏎does not override legally binding next-of-kin rules or estate laws of any relevant jurisdiction, and⏎does not create a binding will. Learn more about account successors.
+##### 记录结束 #####
+时间: 09:48:10
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 107
+原文: Delete account⏎Once you delete your account, there is no going back. Please be certain.⏎Delete your account
+##### 记录结束 #####
+时间: 09:48:20
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 212
+原文: Theme preferences⏎Choose how GitHub looks to you. Select a single theme, or sync with your system⏎and automatically switch between day and night themes. Selections are applied⏎immediately and saved automatically.
+##### 记录结束 #####
+时间: 09:48:33
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.88
+字数: 64
+原文: Emoji skin tone preference⏎Preferred default emoji skin tone⏎A⏎O
+##### 记录结束 #####
+时间: 09:48:48
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 19
+原文: Tab size preference
+##### 记录结束 #####
+时间: 09:48:53
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 153
+原文: Markdown editor font preference⏎Font preference for plain text editors that support Markdown styling (e.g. pul⏎request and issue descriptions, comments.)
+##### 记录结束 #####
+时间: 09:50:17
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.97
+字数: 182
+原文: Sponsorship log⏎Period:AlI-time⏎New sponsorships, changes, and cancellations⏎No sponsorship activity in this time period⏎This is where you can review activity from your sponsorships.
+##### 记录结束 #####
+时间: 09:50:25
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 65
+原文: SSH and GPG keys⏎Credentials⏎Organizations⏎Enterprises⏎Moderation
+##### 记录结束 #####
+时间: 09:50:30
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 39
+原文: huajier (huajier)⏎Your personal account
+##### 记录结束 #####
+时间: 09:50:54
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 104
+原文: Your name may appear around GitHub where you contribute or⏎are mentioned. You can remove it at any time.
+##### 记录结束 #####
+时间: 09:51:02
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 47
+原文: Public email⏎Select a verified email to display
+##### 记录结束 #####
+时间: 09:51:08
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 15
+原文: Profile picture
+##### 记录结束 #####
+时间: 09:51:30
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 124
+原文: Public profile⏎Name⏎Your name may appear around GitHub where you contribute or⏎are mentioned. You can remove it at any time.
+##### 记录结束 #####
+时间: 09:52:21
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 31 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 236
+原文: Access⏎Billing and licensing⏎Emails⏎Password and authentication⏎(qp) Sessions⏎)SSH and GPG keys⏎Credentials⏎Organizations⏎Enterprises⏎Moderation⏎Code, planning, and automation⏎Repositories⏎Codespaces⏎Packages⏎Copilot⏎Pages⏎Saved replies
+##### 记录结束 #####
+时间: 09:53:46
+窗口: DeepSeek Harness.exe
+通道: Tesseract
+语言: 中文（中文 97 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.92，38 个有效字符）；Windows 读出来的是【条都是 P2, 没有一．条值得再开一轮再开一一．．轮的成本比这 = 个一来还 ·】，请核对
+字数: 41
+原文: 三条风险都是 P2，没有一条值得再开一轮一一再开一轮的成本比这三个问题加起来还高。
+##### 记录结束 #####

@@ -93,6 +93,7 @@ Add-Type -Namespace Win32 -Name U -MemberDefinition @'
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
@@ -131,6 +132,15 @@ function Find-AppHwnd($proc) {
         $wpid = [uint32]0
         [void][Win32.U]::GetWindowThreadProcessId($h, [ref]$wpid)
         if ($wpid -ne $targetPid) { return $true }
+        # 【必须挑对那一扇】本进程里类名以 HwndWrapper[TranslatorApp 开头的顶层窗口有好几扇：
+        #   主窗口、托盘图标的隐藏宿主窗口(136x39)、SystemResourceNotifyWindow(0x0)…
+        #   2026-11-05 实测：按枚举顺序取第一个拿到的是 136x39 那扇隐藏宿主，
+        #   把 0x401 托盘消息贴给它 → 程序照收但 TrayIcon 收不到 → 菜单根本不弹，
+        #   于是 Find-MenuHwnd 一直返回 0，看起来像「菜单弹不出来」。
+        #   判据：标题非空的那扇就是主窗口（标题由 App.WindowTitle 统一给）。
+        $tb = New-Object System.Text.StringBuilder 256
+        [void][Win32.U]::GetWindowTextW($h, $tb, 256)
+        if ($tb.ToString().Length -eq 0) { return $true }
         $script:foundApp = $h
         return $false
     }
@@ -206,6 +216,27 @@ try {
     $proc = Get-AppProc
 
     switch -Wildcard ($Step) {
+    'qmarks' {
+        # 定位两个「?」的中心坐标（给 tooltip 悬停用）。
+        # 注意：这里不许用 return —— 在 try 块里 return 会跳过末尾的写文件和打印，
+        # 一声不响地什么都不输出（2026-11-05 第一次就是这么踩的）。
+        $win = Get-MainWin $proc
+        if (-not $win) {
+            Say "EMPTY no-main"
+        } else {
+            $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Text)
+            $all = $win.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
+            $i = 0
+            foreach ($e in $all) {
+                if ($e.Current.Name -eq "?") {
+                    $r = $e.Current.BoundingRectangle
+                    Say ("QMARK #" + $i + " cx=" + [int]($r.X + $r.Width / 2) + " cy=" + [int]($r.Y + $r.Height / 2))
+                    $i++
+                }
+            }
+            if ($i -eq 0) { Say "EMPTY no-qmark" }
+        }
+    }
         'read-main' {
             $win = Get-MainWin $proc
             Say ("OK checked=" + (Get-Checked $win))
@@ -267,6 +298,23 @@ try {
             $win = Get-MainWin $proc
             Say ("OK shown name=" + $win.Current.Name)
         }
+        'lang-probe' {
+            # 排查用：把 LangBox 子树里所有元素的 ControlType / Name / AutomationId 打出来。
+            # 2026-11-05：第 17 轮 S5-1 跑 lang-select 日语 报了 NO_ITEM，
+            # 先看清楚下拉项到底以什么形式挂在树上，再决定怎么选。
+            $win = Get-MainWin $proc
+            $box = Find-ById $win 'LangBox'
+            if (-not $box) { Say "NO_COMBO" }
+            else {
+                Say ("COMBO name=" + $box.Current.Name + " class=" + $box.Current.ClassName)
+                $i = 0
+                foreach ($e in $box.FindAll($TS::Descendants, $True_)) {
+                    Say ("  #" + $i + " type=" + $e.Current.ControlType.ProgrammaticName + " id=" + $e.Current.AutomationId + " name=" + $e.Current.Name)
+                    $i++
+                }
+                Say ("TOTAL " + $i)
+            }
+        }
         'lang-select' {
             # 【不要 ExpandCollapsePattern】WPF 的可编辑 ComboBox 在 UIA 里不支持它
             #   （会抛「不支持的模式」，实测 2026-11-04）。下拉项直接以 ListItem 的形式
@@ -274,10 +322,28 @@ try {
             $win = Get-MainWin $proc
             $box = Find-ById $win 'LangBox'
             if (-not $box) { throw 'NO_COMBO' }
+            # 【必须先展开】下拉项是「展开之后才挂到树上」的，没展开时 LangBox 子树里
+            #   只有一个 PART_EditableTextBox（2026-11-05 lang-probe 实测 TOTAL 1）。
+            #   展开的两条路：能拿到 ExpandCollapsePattern 就用它；拿不到就先 SetFocus
+            #   再按 Alt+Down —— WPF 的可编辑 ComboBox 走的是后一条（实测报「不支持的模式」）。
             $target = $null
             foreach ($e in $box.FindAll($TS::Descendants, $True_)) {
                 if ($e.Current.ControlType -eq [System.Windows.Automation.ControlType]::ListItem -and
                     $e.Current.Name -like ("*" + $Value + "*")) { $target = $e; break }
+            }
+            if (-not $target) {
+                try {
+                    $box.SetFocus()
+                    Start-Sleep -Milliseconds 300
+                    [System.Windows.Forms.SendKeys]::SendWait("%{DOWN}")
+                    Start-Sleep -Milliseconds 700
+                } catch {
+                    Say ("  （Alt+Down 展开失败：" + $_.Exception.Message + "）")
+                }
+                foreach ($e in $box.FindAll($TS::Descendants, $True_)) {
+                    if ($e.Current.ControlType -eq [System.Windows.Automation.ControlType]::ListItem -and
+                        $e.Current.Name -like ("*" + $Value + "*")) { $target = $e; break }
+                }
             }
             if (-not $target) { throw ("NO_ITEM：" + $Value) }
             $sp = $target.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)

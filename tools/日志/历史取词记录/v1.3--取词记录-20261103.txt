@@ -1,0 +1,54 @@
+时间: 10:20:11
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 448
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all. Travelers who asked about it were told to
+##### 记录结束 #####
+时间: 10:20:18
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 448
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all. Travelers who asked about it were told to
+##### 记录结束 #####
+时间: 10:20:26
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 187 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 1344
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all. Travelers who asked about it were told to⏎their own business, that the road was long and the night was cold, and that some questio⏎more than they were worth. But a few of them, the curious ones, stayed until morning and⏎e afterwards that they had heard singing, low and slow, coming from somewhere beneath the⏎es. The village never confirmed it and never denied it either, which in that part of the⏎try amounts to the same thing. Years passed, the road was widened, the shrine was repaire⏎e, and still nobody touched the gate. When the last of the old women died her granddaught⏎d' a box of letters written in a hand nobody recognized, all of them addressed to someone ⏎left before the war and never come back, and every single one of them was dated on the fi⏎t of winter. The box was put in the attic with the rest of the things nobody knew what to⏎and there it stayed, gathering dust, waiting for someone with more patience than sense.
+##### 记录结束 #####
+时间: 10:20:39
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 63 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 448
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all. Travelers who asked about it were told to
+##### 记录结束 #####
+时间: 10:20:45
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 448
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all. Travelers who asked about it were told to
+##### 记录结束 #####
+时间: 10:20:54
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 156 毫秒
+说明: RapidOCR 平均分 0.99；⚠️ 选区的左边、右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 1344
+原文: ain. Nobody in the village remembered who had carved them, or why the stone still hummed⏎ever the moon rose above the northern ridge. Children were warned to keep their distance,⏎ers took the long road around the hill even when the snow made it dangerous. Yet on the f⏎t of every winter, a single lantern could be seen moving slowly along the wall, and the o⏎n who kept the shrine would say nothing at all. Travelers who asked about it were told to⏎their own business, that the road was long and the night was cold, and that some questio⏎more than they were worth. But a few of them, the curious ones, stayed until morning and⏎e afterwards that they had heard singing, low and slow, coming from somewhere beneath the⏎es. The village never confirmed it and never denied it either, which in that part of the⏎try amounts to the same thing. Years passed, the road was widened, the shrine was repaire⏎e, and still nobody touched the gate. When the last of the old women died her granddaught⏎d' a box of letters written in a hand nobody recognized, all of them addressed to someone ⏎left before the war and never come back, and every single one of them was dated on the fi⏎t of winter. The box was put in the attic with the rest of the things nobody knew what to⏎and there it stayed, gathering dust, waiting for someone with more patience than sense.
+##### 记录结束 #####

@@ -1,0 +1,45 @@
+时间: 16:47:17
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 63 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 275
+原文: The ancient gate stood silent at the edge of the valley. Nobody in the village⏎remembered who had carved the runes,⏎or why the stone still hummed whenever the moon⏎rose.⏎Children were warned to keep their distance, and hunters took the long road⏎around the hill even in snow.
+##### 记录结束 #####
+时间: 16:47:43
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 46 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 275
+原文: The ancient gate stood silent at the edge of the valley. Nobody in the village⏎remembered who had carved the runes,⏎or why the stone still hummed whenever the moon⏎rose.⏎Children were warned to keep their distance, and hunters took the long road⏎around the hill even in snow.
+##### 记录结束 #####
+时间: 16:48:09
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 275
+原文: The ancient gate stood silent at the edge of the valley. Nobody in the village⏎remembered who had carved the runes,⏎or why the stone still hummed whenever the moon⏎rose.⏎Children were warned to keep their distance, and hunters took the long road⏎around the hill even in snow.
+##### 记录结束 #####
+时间: 16:48:36
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 63 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 275
+原文: The ancient gate stood silent at the edge of the valley. Nobody in the village⏎remembered who had carved the runes,⏎or why the stone still hummed whenever the moon⏎rose.⏎Children were warned to keep their distance, and hunters took the long road⏎around the hill even in snow.
+##### 记录结束 #####
+时间: 16:49:03
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 47 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 275
+原文: The ancient gate stood silent at the edge of the valley. Nobody in the village⏎remembered who had carved the runes,⏎or why the stone still hummed whenever the moon⏎rose.⏎Children were warned to keep their distance, and hunters took the long road⏎around the hill even in snow.
+##### 记录结束 #####

@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="翻译软件"
-        Height="640"
+        Height="360"
         Width="540"
         WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True"
@@ -10,72 +10,57 @@
         TextOptions.TextFormattingMode="Display"
         Background="#F5F5F5">
     <!--
-        阶段四 T3b（2026-11-04）：主窗口从「空壳」改成真正能用的界面 ——
-        怎么用 / 翻译说明（隐私披露）/ 翻译设置区，三块。
+        【2026-11-05 第17轮：主窗口去掉说明书，只留控件 + 两个问号】
+          用户原话「乱七八糟的提示删了，ai味太重了」。
+          改前是三块：粗体标题（怎么用 / 关于翻译 / 翻译设置）+ 两条横线 + 三大段正文。
+          改后只有两行：开关 + 问号、译成 + 下拉 + 问号，说明全进 tooltip。
+
+        【为什么 tooltip 要 ShowDuration=60000】
+          WPF 默认 5 秒就收，四行字根本没读完就没了 → 用户只能反复把鼠标移开再移回来。
+          60 秒足够读完，鼠标一移开还是会关，不会赖着不走。
+
+        【隐私披露一个字都没删，只是搬进了第一个问号的 tooltip】
+          托盘菜单那句「翻译：把文字发给微软（勾选 = 开）」也还在，两处都在。
 
         【标题不在这里定】实际标题由 MainWindow.xaml.cs 的 `Title = App.WindowTitle` 赋值，
         上面 Title="翻译软件" 只是给设计器预览（单实例查找靠 App.WindowTitle，写错了会找错窗口）。
+        【版本号不在这里写】改 TranslatorApp.csproj 的 Version，标题自动跟着变。
 
-        【为什么外面套 ScrollViewer】窗口高度写死 640，是为了 1366×768 的小屏能完整放下
-        （640 + 标题栏 ≈ 670 < 768 - 任务栏）。万一以后内容再加长，
-        有滚动条兜着，总比把设置区裁到屏幕外强。
+        【x:Name 一个都不能改名】TranslateCheck / LangBox 被 .xaml.cs 十几个事件方法引用。
     -->
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
                   Padding="24,18,24,18">
         <StackPanel>
 
-            <!-- ============================ 一、怎么用 ============================ -->
-            <TextBlock Text="怎么用"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Foreground="#1A1A1A" />
-            <TextBlock Margin="0,8,0,0"
-                       TextWrapping="Wrap"
-                       LineHeight="23"
-                       Foreground="#333333">
-                按住 <Run FontWeight="Bold">Ctrl</Run> + <Run FontWeight="Bold">Alt</Run>，
-                在屏幕上按住鼠标左键拖出一个框，把要认的文字框住，松手。
-                <LineBreak />
-                右下角会弹出卡片，显示认出来的原文。卡片 3 秒后自己关掉，内容多可以在卡片里滚。
-                <LineBreak />
-                程序常驻右下角托盘。点窗口右上角的 × 只是把它缩起来，不是退出；
-                要退出请右键托盘图标 → 退出。
-            </TextBlock>
+            <!-- 第一行：翻译开关 + 问号（隐私披露全在这个 tooltip 里） -->
+            <StackPanel Orientation="Horizontal">
+                <CheckBox x:Name="TranslateCheck"
+                          VerticalAlignment="Center"
+                          Content="打开翻译"
+                          Checked="OnTranslateChecked"
+                          Unchecked="OnTranslateUnchecked" />
+                <TextBlock Text="?"
+                           FontSize="12"
+                           Foreground="#777777"
+                           Width="18"
+                           Height="18"
+                           TextAlignment="Center"
+                           VerticalAlignment="Center"
+                           Margin="6,0,0,0"
+                           Cursor="Help">
+                    <TextBlock.ToolTip>
+                        <ToolTip MaxWidth="320" ToolTipService.ShowDuration="60000">
+                            <TextBlock TextWrapping="Wrap">框到的文字会发到微软翻译服务。
+只发文字，不发截图、不发窗口标题、不发程序名。
+关掉翻译，就一个字都不外发。
+翻译默认是开着的，第一次启动会弹一次说明。</TextBlock>
+                        </ToolTip>
+                    </TextBlock.ToolTip>
+                </TextBlock>
+            </StackPanel>
 
-            <Border Height="1" Background="#DDDDDD" Margin="0,16,0,16" />
-
-            <!-- ==================== 二、翻译说明（隐私披露） ==================== -->
-            <TextBlock Text="关于翻译"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Foreground="#1A1A1A" />
-            <TextBlock Margin="0,8,0,0"
-                       TextWrapping="Wrap"
-                       LineHeight="23"
-                       Foreground="#333333">
-                翻译默认是<Run FontWeight="Bold">关</Run>的，默认只认字、不联网。
-                <LineBreak />
-                打开后，<Run FontWeight="Bold">你框到的文字会发到微软的翻译服务</Run>。
-                只发文字，不发截图、不发窗口标题、不发程序名。
-                <LineBreak />
-                关掉 = 一个字都不外发。
-            </TextBlock>
-
-            <Border Height="1" Background="#DDDDDD" Margin="0,16,0,16" />
-
-            <!-- ======================= 三、翻译设置区 ======================= -->
-            <TextBlock Text="翻译设置"
-                       FontSize="16"
-                       FontWeight="Bold"
-                       Foreground="#1A1A1A" />
-
-            <CheckBox x:Name="TranslateCheck"
-                      Margin="0,10,0,0"
-                      Content="打开翻译（把框到的文字发给微软）"
-                      Checked="OnTranslateChecked"
-                      Unchecked="OnTranslateUnchecked" />
-
+            <!-- 第二行：目标语言 + 问号（怎么框选、怎么填语言码、× 不是退出，都在这里） -->
             <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
                 <TextBlock Text="译成："
                            VerticalAlignment="Center"
@@ -88,12 +73,25 @@
                           SelectionChanged="OnLangSelectionChanged"
                           LostFocus="OnLangLostFocus"
                           KeyDown="OnLangKeyDown" />
+                <TextBlock Text="?"
+                           FontSize="12"
+                           Foreground="#777777"
+                           Width="18"
+                           Height="18"
+                           TextAlignment="Center"
+                           VerticalAlignment="Center"
+                           Margin="6,0,0,0"
+                           Cursor="Help">
+                    <TextBlock.ToolTip>
+                        <ToolTip MaxWidth="320" ToolTipService.ShowDuration="60000">
+                            <TextBlock TextWrapping="Wrap">按住 Ctrl + Alt，在屏幕上按住鼠标左键拖出一个框，把要认的文字框住，松手。
+右下角会弹出卡片显示原文，翻译开着的话下面还有译文。
+上面没有的语言，直接在下拉框里填语言代码（如 ja、de、xx-YY），回车或点别处生效。
+窗口右上角的 × 只是缩到托盘，不是退出；退出请右键托盘图标 → 退出。</TextBlock>
+                        </ToolTip>
+                    </TextBlock.ToolTip>
+                </TextBlock>
             </StackPanel>
-            <TextBlock Margin="0,6,0,0"
-                       Text="上面没有的语言，直接在下拉框里填语言代码（如 ja、de、xx-YY），回车或点别处生效。"
-                       TextWrapping="Wrap"
-                       FontSize="12"
-                       Foreground="#777777" />
 
         </StackPanel>
     </ScrollViewer>
