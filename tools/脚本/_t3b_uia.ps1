@@ -96,6 +96,12 @@ Add-Type -Namespace Win32 -Name U -MemberDefinition @'
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowTextW(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern IntPtr GetCursor();
+    [DllImport("user32.dll")] public static extern IntPtr LoadCursorW(IntPtr hInstance, IntPtr lpCursorName);
+    [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT lpPoint);
+    [DllImport("user32.dll")] public static extern IntPtr GetCursorInfo(ref CURSORINFO pci);
+    [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)] public struct CURSORINFO { public int cbSize; public int flags; public IntPtr hCursor; public POINT ptScreenPos; }
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 '@
 
@@ -228,7 +234,11 @@ try {
             $all = $win.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
             $i = 0
             foreach ($e in $all) {
-                if ($e.Current.Name -eq "?") {
+                # 第 18 轮起问号换成圆圈内问号（U+E9CE），UIA 的 Name 就是那一个字符。
+                # 这里按「长度 1 且不是普通问号也不是普通字母」的条件找，兼容新旧两种写法。
+                $nm = $e.Current.Name
+                $isGlyph = ($nm -eq [string][char]0xE9CE) -or ($nm -eq "?")
+                if ($isGlyph) {
                     $r = $e.Current.BoundingRectangle
                     Say ("QMARK #" + $i + " cx=" + [int]($r.X + $r.Width / 2) + " cy=" + [int]($r.Y + $r.Height / 2))
                     $i++
@@ -406,6 +416,186 @@ try {
                 Say "MENURECT none"
             }
             Say ("TRAYSHOT " + $Value)
+        }
+        'icon-tip' {
+            # 悬停到主窗口里那个圆圈问号上，等 tooltip 展开，然后整屏截图。
+            # Value = 输出图片路径。
+            $win = Get-MainWin $proc
+            if (-not $win) {
+                Say "FAIL NO_WINDOW"
+            } else {
+                $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Text)
+                $all = $win.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
+                $hit = $null
+                foreach ($e in $all) {
+                    $nm = $e.Current.Name
+                    if (($nm -eq [string][char]0xE9CE) -or ($nm -eq "?")) { $hit = $e; break }
+                }
+                if (-not $hit) {
+                    Say "FAIL NO_ICON"
+                } else {
+                    $r = $hit.Current.BoundingRectangle
+                    $cx = [int]($r.X + $r.Width / 2)
+                    $cy = [int]($r.Y + $r.Height / 2)
+                    Say ("ICON cx=" + $cx + " cy=" + $cy)
+                    # 【悬停必须分两步走，直接跳到目标点不会触发 tooltip】
+                    #   WPF 的 ToolTip 靠鼠标 Enter 消息开；SetCursorPos 一次跨越大段距离时，
+                    #   有的窗口收不到 Enter（2026-11-05 实测：直接跳到图标中心，等 2.3 秒也没 tooltip）。
+                    #   先跳到旁边再挪进来，让系统产生一次真实的进入。
+                    [void][Win32.U]::SetCursorPos($cx + 60, $cy + 40)
+                    Start-Sleep -Milliseconds 250
+                    [void][Win32.U]::SetCursorPos($cx, $cy)
+                    Start-Sleep -Milliseconds 400
+                    [void][Win32.U]::SetCursorPos($cx + 1, $cy)
+                    Start-Sleep -Milliseconds 2300
+                    $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+                    $bmp = New-Object System.Drawing.Bitmap($b.Width, $b.Height)
+                    $g = [System.Drawing.Graphics]::FromImage($bmp)
+                    $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+                    $bmp.Save($Value, [System.Drawing.Imaging.ImageFormat]::Png)
+                    $g.Dispose(); $bmp.Dispose()
+                    Say ("TIPSHOT " + $Value)
+                }
+            }
+        }
+        'cursor-probe' {
+            # 光标形状怎么量：
+            #   GetCursor() 拿到当前线程的光标 —— 对别的窗口没用（那是本进程的）。
+            #   正确做法是 GetCursorInfo()：它给的是**屏幕当前显示的那个**光标句柄，
+            #   再和 LoadCursorW(0, IDC_*) 的五个标准句柄比。IDC_ARROW=32512、IDC_IBEAM=32513、
+            #   IDC_HAND=32649、IDC_HELP=32651、IDC_WAIT=32514。
+            #   Value = "x,y"：先把光标挪过去，等 600ms 再量。
+            $xy = $Value.Split(',')
+            [void][Win32.U]::SetCursorPos([int]$xy[0], [int]$xy[1])
+            Start-Sleep -Milliseconds 700
+            $ci = New-Object Win32.U+CURSORINFO
+            $ci.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($ci)
+            [void][Win32.U]::GetCursorInfo([ref]$ci)
+            $cur = $ci.hCursor
+            $names = @{ 32512 = 'ARROW'; 32513 = 'IBEAM'; 32649 = 'HAND'; 32651 = 'HELP'; 32514 = 'WAIT'; 32650 = 'NO' }
+            $found = 'OTHER'
+            foreach ($id in $names.Keys) {
+                $h = [Win32.U]::LoadCursorW([IntPtr]::Zero, [IntPtr]$id)
+                if ($h -eq $cur) { $found = $names[$id]; break }
+            }
+            Say ("CURSOR x=" + $xy[0] + " y=" + $xy[1] + " shape=" + $found + " hwnd=" + $cur)
+        }
+        'icon-cursor-shot' {
+            # 悬停到图标上，先量光标形状，再整屏截图（截图里能看到光标本体）。
+            # Value = 输出图片路径。
+            $win = Get-MainWin $proc
+            $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Text)
+            $all = $win.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
+            $hit = $null
+            foreach ($e in $all) {
+                $nm = $e.Current.Name
+                if (($nm -eq [string][char]0xE9CE) -or ($nm -eq "?")) { $hit = $e; break }
+            }
+            if (-not $hit) { Say "FAIL NO_ICON"; } else {
+                $r = $hit.Current.BoundingRectangle
+                $cx = [int]($r.X + $r.Width / 2); $cy = [int]($r.Y + $r.Height / 2)
+                [void][Win32.U]::SetCursorPos($cx + 60, $cy + 40)
+                Start-Sleep -Milliseconds 250
+                [void][Win32.U]::SetCursorPos($cx, $cy)
+                Start-Sleep -Milliseconds 900
+                $ci = New-Object Win32.U+CURSORINFO
+                $ci.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($ci)
+                [void][Win32.U]::GetCursorInfo([ref]$ci)
+                $names = @{ 32512 = 'ARROW'; 32513 = 'IBEAM'; 32649 = 'HAND'; 32651 = 'HELP'; 32514 = 'WAIT'; 32650 = 'NO' }
+                $found = 'OTHER'
+                foreach ($id in $names.Keys) {
+                    $h = [Win32.U]::LoadCursorW([IntPtr]::Zero, [IntPtr]$id)
+                    if ($h -eq $ci.hCursor) { $found = $names[$id]; break }
+                }
+                Say ("ICONCURSOR cx=" + $cx + " cy=" + $cy + " shape=" + $found)
+                $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+                $bmp = New-Object System.Drawing.Bitmap($b.Width, $b.Height)
+                $g = [System.Drawing.Graphics]::FromImage($bmp)
+                $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+                # 【为什么要把光标自己画上去】CopyFromScreen 拍不到光标（GDI 截屏本来就不含光标层），
+                #   拍出来的图里没有鼠标，等于没证明「光标长什么样」。
+                #   这里用 GetCursorInfo 拿到的**那个真实光标句柄**调 Icon.FromHandle 画到截图上 ——
+                #   画的是系统此刻正在显示的光标本身，不是我们画的箭头。
+                $icon = [System.Drawing.Icon]::FromHandle($ci.hCursor)
+                $px = $ci.ptScreenPos.X - $b.X
+                $py = $ci.ptScreenPos.Y - $b.Y
+                $g.DrawIcon($icon, $px, $py)
+                $bmp.Save($Value, [System.Drawing.Imaging.ImageFormat]::Png)
+                $g.Dispose(); $bmp.Dispose()
+                Say ("CURSORSHOT " + $Value + " drewCursorAt=" + $px + "," + $py)
+            }
+        }
+        'cursor-save' {
+            # 把「系统此刻显示的那个光标」单独存成一张 PNG（放大 12 倍，透明背景铺白）。
+            # 为什么这样做：整屏截图里光标会和它下面的图标叠在一起，
+            #   看图的人分不清「问号是光标带的」还是「问号是界面图标」——
+            #   2026-11-05 就是这么被识图误导过一次。单独存光标本体，一眼定案。
+            # Value = "x,y|输出路径"
+            $parts = $Value.Split('|')
+            $xy = $parts[0].Split(',')
+            [void][Win32.U]::SetCursorPos([int]$xy[0], [int]$xy[1])
+            Start-Sleep -Milliseconds 900
+            $ci = New-Object Win32.U+CURSORINFO
+            $ci.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($ci)
+            [void][Win32.U]::GetCursorInfo([ref]$ci)
+            $names = @{ 32512 = 'ARROW'; 32513 = 'IBEAM'; 32649 = 'HAND'; 32651 = 'HELP'; 32514 = 'WAIT'; 32650 = 'NO' }
+            $found = 'OTHER'
+            foreach ($id in $names.Keys) {
+                $h = [Win32.U]::LoadCursorW([IntPtr]::Zero, [IntPtr]$id)
+                if ($h -eq $ci.hCursor) { $found = $names[$id]; break }
+            }
+            $icon = [System.Drawing.Icon]::FromHandle($ci.hCursor)
+            $src = $icon.ToBitmap()
+            $z = 12
+            $out = New-Object System.Drawing.Bitmap(($src.Width * $z), ($src.Height * $z))
+            $g = [System.Drawing.Graphics]::FromImage($out)
+            $g.Clear([System.Drawing.Color]::White)
+            $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+            $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
+            $g.DrawImage($src, 0, 0, $src.Width * $z, $src.Height * $z)
+            $out.Save($parts[1], [System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose(); $out.Dispose(); $src.Dispose()
+            Say ("CURSORSAVE shape=" + $found + " size=" + $icon.Width + "x" + $icon.Height + " -> " + $parts[1])
+        }
+        'cursor-compare' {
+            # 【光标的决定性判据】把「当前屏幕光标」和「系统标准箭头 / 标准帮助光标」
+            #   各自渲染成位图，逐像素比差异。谁的差异像素最少就是谁 ——
+            #   这比看图猜、也比只比句柄可靠（句柄比较在共享光标表里有时会撞车）。
+            # Value = "x,y"
+            $xy = $Value.Split(',')
+            [void][Win32.U]::SetCursorPos([int]$xy[0], [int]$xy[1])
+            Start-Sleep -Milliseconds 900
+            $ci = New-Object Win32.U+CURSORINFO
+            $ci.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($ci)
+            [void][Win32.U]::GetCursorInfo([ref]$ci)
+            function Render($hIcon) {
+                $ic = [System.Drawing.Icon]::FromHandle($hIcon)
+                return $ic.ToBitmap()
+            }
+            function Diff($a, $b) {
+                $w = [Math]::Min($a.Width, $b.Width); $h = [Math]::Min($a.Height, $b.Height)
+                $n = 0
+                for ($y = 0; $y -lt $h; $y++) {
+                    for ($x = 0; $x -lt $w; $x++) {
+                        $c1 = $a.GetPixel($x, $y); $c2 = $b.GetPixel($x, $y)
+                        if ($c1.ToArgb() -ne $c2.ToArgb()) { $n++ }
+                    }
+                }
+                return $n
+            }
+            $cur = Render $ci.hCursor
+            $std = @(
+                @{ n = 'ARROW'; h = [Win32.U]::LoadCursorW([IntPtr]::Zero, [IntPtr]32512) },
+                @{ n = 'HELP';  h = [Win32.U]::LoadCursorW([IntPtr]::Zero, [IntPtr]32651) },
+                @{ n = 'IBEAM'; h = [Win32.U]::LoadCursorW([IntPtr]::Zero, [IntPtr]32513) },
+                @{ n = 'HAND';  h = [Win32.U]::LoadCursorW([IntPtr]::Zero, [IntPtr]32649) }
+            )
+            Say ("CUR hCursor=" + $ci.hCursor + " size=" + $cur.Width + "x" + $cur.Height)
+            foreach ($s in $std) {
+                $b = Render $s.h
+                Say ("DIFF vs " + $s.n + " (h=" + $s.h + ") = " + (Diff $cur $b))
+            }
+            $cur.Dispose()
         }
         'combo-probe' {
             $win = Get-MainWin $proc

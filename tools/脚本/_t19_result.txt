@@ -1,0 +1,25 @@
+
+== S5-1 目标语言选日语 → 重启仍是日语 ==
+  OK picked=日语（ja） | LANG selected=日语（ja） text=日语（ja）
+  配置 translateTargetLang = 'ja'
+  重启后 OK checked=True | LANG selected=日语（ja） text=日语（ja）
+
+== S5-2 托盘勾选态 ==
+  当前 translateEnabled = True
+  MENURECT x=1646 y=20 w=274 h=82 | TRAYSHOT D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t19_s5_tray_on.png
+  OK trayBefore=True
+  toggle 后 translateEnabled = False
+  主窗口 OK checked=False | LANG selected=日语（ja） text=日语（ja）
+  MENURECT x=1646 y=20 w=274 h=82 | TRAYSHOT D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t19_s5_tray_off.png
+
+== S5-3 900+ 字英文：卡片原文区滚动条 ==
+  截图 D:\111Desktop\deepseek\翻译软件\tools\日志\取证截图\t19_s5_scroll.png
+  [2026-11-05 14:43:43.708] [INFO] 最终原文：The caravan reached the northern pass three days late, and the gatekeeper refused to / open the gate until the merchant produced a seal he had lost in t
+  [2026-11-05 14:43:43.716] [INFO] 取词成功：通道=RapidOCR 字数=966 语言=外文（拉丁字母）（中文 0 %，西里尔 0 %） 总耗时=3110 毫秒（识别耗时 109 毫秒    RapidOCR 平均分 0.94；⚠️ 选区的右边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试）
+  [2026-11-05 14:43:43.734] [INFO] 提示框已更新为取词结果：位置=(952,160) 尺寸=438×474，文字 966 字
+  [2026-11-05 14:43:43.740] [INFO] 翻译：提供方 = Bing 网页翻译（免密钥），endpoint = https://cn.bing.com（换 endpoint 会清缓存）
+  [2026-11-05 14:43:44.161] [INFO] 翻译：已取到新 token（IG 32 位、IID「translator.5023」、有效期 60 分钟，提前 60 秒换新；**不落盘**）
+  [2026-11-05 14:43:48.311] [INFO] 翻译：成功，966 字 → 译 275 字，用时 4569 ms（Bing 网页翻译（免密钥），检测到源语言「en」）
+  [2026-11-05 14:43:48.337] [INFO] 提示框已更新为取词结果：位置=(952,160) 尺寸=442×623，文字 966 字
+
+配置已还原

@@ -10,17 +10,28 @@
         TextOptions.TextFormattingMode="Display"
         Background="#F5F5F5">
     <!--
-        【2026-11-05 第17轮：主窗口去掉说明书，只留控件 + 两个问号】
+        【2026-11-05 第17轮：主窗口去掉说明书，只留控件 + 图标】
           用户原话「乱七八糟的提示删了，ai味太重了」。
-          改前是三块：粗体标题（怎么用 / 关于翻译 / 翻译设置）+ 两条横线 + 三大段正文。
-          改后只有两行：开关 + 问号、译成 + 下拉 + 问号，说明全进 tooltip。
+
+        【2026-11-05 第18轮：图标、光标、tooltip 三个收尾】
+          · 问号从纯文本 "?" 换成圆圈内问号 U+E9CE（Segoe MDL2 Assets，Windows 10/11 自带）。
+            【不要用 U+2753（❓）】Windows 上它落到 Segoe UI Emoji，会渲染成红色彩色 emoji，
+            和这个黑白灰界面打架。这个坑已经踩过一次，别再踩。
+          · 问号上的 Cursor="Help" 全删（用户不要「箭头旁边带个黑问号」那个光标），
+            删掉就是默认箭头 —— 不要写 Cursor="Arrow"，那是多此一举。
+          · 第一个问号的 tooltip 只留一句「将框选后识别出来的内容发送到翻译服务。请注意不要框选私密、
+            敏感内容！」：原来那四行（只发文字 / 关掉不外发 / 默认开着）讲的是隐私实现细节，
+            跟「打开翻译」这个开关要做的决定不相关，全删。
+          · 第二个问号连图标带 tooltip 整个删掉：它讲的是怎么框选、手填语言码、× 不是退出，
+            跟「翻译语言」这件事毫无关系。留一个空 tooltip 的图标比没有更莫名其妙。
+          · 「怎么用」这句话改由下拉框下面那行正文承担（只此一行，退出方式不再写进主窗口）。
 
         【为什么 tooltip 要 ShowDuration=60000】
-          WPF 默认 5 秒就收，四行字根本没读完就没了 → 用户只能反复把鼠标移开再移回来。
-          60 秒足够读完，鼠标一移开还是会关，不会赖着不走。
+          WPF 默认 5 秒就收，字没读完就没了 → 用户只能反复把鼠标移开再移回来。
 
-        【隐私披露一个字都没删，只是搬进了第一个问号的 tooltip】
-          托盘菜单那句「翻译：把文字发给微软（勾选 = 开）」也还在，两处都在。
+        【隐私披露一个字都没删】
+          托盘菜单那句「翻译：把文字发给微软（勾选 = 开）」还在；
+          第一个 tooltip 里「发送到翻译服务」+「不要框选私密、敏感内容」也在。
 
         【标题不在这里定】实际标题由 MainWindow.xaml.cs 的 `Title = App.WindowTitle` 赋值，
         上面 Title="翻译软件" 只是给设计器预览（单实例查找靠 App.WindowTitle，写错了会找错窗口）。
@@ -33,36 +44,34 @@
                   Padding="24,18,24,18">
         <StackPanel>
 
-            <!-- 第一行：翻译开关 + 问号（隐私披露全在这个 tooltip 里） -->
+            <!-- 第一行：翻译开关 + 圆圈问号（唯一还留着的图标） -->
             <StackPanel Orientation="Horizontal">
                 <CheckBox x:Name="TranslateCheck"
                           VerticalAlignment="Center"
                           Content="打开翻译"
                           Checked="OnTranslateChecked"
                           Unchecked="OnTranslateUnchecked" />
-                <TextBlock Text="?"
-                           FontSize="12"
+                <!-- 图标字号 14 比正文大一点才不至于糊成一团；VerticalAlignment=Center 跟复选框文字对齐 -->
+                <TextBlock Text="&#xE9CE;"
+                           FontFamily="Segoe MDL2 Assets"
+                           FontSize="14"
                            Foreground="#777777"
                            Width="18"
                            Height="18"
                            TextAlignment="Center"
                            VerticalAlignment="Center"
-                           Margin="6,0,0,0"
-                           Cursor="Help">
+                           Margin="6,0,0,0">
                     <TextBlock.ToolTip>
                         <ToolTip MaxWidth="320" ToolTipService.ShowDuration="60000">
-                            <TextBlock TextWrapping="Wrap">框到的文字会发到微软翻译服务。
-只发文字，不发截图、不发窗口标题、不发程序名。
-关掉翻译，就一个字都不外发。
-翻译默认是开着的，第一次启动会弹一次说明。</TextBlock>
+                            <TextBlock TextWrapping="Wrap">将框选后识别出来的内容发送到翻译服务。请注意不要框选私密、敏感内容！</TextBlock>
                         </ToolTip>
                     </TextBlock.ToolTip>
                 </TextBlock>
             </StackPanel>
 
-            <!-- 第二行：目标语言 + 问号（怎么框选、怎么填语言码、× 不是退出，都在这里） -->
+            <!-- 第二行：翻译语言 + 下拉框（这一行已经没有图标了） -->
             <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-                <TextBlock Text="译成："
+                <TextBlock Text="翻译语言："
                            VerticalAlignment="Center"
                            Foreground="#333333" />
                 <ComboBox x:Name="LangBox"
@@ -73,25 +82,14 @@
                           SelectionChanged="OnLangSelectionChanged"
                           LostFocus="OnLangLostFocus"
                           KeyDown="OnLangKeyDown" />
-                <TextBlock Text="?"
-                           FontSize="12"
-                           Foreground="#777777"
-                           Width="18"
-                           Height="18"
-                           TextAlignment="Center"
-                           VerticalAlignment="Center"
-                           Margin="6,0,0,0"
-                           Cursor="Help">
-                    <TextBlock.ToolTip>
-                        <ToolTip MaxWidth="320" ToolTipService.ShowDuration="60000">
-                            <TextBlock TextWrapping="Wrap">按住 Ctrl + Alt，在屏幕上按住鼠标左键拖出一个框，把要认的文字框住，松手。
-右下角会弹出卡片显示原文，翻译开着的话下面还有译文。
-上面没有的语言，直接在下拉框里填语言代码（如 ja、de、xx-YY），回车或点别处生效。
-窗口右上角的 × 只是缩到托盘，不是退出；退出请右键托盘图标 → 退出。</TextBlock>
-                        </ToolTip>
-                    </TextBlock.ToolTip>
-                </TextBlock>
             </StackPanel>
+
+            <!-- 第三行：怎么用（只这一句；退出方式不写进来，用户拍板过） -->
+            <TextBlock Text="按住 Ctrl + Alt 在屏幕上拖出一个框，松手就能识别并翻译。"
+                       FontSize="12"
+                       Foreground="#777777"
+                       TextWrapping="Wrap"
+                       Margin="0,14,0,0" />
 
         </StackPanel>
     </ScrollViewer>

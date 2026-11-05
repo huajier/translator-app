@@ -1,0 +1,135 @@
+时间: 10:14:58
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 110 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 1070
+原文: The caravan reached the northern pass three days late, and the gatekeeper refused to⏎open the⏎gate until⏎the merchant⏎produced a seal he had lost in the river.⏎They⏎argued⏎for⏎hours⏎in⏎the rain while the mules stood shivering,⏎and⏎by⏎evening the⏎whole⏎village had⏎gathered⏎i to watch a stranger explain,⏎over and over,⏎why⏎a man⏎with no seal and⏎no⏎papers and no letter from the capital still deserved a warm bed⏎and a bowl of soup for the night.Before dawn the gatekeeper relented, but only after⏎the merchant agreed to leave his youngest mule behind as a pledge,⏎and⏎to return⏎within the month with the seal or the money to buy the animal twice over.⏎The⏎stranger⏎walked through⏎the gate at first light with his head down,⏎and the village⏎talked about him for a week,⏎mostly⏎about the mule.⏎Nobody⏎ever saw⏎him⏎again,⏎and⏎the gatekeeper⏎kept⏎the mule,⏎which turned out to⏎be a very⏎good mule,⏎and for years⏎afterwards people told the story as if it had happened to them.Years⏎passed. The⏎pass road grew wider, then narrower again, and the inn at the bottom of the hill
+##### 记录结束 #####
+时间: 10:15:19
+窗口: DeepSeek Harness.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 125 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 1070
+原文: The caravan reached the northern pass three days late, and the gatekeeper refused to⏎open the⏎gate until⏎the merchant⏎produced a seal he had lost in the river.⏎They⏎argued⏎for⏎hours⏎in⏎the rain while the mules stood shivering,⏎and⏎by⏎evening the⏎whole⏎village had⏎gathered⏎i to watch a stranger explain,⏎over and over,⏎why⏎a man⏎with no seal and⏎no⏎papers and no letter from the capital still deserved a warm bed⏎and a bowl of soup for the night.Before dawn the gatekeeper relented, but only after⏎the merchant agreed to leave his youngest mule behind as a pledge,⏎and⏎to return⏎within the month with the seal or the money to buy the animal twice over.⏎The⏎stranger⏎walked through⏎the gate at first light with his head down,⏎and the village⏎talked about him for a week,⏎mostly⏎about the mule.⏎Nobody⏎ever saw⏎him⏎again,⏎and⏎the gatekeeper⏎kept⏎the mule,⏎which turned out to⏎be a very⏎good mule,⏎and for years⏎afterwards people told the story as if it had happened to them.Years⏎passed. The⏎pass road grew wider, then narrower again, and the inn at the bottom of the hill
+##### 记录结束 #####
+时间: 10:21:33
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 125 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 1070
+原文: The caravan reached the northern pass three days late, and the gatekeeper refused to⏎open the⏎gate until⏎the merchant⏎produced a seal he had lost in the river.⏎They⏎argued⏎for⏎hours⏎in⏎the rain while the mules stood shivering,⏎and⏎by⏎evening the⏎whole⏎village had⏎gathered⏎i to watch a stranger explain,⏎over and over,⏎why⏎a man⏎with no seal and⏎no⏎papers and no letter from the capital still deserved a warm bed⏎and a bowl of soup for the night.Before dawn the gatekeeper relented, but only after⏎the merchant agreed to leave his youngest mule behind as a pledge,⏎and⏎to return⏎within the month with the seal or the money to buy the animal twice over.⏎The⏎stranger⏎walked through⏎the gate at first light with his head down,⏎and the village⏎talked about him for a week,⏎mostly⏎about the mule.⏎Nobody⏎ever saw⏎him⏎again,⏎and⏎the gatekeeper⏎kept⏎the mule,⏎which turned out to⏎be a very⏎good mule,⏎and for years⏎afterwards people told the story as if it had happened to them.Years⏎passed. The⏎pass road grew wider, then narrower again, and the inn at the bottom of the hill
+##### 记录结束 #####
+时间: 10:21:56
+窗口: DeepSeek Harness.exe
+通道: Tesseract
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 94 毫秒
+说明: ⚠️ 两个引擎读出来不一样，已采用 Tesseract（置信度 0.89，286 个有效字符）；Windows 读出来的是【商队晚到了三天，守门人不开门，除非商人拿出一枚丢在河里的印章。他们在大雨里争了几个钟头，骡子站在旁边发抖，到傍晚全村的人都围过来看一个陌生人一遍又一遍地解释：没有印章、 / 没有文书、京城也没有信来的人，凭什么还能讨到一张暖床和一碗热汤。天没亮的时候守门人让步了，条件是商人把最小的那头骡子留下来作抵押，一个月之内带着印章或者双倍的钱回来赎。 / 陌生人低着头走过城门，村里人议论了他一个星期，议论的大多是那头骡子。再没有人见过他。 / 守门人留下了骡子，那确实是一头好骡子；此后很多年，人们讲起这件事，讲得像是自己亲身经历过一样。后来路过的人总要问起城门囗那块没字的石头，老人们就指一指山坡上的果园…（共 321 字）】，请核对
+字数: 319
+原文: 商队晚到了三天，守门人不开门，除非商人拿出一枚委在河里的印章。他们在大十里争了几个钟头，骤子站在旁边发持，到傍晚全村的人都围过来看一个陌生人一遍又一遍地解释 : 没有印章、⏎没有文书、京城也没有信来的人，赁什么还能讨到一张暖床和一碗热汤。天没亮的时候守门人让步了，条件是商人把最小的那头骤子留下来作抵押，一个月之内带着印章或者双倍的钱回来赎。⏎隧生人低着头走过城门，村里人议论了他一个星期，议论的大多是那头骤子。再没有人见过他。⏎守门人留下了又子，那确实是一头好又子 ; 此后很多年，人们讲起这件事，讲得像是自己亲身经历过一样。后来路过的人总要问起城门口那块没字的石头，老人们就指一指山坡上的果园，说那边埋着一头骤子，别的什么也不肯多讲。
+##### 记录结束 #####
+时间: 12:27:21
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 13
+原文: writing-plans
+##### 记录结束 #####
+时间: 12:27:30
+窗口: chrome.exe
+通道: WindowsOcr
+语言: 中文（中文 100 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: 中文：Windows 自带和 Tesseract 读出来完全一致（置信度 0.93）
+字数: 17
+原文: 每次会话开头，先查有没有该用的技能
+##### 记录结束 #####
+时间: 12:27:48
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.93
+字数: 7
+原文: Sign In
+##### 记录结束 #####
+时间: 12:27:52
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.97；⚠️ 选区的右边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 83
+原文: GitHub is where people build software. More than 225 million people use GitHub to .
+##### 记录结束 #####
+时间: 12:27:59
+窗口: chrome.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 0.94
+字数: 40
+原文: GitHub Copilot Write better code with Al
+##### 记录结束 #####
+时间: 12:28:15
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 0.98
+字数: 7
+原文: Sign In
+##### 记录结束 #####
+时间: 12:28:20
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 40
+原文: GitHub Copilot Write better code with Al
+##### 记录结束 #####
+时间: 12:28:35
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: RapidOCR 平均分 0.96
+字数: 41
+原文: GitHub Copilot Write better code with AIl
+##### 记录结束 #####
+时间: 12:29:00
+窗口: TranslatorApp.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 0 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 23
+原文: Download GitHub Desktop
+##### 记录结束 #####
+时间: 12:32:14
+窗口: ScreenClippingHost.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 16 毫秒
+说明: RapidOCR 平均分 1.00
+字数: 14
+原文: Swap⏎languages
+##### 记录结束 #####
+时间: 12:40:00
+窗口: ScreenClippingHost.exe
+通道: WindowsOcr
+语言: 中文（中文 80 %，西里尔 0 %）
+耗时: 15 毫秒
+说明: 中文：两个引擎读出来不一样，但 Tesseract 置信度只有 0.73（低于 0.78，判定为乱码），保留 Windows 自带；⚠️ 选区的左边、右边、上边和下边正好顶在文字上，很可能切到了半个字，结果可能少一两个字，建议把框放宽一点再试
+字数: 49
+原文: 住 CtrI + AIt, 在屏草上住鼠标一，把要认的文字框住，松手 · 右下角刽出卡片一 · 湖
+##### 记录结束 #####

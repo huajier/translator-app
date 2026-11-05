@@ -123,3 +123,6 @@ tools/临时/
 *.traineddata
 *.so
 *.dylib
+# ---- Python 缓存（验收脚本 import 生成的字节码）---------------------------
+__pycache__/
+*.pyc
