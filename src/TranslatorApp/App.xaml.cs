@@ -247,9 +247,11 @@ public partial class App : System.Windows.Application
             //   微软那边保留多久、怎么处理，不是我们能担保的事，
             //   写上去就是替别人立保证。这里只陈述我们自己做什么、不做什么。
             //   关于微软侧的任何说法，必须把官方链接抄进注释，不许凭印象写。
-            const string detail = "框选到的文字会发到微软翻译服务。只发文字，不发截图、不发窗口标题、不发进程名。";
+            const string detail =
+                "翻译已经开着：框到的文字会发到微软翻译服务。\n" +
+                "只发文字，不发截图、不发窗口标题、不发进程名。关掉在托盘右键菜单。";
 
-            // 8 秒：这条 44 个字，3 秒读不完，等于没提示。其它提示仍走默认 3 秒。
+            // 8 秒：这条比原来长了一行，3 秒读不完，等于没提示。其它提示仍走默认 3 秒。
             ShowTransientNotice(title, detail, 8);
 
             AppSettings.SetTranslateNoticeShown();   // 存盘：下次启动不再弹
@@ -446,7 +448,17 @@ public partial class App : System.Windows.Application
             SelectionMachine.HandleKey(evt.VirtualKey, evt.IsDown);
         });
 
-        LowLevelMouseHook.Drain(SelectionMachine.HandleMouse);
+        LowLevelMouseHook.Drain(evt =>
+        {
+            // 托盘菜单弹着的时候，点菜单外面要把它收起来（2026-11-04 T3b-补）。
+            // 本程序是纯 WPF 宿主，没有 WinForms 消息泵，菜单自己不收；
+            // 反正鼠标钩子本来就看得到每一次按下，顺手判一下坐标就够了。
+            // 收菜单的那一下点击不再喂给状态机——用户是想关菜单，不是想框选。
+            bool isDown = evt.Kind is MouseHookKind.LeftDown or MouseHookKind.RightDown;
+            if (isDown && TrayIcon.CloseMenuIfClickOutside(evt.X, evt.Y)) return;
+
+            SelectionMachine.HandleMouse(evt);
+        });
 
         // 关键顺序：事件喂完之后再看 Ctrl+Alt 状态，按状态切换遮罩。
         UpdateComboOverlay();

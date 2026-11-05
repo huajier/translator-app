@@ -87,21 +87,85 @@ Add-Type -Namespace Win32 -Name U -MemberDefinition @'
 [DllImport("user32.dll")] public static extern IntPtr PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
 [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+[DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, IntPtr dwExtraInfo);
+    [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassNameW(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+    [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 '@
+
+# 真注入一次鼠标左键点击（2026-11-04 T3b-补：验「点菜单外面能不能关掉」，
+# 必须是真的鼠标消息，UIA 里没有「点空白处」这种动作）。
+function Click-At([int]$x, [int]$y) {
+    [void][Win32.U]::SetCursorPos($x, $y)
+    Start-Sleep -Milliseconds 120
+    [Win32.U]::mouse_event(0x0002, 0, 0, 0, [IntPtr]::Zero)   # LEFTDOWN
+    Start-Sleep -Milliseconds 60
+    [Win32.U]::mouse_event(0x0004, 0, 0, 0, [IntPtr]::Zero)   # LEFTUP
+}
 
 function Open-TrayMenu($proc) {
     [void][Win32.U]::SetCursorPos(1700, 20)      # 菜单弹在光标处，放屏幕右上角，别挡住主窗口
-    [void][Win32.U]::PostMessage($proc.MainWindowHandle, 0x401, [IntPtr]::Zero, [IntPtr](0x0205))
+    # 【不能用 $proc.MainWindowHandle】主窗口 Hide() 之后它变成 0，
+    #   而「点显示主窗口」这条要验的正是「藏起来之后还叫得回来」。
+    #   窗口藏了句柄还在，按类名找，不看可见性。
+    $h = Find-AppHwnd $proc
+    if ($h -eq [IntPtr]::Zero) { throw 'NO_APP_HWND' }
+    [void][Win32.U]::PostMessage($h, 0x401, [IntPtr]::Zero, [IntPtr](0x0205))
     Start-Sleep -Milliseconds 700
 }
 
-function Find-MenuWindow($proc) {
-    $cond = New-Object System.Windows.Automation.PropertyCondition($UIA::ProcessIdProperty, $proc.Id)
-    $wins = $UIA::RootElement.FindAll($TS::Children, $cond)
-    foreach ($w in $wins) {
-        if ($w.Current.ControlType -eq [System.Windows.Automation.ControlType]::Menu) { return $w }
+function Find-AppHwnd($proc) {
+    # 按类名前缀找本程序的顶层窗口，**不管可见不可见**（藏起来的窗口句柄照样能收消息）。
+    $script:foundApp = [IntPtr]::Zero
+    $targetPid = [uint32]$proc.Id
+    $cb = [Win32.U+EnumWindowsProc]{
+        param($h, $l)
+        $sb = New-Object System.Text.StringBuilder 256
+        [void][Win32.U]::GetClassNameW($h, $sb, 256)
+        if (-not $sb.ToString().StartsWith('HwndWrapper[TranslatorApp')) { return $true }
+        $wpid = [uint32]0
+        [void][Win32.U]::GetWindowThreadProcessId($h, [ref]$wpid)
+        if ($wpid -ne $targetPid) { return $true }
+        $script:foundApp = $h
+        return $false
     }
-    return $null
+    [void][Win32.U]::EnumWindows($cb, [IntPtr]::Zero)
+    return $script:foundApp
+}
+
+function Find-MenuHwnd($proc) {
+    # 【为什么按类名找，不按 UIA 的 ControlType=Menu】
+    #   WinForms 的 ContextMenuStrip 在 UIA 里并不暴露成 ControlType=Menu 的顶层窗口，
+    #   RootElement.FindAll(Children, ProcessId=...) 拿不到它 —— 2026-11-04 实测返回 null，
+    #   于是 click-away 的 BEFORE 就写成 0，看起来像「菜单压根没弹」，其实弹了。
+    #   实测类名是 WindowsForms10.Window.<n>.app...（n 每次进程都不同，只能按前缀匹配）。
+    $script:foundHwnd = [IntPtr]::Zero
+    $targetPid = [uint32]$proc.Id
+    $cb = [Win32.U+EnumWindowsProc]{
+        param($h, $l)
+        if (-not [Win32.U]::IsWindowVisible($h)) { return $true }
+        $sb = New-Object System.Text.StringBuilder 256
+        [void][Win32.U]::GetClassNameW($h, $sb, 256)
+        if (-not $sb.ToString().StartsWith('WindowsForms10.Window.')) { return $true }
+        $wpid = [uint32]0
+        [void][Win32.U]::GetWindowThreadProcessId($h, [ref]$wpid)
+        if ($wpid -ne $targetPid) { return $true }
+        $script:foundHwnd = $h
+        return $false
+    }
+    [void][Win32.U]::EnumWindows($cb, [IntPtr]::Zero)
+    return $script:foundHwnd
+}
+
+function Find-MenuWindow($proc) {
+    $h = Find-MenuHwnd $proc
+    if ($h -eq [IntPtr]::Zero) { return $null }
+    return [System.Windows.Automation.AutomationElement]::FromHandle($h)
 }
 
 function Get-TrayItem($proc) {
@@ -265,10 +329,15 @@ try {
             $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
             $bmp.Save($Value, [System.Drawing.Imaging.ImageFormat]::Png)
             $g.Dispose(); $bmp.Dispose()
-            $menu = Find-MenuWindow $proc
-            if ($menu) {
-                $r = $menu.Current.BoundingRectangle
-                Say ("MENURECT x=" + [int]$r.X + " y=" + [int]$r.Y + " w=" + [int]$r.Width + " h=" + [int]$r.Height)
+            $mh = Find-MenuHwnd $proc
+            if ($mh -ne [IntPtr]::Zero) {
+                # 用 GetWindowRect 量，不用 UIA 的 BoundingRectangle：
+                # WinForms 菜单的 UIA 元素边界有时是空矩形，量出来 0x0 比量不到更误导。
+                $rr = New-Object Win32.U+RECT
+                [void][Win32.U]::GetWindowRect($mh, [ref]$rr)
+                Say ("MENURECT x=" + $rr.Left + " y=" + $rr.Top + " w=" + ($rr.Right - $rr.Left) + " h=" + ($rr.Bottom - $rr.Top))
+            } else {
+                Say "MENURECT none"
             }
             Say ("TRAYSHOT " + $Value)
         }
@@ -284,6 +353,49 @@ try {
                 try { foreach ($pp in $k.GetSupportedPatterns()) { $kp += $pp.ProgrammaticName } } catch { }
                 Say ("KID|" + $k.Current.ControlType.ProgrammaticName + "|" + $k.Current.Name + "|" + $k.Current.AutomationId + "|" + ($kp -join ","))
             }
+        }
+        'menu-exists' {
+            $menu = Find-MenuWindow $proc
+            Say ("OK menu=" + $(if ($menu) { 1 } else { 0 }))
+        }
+        'click-away' {
+            # 【验的是「点菜单外面能不能关掉」】Value 形如 "60,900"。
+            #   先弹菜单（走 PostMessage 那条真路径），确认它真的开着，
+            #   再往屏幕空白处真点一下鼠标，最后再看它还在不在。
+            Open-TrayMenu $proc
+            $before = Find-MenuHwnd $proc
+            Say ("BEFORE menu=" + $(if ($before -ne [IntPtr]::Zero) { 1 } else { 0 }))
+            $parts = $Value.Split(',')
+            Click-At ([int]$parts[0]) ([int]$parts[1])
+            Start-Sleep -Milliseconds 800
+            $after = Find-MenuHwnd $proc
+            Say ("AFTER menu=" + $(if ($after -ne [IntPtr]::Zero) { 1 } else { 0 }) + " clickAt=" + $Value)
+        }
+        'click-away-shot' {
+            # 【S1-① 的取证版】Value 形如 "60,900|D:\...\before.png|D:\...\after.png"
+            #   弹菜单 → 截「弹出时」→ 真点屏幕空白处 → 截「点完后」→ 报菜单还在不在。
+            #   两张图要能并排看出「菜单没了」，光有 BEFORE/AFTER 数字不算证据。
+            $parts = $Value.Split('|')
+            $xy = $parts[0].Split(',')
+            Open-TrayMenu $proc
+            Start-Sleep -Milliseconds 400
+            $before = Find-MenuHwnd $proc
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap($b.Width, $b.Height)
+            $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $g.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp.Size)
+            $bmp.Save($parts[1], [System.Drawing.Imaging.ImageFormat]::Png)
+            $g.Dispose(); $bmp.Dispose()
+            Say ("BEFORE menu=" + $(if ($before -ne [IntPtr]::Zero) { 1 } else { 0 }))
+            Click-At ([int]$xy[0]) ([int]$xy[1])
+            Start-Sleep -Milliseconds 800
+            $after = Find-MenuHwnd $proc
+            $bmp2 = New-Object System.Drawing.Bitmap($b.Width, $b.Height)
+            $g2 = [System.Drawing.Graphics]::FromImage($bmp2)
+            $g2.CopyFromScreen($b.X, $b.Y, 0, 0, $bmp2.Size)
+            $bmp2.Save($parts[2], [System.Drawing.Imaging.ImageFormat]::Png)
+            $g2.Dispose(); $bmp2.Dispose()
+            Say ("AFTER menu=" + $(if ($after -ne [IntPtr]::Zero) { 1 } else { 0 }) + " clickAt=" + $parts[0])
         }
         'shot' {
             $r = Shot $Value
@@ -303,6 +415,29 @@ try {
             $win = Get-MainWin $proc
             $r = $win.Current.BoundingRectangle
             Say ("RECT x=" + [int]$r.X + " y=" + [int]$r.Y + " w=" + [int]$r.Width + " h=" + [int]$r.Height)
+        }
+        'fg' {
+            # 当前前台窗口是不是本程序（S1-② 「点显示主窗口真的弹到前面」的判据）。
+            # 只用「窗口可见」不够 —— 主窗口一直可见，只是可能被别的窗口盖住；
+            # 也不用 UIA 的 NativeWindowHandle 比句柄（WPF 根元素给的句柄和
+            # 程序日志里那个不一定同一个），比「前台窗口属于哪个进程」直接。
+            $fg = [Win32.U]::GetForegroundWindow()
+            $fgPid = [uint32]0
+            [void][Win32.U]::GetWindowThreadProcessId($fg, [ref]$fgPid)
+            Say ("FG hwnd=" + $fg + " pid=" + $fgPid + " appPid=" + $proc.Id + " isApp=" + $(if ($fgPid -eq $proc.Id) { 1 } else { 0 }))
+        }
+        'hide-main' {
+            # 模拟用户点 ×（Closing 被取消 → Hide()），把窗口藏起来，
+            # 这样下一步 show-main 才有东西可验。
+            # 判据用 Win32 的 IsWindowVisible（不靠 UIA —— UIA 对隐藏窗口的行为
+            # 实测不稳定，2026-11-04 第一次跑直接把进程搞没了）。
+            $win = Get-MainWin $proc
+            $h = [IntPtr]$win.Current.NativeWindowHandle
+            Say ("BEFORE visible=" + $(if ([Win32.U]::IsWindowVisible($h)) { 1 } else { 0 }))
+            $pat = $win.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern)
+            $pat.Close()
+            Start-Sleep -Milliseconds 900
+            Say ("AFTER visible=" + $(if ([Win32.U]::IsWindowVisible($h)) { 1 } else { 0 }) + " alive=" + $(if (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue) { 1 } else { 0 }))
         }
         default { throw ("未知步骤：" + $Step) }
     }

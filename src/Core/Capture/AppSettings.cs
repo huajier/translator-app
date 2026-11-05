@@ -152,14 +152,33 @@ internal static class AppSettings
     public static bool RapidOcrSmallBoxUpscale { get; private set; } = true;
 
     /// <summary>
-    /// 翻译总开关（阶段四，2026-11-02）。**默认 false = 一个字都不外发。**
+    /// 翻译总开关（阶段四，2026-11-02）。**2026-11-04 起默认 true = 装好就能用。**
     ///
-    /// 【为什么默认关】认字是离线的，打开它就变成「框到的文字发到微软」。
-    ///   用户没主动开之前，程序一次网络请求都不该发。
-    /// 【怎么开】托盘菜单里那个勾选项（文字本身就写着「把文字发给微软」）。
-    ///   菜单文字不许改成「开启翻译」这类不带披露的字样 —— 改了就等于偷偷外发。
+    /// 【为什么改成默认开（v2.0 用户实测反馈）】
+    ///   默认关的时候，新用户框一段外文，看到的只有原文，得自己去托盘右键菜单里
+    ///   找那个勾选项才知道有翻译 —— 功能在那儿但没人用得上，等于没做。
+    ///   现在装好就能用，第一次启动弹一次提示明确告知「文字会发出去」。
+    /// 【代价，必须知道】
+    ///   用户没主动关之前，**每次框选都会把文字发到微软**。这不是偷偷的：
+    ///   托盘菜单文字本身就写着「翻译：把文字发给微软（勾选 = 开）」，
+    ///   首次提示也会再讲一遍，主窗口的「关于翻译」还写着第三遍。
+    /// 【怎么关】托盘右键菜单勾选项 / 主窗口的开关，两处任一。
+    ///   菜单文字不许改成「开启翻译」这类不带披露的说法 —— 改了就等于偷偷外发。
     /// </summary>
-    public static bool TranslateEnabled { get; private set; } = false;
+    public static bool TranslateEnabled { get; private set; } = true;
+
+    /// <summary>
+    /// 「默认开启」这条一次性迁移做没做过（阶段四 v2.0，2026-11-04）。
+    ///
+    /// 【为什么需要它】老用户的配置里已经明明白白写着 `"translateEnabled": false`，
+    ///   光把属性默认值改成 true 对老机器毫无作用 —— Load() 会把它读回 false，
+    ///   升级完还是关的。所以需要一次「迁移」：见到这个键不存在，
+    ///   就当作从没定义过默认值，强制开一次并存盘打标记。
+    /// 【为什么要打标记，不能每次启动都强制开】
+    ///   用户手动关掉是**他的决定**。没有标记的话，下次启动又会把它打开，
+    ///   等于程序不认用户的设置。标记写下去之后，这一支永远不再执行。
+    /// </summary>
+    public static bool TranslateDefaultOnMigrated { get; private set; } = false;
 
     /// <summary>
     /// 首次提示是否已经弹过（阶段四）。**弹过一次就写 true，重启不再弹。**
@@ -210,6 +229,7 @@ internal static class AppSettings
                 if (!File.Exists(ConfigPath))
                 {
                     AppLogger.Info($"还没设置文件，用默认分工（中文走 Windows 自带，英文/俄文走 Tesseract）。{ConfigPath}");
+                    ApplyDefaultOnMigration();
                     return;
                 }
 
@@ -312,6 +332,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-11-04 v2.0：默认开启的一次性迁移标记。读到它 = 迁移过了，不再强制开。
+                if (doc.RootElement.TryGetProperty("translateDefaultOnMigrated", out var tdm)
+                    && tdm.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    TranslateDefaultOnMigrated = tdm.GetBoolean();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}，" +
@@ -319,15 +347,42 @@ internal static class AppSettings
                     $"地址 = {(TranslateEndpoint.Length == 0 ? "默认 Bing" : TranslateEndpoint)}，" +
                     $"来自 {ConfigPath}）");
 
-                if (any) return;
+                if (any) { ApplyDefaultOnMigration(); return; }
 
                 AppLogger.Info($"设置文件里没有认识的项，按默认（新分工 + RapidOCR 主通道）处理：{ConfigPath}");
             }
             catch (Exception ex)
             {
                 AppLogger.Warn($"读设置失败（只影响 Tesseract 开关，认字照常）：{ex.GetType().Name} {ex.Message}");
+                return;
             }
+
+            ApplyDefaultOnMigration();
         }
+    }
+
+    /// <summary>
+    /// v2.0 一次性迁移：把「翻译默认关」改成「默认开」，且**只对老配置做一次**。
+    ///
+    /// 【为什么光改默认值不够】
+    ///   属性默认值只在「配置里没有这个键」时生效。老用户的 settings.json 里
+    ///   明明白白写着 `"translateEnabled": false`，Load() 会照读回来，升级完还是关的。
+    /// 【为什么用「迁移标记」而不是每次启动强制开】
+    ///   用户手动关掉就是他的决定。没有标记的话，下次启动又被打开，等于程序不认设置。
+    ///   标记 `translateDefaultOnMigrated` 一旦写下去，这一支永远不再执行。
+    /// 【什么时候算迁移过】新装（无配置文件）也算：此时本来就是默认 true，
+    ///   直接打标记，避免用户在新装后手动关掉、下一次启动又被强制打开。
+    /// </summary>
+    private static void ApplyDefaultOnMigration()
+    {
+        if (TranslateDefaultOnMigrated) return;
+
+        bool changed = !TranslateEnabled;
+        TranslateEnabled = true;
+        TranslateDefaultOnMigrated = true;
+
+        if (changed) AppLogger.Info("v2.0 升级：翻译开关从「关」改成默认「开」（一次性迁移，之后以用户设置为准）");
+        Save(WindowsOnly);
     }
 
     /// <summary>
@@ -335,6 +390,8 @@ internal static class AppSettings
     ///
     /// 【键都要写】只写 windowsOnly 会把 rapidOcrPrimary / rapidOcrRec / rapidOcrDumpDir 抹掉，
     /// 下次启动就悄悄回到默认值，排查时会以为「开关没生效」。
+    /// 【现在是 13 个键】加键必须同时加在这里和 Load() 的 TryGetProperty 两处，
+    /// 漏一处的后果分别是「下次保存被抹掉」和「存了读不回来」。
     /// </summary>
     public static void Save(bool windowsOnly)
     {
@@ -361,6 +418,9 @@ internal static class AppSettings
                         // 用户设的目标语言和服务地址会被下一次保存抹回默认。
                         translateTargetLang = TranslateTargetLang,
                         translateEndpoint = TranslateEndpoint,
+                        // 2026-11-04 v2.0：同理，少这一行下次保存就把迁移标记抹掉，
+                        // 于是每次启动都会把用户手动关掉的翻译又强制打开一遍。
+                        translateDefaultOnMigrated = TranslateDefaultOnMigrated,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 

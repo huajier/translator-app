@@ -65,6 +65,9 @@ def nlines():
 def setcfg(on):
     d = json.load(io.open(CFG, encoding="utf-8-sig"))
     d["translateEnabled"] = on
+    # v2.0 起有一次性迁移：不带这个标记，程序启动会把翻译强制开回来，
+    # 于是「测关掉翻译」这一条永远测不出东西。
+    d["translateDefaultOnMigrated"] = True
     d["translateNoticeShown"] = True
     d["translateTargetLang"] = "zh-Hans"
     d["translateEndpoint"] = ""          # 空 = 走默认 cn.bing.com，真 Bing

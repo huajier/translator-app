@@ -176,6 +176,9 @@ def write_cfg(d):
 def set_cfg(enabled, endpoint, lang="zh-Hans"):
     d = read_cfg()
     d["translateEnabled"] = enabled
+    # v2.0 起有一次性迁移：不带这个标记，程序启动会把翻译强制开回来，
+    # 于是「测关掉翻译」这一条永远测不出东西。
+    d["translateDefaultOnMigrated"] = True
     d["translateNoticeShown"] = True
     d["translateTargetLang"] = lang
     d["translateEndpoint"] = endpoint

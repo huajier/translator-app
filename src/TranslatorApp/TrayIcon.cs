@@ -227,11 +227,56 @@ public static class TrayIcon
         else if (mouseMessage == WM_LBUTTONDBLCLK) App.ShowOrCreateMainWindow();
     }
 
+    /// <summary>
+    /// 菜单弹着的时候，如果这次鼠标按下落在菜单矩形外面，就收起菜单。
+    ///
+    /// 【为什么要自己收（2026-11-04 实测）】
+    ///   上一版想靠 `SetForegroundWindow(_ownerHwnd)` 让系统把菜单当正经前台窗口、
+    ///   自动「点别处就关」。实测证明**不管用**：抢前台那步确实成功了
+    ///   （前台句柄从别的进程变成了本进程主窗口），菜单照样关不掉。
+    ///   根因还是那句话——没有 WinForms 消息泵，`ContextMenuStrip` 就收不到
+    ///   「用户点了别处」这条通知；`GetCapture()` 量出来是 0，说明菜单连鼠标都没捕获。
+    ///
+    /// 【为什么用鼠标钩子来收，而不是建消息泵 / 换 WPF 原生菜单】
+    ///   本程序**早就装着全局低级鼠标钩子**（`LowLevelMouseHook`，框选用）。
+    ///   钩子本来就会看到每一次按下，顺手判断一下坐标在不在菜单里，是最小改动。
+    ///   建 WinForms 消息泵要动宿主结构，换 WPF 原生菜单要重写整份菜单，两者都是
+    ///   为了一个「点外面收起」的大手术，不做。
+    ///
+    /// 【时序够快吗】
+    ///   钩子回调只排队 + 发唤醒消息，真正关菜单在 `App.DrainHookEvents`（主线程）
+    ///   里做，和框选事件同一条路。菜单晚关几毫秒，用户看不出来。
+    /// </summary>
+    /// <returns>true 表示这次按下把菜单收起来了。</returns>
+    public static bool CloseMenuIfClickOutside(int x, int y)
+    {
+        try
+        {
+            if (_menu == null || !_menu.Visible) return false;
+            if (_menu.Bounds.Contains(x, y)) return false;   // 点在菜单上：交给菜单自己处理
+
+            _menu.Close();
+            AppLogger.Info($"托盘菜单已收起（点到了菜单外面 {x},{y}）");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error(ex, "收起托盘菜单失败");
+            return false;
+        }
+    }
+
     private static void ShowMenu()
     {
         try
         {
             if (_menu == null) return;
+
+            // 2026-11-04 T3b-补：先抢前台。虽然实测这一招并不能让菜单自动关
+            // （真正管用的是 CloseMenuIfClickOutside），但抢了前台菜单才会正常高亮、
+            // 键盘也能用，先留着。
+            if (_ownerHwnd != IntPtr.Zero) NativeMethods.SetForegroundWindow(_ownerHwnd);
+
             _menu.Show(Cursor.Position);
         }
         catch (Exception ex)

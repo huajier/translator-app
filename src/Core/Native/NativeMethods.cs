@@ -967,6 +967,18 @@ internal static class NativeMethods
     /// <summary>剪贴板序号（每次剪贴板内容变化都会 +1）。</summary>
     public static uint GetClipboardSequenceNumber() => GetClipboardSequenceNumberRaw();
 
+    /// <summary>
+    /// 把某个窗口抢成前台窗口。
+    ///
+    /// 【2026-11-04 T3b-补：托盘菜单点外面关不掉】
+    ///   本程序是纯 WPF 宿主（`System.Windows.Application`），没有 WinForms 消息泵，
+    ///   全仓也没有 IMessageFilter / Application.Run。`ContextMenuStrip.Show()` 之后
+    ///   菜单没能成为前台窗口，于是收不到「用户点了别处」的通知，菜单挂在那儿不关。
+    ///   弹菜单前先把自己的窗口抢成前台，菜单才跟得上系统的「点别处收起」规则。
+    /// </summary>
+    [DllImport("user32.dll")]
+    internal static extern bool SetForegroundWindow(IntPtr hWnd);
+
     [DllImport("user32.dll", EntryPoint = "SendInput", SetLastError = true)]
     private static extern uint SendInputRaw(uint nInputs, INPUT[] pInputs, int cbSize);
 

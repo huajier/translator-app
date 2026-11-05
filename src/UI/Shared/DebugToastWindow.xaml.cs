@@ -442,12 +442,19 @@ public partial class DebugToastWindow : Window
             // ShowNotice 把 MainText 藏起来过，这里显式恢复，免得复用同一个窗口时原文是空的。
             MainText.Visibility = Visibility.Visible;
 
+            // ==========================================================
+            // 【2026-11-04 v2.0 详情行改格式，用户实测截图后定的】
+            //   旧格式：`来自 RapidOCR（外文主通道）  外文（拉丁字母）  用时 94 ms  3 行  共 12 字，可滚动查看`
+            //   太长、太密，一个 400px 宽的卡片上要折成两行，
+            //   而「3 行」「外文（拉丁字母）」对用户没有任何用处（他看得见原文长什么样）。
+            //   新格式只留三段有用的：**谁认的 · 花了多久 · 认了多少字**。
+            //   「可滚动」从「共 N 字，可滚动查看」缩成一个尾巴 `· 可滚动`，
+            //   字数已经在第二段里了，不用再写一遍。
+            // ==========================================================
             bool needScroll = result.Text.Length > 120;
             DetailText.Text =
-                $"{ChannelNameOf(result.Channel)}    {Core.Capture.LanguageDetector.DisplayName(result.DetectedLanguage)}    " +
-                $"用时 {result.ElapsedMs} ms" +
-                (result.LineCount > 0 ? $"    {result.LineCount} 行" : string.Empty) +
-                (needScroll ? $"    共 {result.Text.Length} 字，可滚动查看" : string.Empty) +
+                $"{ChannelNameOf(result.Channel)} · {result.ElapsedMs} ms · {result.Text.Length} 字" +
+                (needScroll ? " · 可滚动" : string.Empty) +
                 // 【2026-10-29 阶段三 S4】整块没认好时加一行小字，引导逐行框。
                 //   只加提示，不改上面任何文字，也不阻断翻译。
                 (result.BlockLooksBad ? Environment.NewLine + "这块字没认好，切成一行一行框会更准" : string.Empty);
@@ -515,6 +522,9 @@ public partial class DebugToastWindow : Window
             TranslationText.Text = "翻译中…";
             TransScroll.Visibility = Visibility.Visible;
             TransSep.Visibility = Visibility.Visible;
+            // 译文还没回来，此刻没有耗时字数可写，详情行必须藏起来，
+            // 否则会留着上一次那行「Bing 网页翻译 · 2170 ms · 89 字」，等于撒谎。
+            TransDetail.Visibility = Visibility.Collapsed;
             Core.Logging.AppLogger.Info("译文区已切到「翻译中…」");
             return;
         }
@@ -538,11 +548,17 @@ public partial class DebugToastWindow : Window
             TranslationText.Text = translation.Text;
             TransScroll.Visibility = Visibility.Visible;
             TransSep.Visibility = Visibility.Visible;
-            // 缓存命中要说出来：同一个词连框两次，用户会觉得「怎么秒出」，得有个解释。
-            if (translation.FromCache)
-            {
-                DetailText.Text += Environment.NewLine + "这段字刚翻过，直接用了上次的结果（没有再发出去）";
-            }
+            // ==========================================================
+            // 【2026-11-04 v2.0 译文详情行】跟原文详情行同一个格式。
+            //   缓存命中那一支的耗时写 0 ms 并注明「上次的结果」——
+            //   它确实没花时间，也没再发出去，写真实数字才不会被当成「怎么这么快」。
+            //   原来那句「这段字刚翻过，直接用了上次的结果（没有再发出去）」
+            //   从 DetailText 里删掉：同一件事不再两处都说。
+            // ==========================================================
+            TransDetail.Text = translation.FromCache
+                ? $"{ProviderNameOf(translation.Provider)} · 0 ms（上次的结果） · {translation.Text.Length} 字"
+                : $"{ProviderNameOf(translation.Provider)} · {translation.ElapsedMs} ms · {translation.Text.Length} 字";
+            TransDetail.Visibility = Visibility.Visible;
             return;
         }
 
@@ -574,6 +590,9 @@ public partial class DebugToastWindow : Window
         TranslationText.Text = msg;
         TransScroll.Visibility = Visibility.Visible;
         TransSep.Visibility = Visibility.Visible;
+        // 失败时译文详情行藏起来：下面那句原因就是全部信息，
+        // 再挂一个「Bing 网页翻译 · 2401 ms」反而像在说「它翻成了这样」。
+        TransDetail.Visibility = Visibility.Collapsed;
     }
 
     private void HideTranslation()
@@ -581,18 +600,37 @@ public partial class DebugToastWindow : Window
         TranslationText.Text = string.Empty;
         TransScroll.Visibility = Visibility.Collapsed;
         TransSep.Visibility = Visibility.Collapsed;
+        TransDetail.Visibility = Visibility.Collapsed;
     }
 
+    /// <summary>
+    /// 译文详情行上的提供方短名（2026-11-04 v2.0）。
+    ///
+    /// 【为什么只砍掉卡片上的括号后缀】`TranslationResult.Provider` 现在是
+    ///   「Bing 网页翻译（免密钥）」。卡片宽 400px，那一行还有耗时和字数，
+    ///   括号里那半截会把它挤到换行。**日志里仍然是全名**——日志是给排查用的，
+    ///   「免密钥」这三个字恰恰是排查时要看的信息。
+    /// </summary>
+    private static string ProviderNameOf(string provider) =>
+        provider.Replace("（免密钥）", string.Empty).Trim();
+
+    /// <summary>
+    /// 详情行上的通道短名（2026-11-04 v2.0 改短）。
+    ///
+    /// 【为什么改短】详情行现在是「通道 · 耗时 · 字数」三段拼一行，
+    ///   原来那句「来自 Tesseract（英文/俄文专用引擎）」太长，把整行挤到换行，
+    ///   看着像两件事。是谁认的这条信息要留，但不必占半行。
+    /// 【RapidOCR 这支不能漏】阶段三起外文默认走它，漏了卡片上会直接打英文类名，
+    ///   用户分不清那是引擎名还是出错信息。
+    /// </summary>
     private static string ChannelNameOf(string channel) => channel switch
     {
-        "Clipboard" => "来自复制（原始文字）",
-        "WindowsOcr" => "来自文字识别",
-        // 2026-10-09 引擎分工：英文/俄文由 Tesseract 认，必须如实告诉用户是谁认的，
-        // 不能明明用了它却还显示「来自文字识别」
-        "Tesseract" => "来自 Tesseract（英文/俄文专用引擎）",
-        // 2026-11-02 阶段四 T3a：阶段三起外文默认走 RapidOCR 主通道，
-        // 但这里一直漏了这一支，卡片上直接显示英文类名「RapidOCR」，用户看不懂。
-        "RapidOCR" => "来自 RapidOCR（外文主通道）",
+        "Clipboard" => "复制",
+        "WindowsOcr" => "Windows 识别",
+        // 2026-10-09 引擎分工：英文/俄文由 Tesseract 认，必须如实告诉用户是谁认的。
+        "Tesseract" => "Tesseract",
+        // 2026-11-02 阶段四 T3a：阶段三起外文默认走 RapidOCR 主通道，这支不能漏。
+        "RapidOCR" => "RapidOCR",
         _ => channel
     };
 

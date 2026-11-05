@@ -6,7 +6,7 @@
 #
 # 查三件事（对应 方案 9.6）：
 #   S1 启动默认关 → 托盘勾开 → 卡片弹一次 + 存盘 → 菜单「退出」→ 重启：勾选态还在、卡片不再弹
-#   S2 settings.json 正好 12 个键（Save() 是全量重写，少写一个下次保存就抹掉）
+#   S2 settings.json 正好 13 个键（Save() 是全量重写，少写一个下次保存就抹掉）
 #   S3 手改 translateEnabled:true、translateNoticeShown:false → 启动弹一次并写回 true → 再启动不弹
 #
 # ⚠️ 本脚本会改写 %APPDATA%\TranslatorApp\settings.json。开跑前备份、跑完还原，
@@ -61,9 +61,9 @@ function Kill-App {
 function Reset-Settings([bool]$enabled, [bool]$shown) {
     $dir = Split-Path $SettingsPath
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-    # 这 12 个键必须与 AppSettings.Load() 认的那 12 个一字不差。
+    # 这 13 个键必须与 AppSettings.Load() 认的那 13 个一字不差。
     # ⚠️ 别写 rapidOcrSkipFirstPass：全仓 src\ 零引用（Load 不读、Save 不写），
-    #    写进去只会让「键是不是正好 12 个」这条断言变成假的。
+    #    写进去只会让「键是不是正好 13 个」这条断言变成假的。
     # ⚠️ 这个脚本是 Set-Content 全量覆写，不是走 AppSettings.Save()：
     #    漏一个键 = 跑一遍就把用户那项设置删掉。T3a 加了两个翻译键，这里必须补上。
     $o = [ordered]@{
@@ -79,6 +79,7 @@ function Reset-Settings([bool]$enabled, [bool]$shown) {
         translateNoticeShown     = $shown
         translateTargetLang      = "zh-Hans"
         translateEndpoint        = ""
+        translateDefaultOnMigrated = $true
     }
     ($o | ConvertTo-Json) | Set-Content -Path $SettingsPath -Encoding UTF8
     Start-Sleep -Milliseconds 400
@@ -135,7 +136,7 @@ function Snapshot($tag, $proc) {
     $sh = if ($keys -contains 'translateNoticeShown') { [string]$s.translateNoticeShown } else { 'MISSING' }
     $wins = [W]::Visible([uint32]$proc.Id)
     Say "$tag | keys=$($keys.Count) enabled=$en shown=$sh | windows=$($wins -join ',')"
-    if ($keys.Count -eq 12) { Say "$tag | allkeys=$($keys -join ',')" }
+    if ($keys.Count -eq 13) { Say "$tag | allkeys=$($keys -join ',')" }
 }
 
 function Dump-Menu($tag, $items) {
