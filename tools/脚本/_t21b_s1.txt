@@ -1,0 +1,10 @@
+TITLE=翻译软件 v0.4.4.0 · 框选
+WINDOW L=690 T=438 R=1230 B=602 => 540x164
+SCROLLVIEWER_COUNT=0
+SCROLLABLE_ELEMENTS=1
+  el cls=TextBox verticallyScrollable=False viewSize=100
+  TEXT name=[打开翻译] bottom=504 top=487
+  TEXT name=[?] bottom=505 top=487
+  TEXT name=[翻译语言：] bottom=540 top=523
+  TEXT name=[按住 Ctrl + Alt 在屏幕上拖出一个框，松手就能识别并翻译。] bottom=576 top=559
+lastTextBottom=576 winBottom=602 gap=26
