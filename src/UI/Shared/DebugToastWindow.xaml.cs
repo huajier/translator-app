@@ -47,8 +47,20 @@ public partial class DebugToastWindow : Window
     /// </summary>
     private DispatcherTimer? _hintTimer;
 
-    /// <summary>当前「翻译中」后面有几个点（0~3，循环）。</summary>
+    /// <summary>当前提示后面有几个点（0~3，循环）。</summary>
     private int _hintDots;
+
+    /// <summary>
+    /// 现在这套跳点在给哪个控件打字（见 <see cref="StartHint"/>）。
+    /// 【2026-11-06 第24轮：从「只能给 TransDetail」改成「给哪个都行」】
+    ///   用户要求识别阶段也要「识别中.」，那行字在 DetailText（原文详情），
+    ///   和 TransDetail 是两个不同的控件。原来三行代码把 TransDetail 写死，
+    ///   现在改成记一个目标控件 + 一个前缀，谁要用谁传。
+    /// </summary>
+    private System.Windows.Controls.TextBlock? _hintTarget;
+
+    /// <summary>跳点前面那截固定文字，例如「翻译中」「识别中」。</summary>
+    private string _hintPrefix = string.Empty;
 
     /// <summary>
     /// 提示色：卡片里本来就有的蓝（原文文字和边框用的就是它）。
@@ -63,6 +75,15 @@ public partial class DebugToastWindow : Window
     /// <summary>详情行的灰色（和 XAML 里 TransDetail 的 Foreground 一致）。</summary>
     private static readonly System.Windows.Media.Brush DetailBrush =
         (System.Windows.Media.Brush)new BrushConverter().ConvertFromString("#FF94A3B8")!;
+
+    /// <summary>
+    /// DetailText 的原色（识别中踢蓝以后要还原成它）。
+    /// 【为什么要单独一个】XAML 里 DetailText 的 Foreground 是 #FFCBD5E1，
+    ///   和 TransDetail 的 #FF94A3B8 不是一个灰。用 DetailBrush 还原会让原文详情行
+    ///   悄悄变浅一档 —— 用户不会说「颜色错了」，只会觉得「哪里不对」。
+    /// </summary>
+    private static readonly System.Windows.Media.Brush RecognizeBrush =
+        (System.Windows.Media.Brush)new BrushConverter().ConvertFromString("#FFCBD5E1")!;
 
     /// <summary>这一轮有没有框选过（决定短提示摆哪儿，见 <see cref="ShowNotice"/>）。</summary>
     private bool _hasSelection;
@@ -172,7 +193,7 @@ public partial class DebugToastWindow : Window
         {
             _hoverTimer.Stop();
             _closeTimer.Stop();
-            _hintTimer?.Stop();
+            StopHint();
         };
     }
 
@@ -323,7 +344,20 @@ public partial class DebugToastWindow : Window
         TitleText.Text = "框选完成";
         MainText.Visibility = Visibility.Visible;
         MainText.Text = $"({session.PhysicalRect.Left}, {session.PhysicalRect.Top})  {session.PhysicalWidth} × {session.PhysicalHeight}";
-        DetailText.Text = "正在识别，请稍候…";
+        // ==========================================================
+        // 【2026-11-06 第24轮：识别阶段也给个跳点】
+        //   用户原话：「识别也要加一个识别中，不然看着怪怪的，格式啥的就和翻译中一样就行。」
+        //   改之前这里是一句静止的「正在识别，请稍候…」——
+        //   认字要 0.7~3.6 秒，屏幕上一动不动，看着像卡死了。
+        //   现在交给和翻译中同一套跳点（400ms 一跳、'.'、0~3 循环），
+        //   只是目标是 DetailText（原文详情那行）、前缀是「识别中」。
+        //   识别结束会在 UpdateWith 开头 StopHint + 还原颜色。
+        // ==========================================================
+        DetailText.Foreground = HintBrush;
+        StartHint(DetailText, "识别中");
+        // 和第23轮翻译中那条日志对称：验收脚本要靠它知道「这一刻」。
+        // 只看「开始取词」会早几百毫秒，截图拍到的是还没切过去的那一帧。
+        Core.Logging.AppLogger.Info("原文区已切到「识别中」（蓝色小字带跳点）");
 
         (_monitorRect, _monitorDpi) = ScreenGeometry.GetMonitorAt(session.PhysicalRect.Left, session.PhysicalRect.Top);
         _anchorLeftDip = session.DipRect.Left;
@@ -385,6 +419,15 @@ public partial class DebugToastWindow : Window
     {
         TitleText.Text = title;
         MainText.Text = "";
+
+        // ==========================================================
+        // 【2026-11-06 第24轮：先把跳点停掉再写提示】
+        //   短提示（「调试截图已保存」这类）复用同一个 DetailText。
+        //   如果此刻识别中的跳点还在跑，下一次 Tick 就会把提示文字
+        //   覆盖成「识别中.」—— 用户根本看不到自己那条提示。
+        // ==========================================================
+        StopHint();
+        DetailText.Foreground = RecognizeBrush;
         DetailText.Text = detail;
 
         // 【2026-10-15】MainText 换成了 TextBox（为了能选字），而 TextBox 即使文本为空
@@ -459,6 +502,17 @@ public partial class DebugToastWindow : Window
                             bool translating = false)
     {
         if (!IsVisible) return;   // 用户已经等不及关掉了
+
+        // ==========================================================
+        // 【2026-11-06 第24轮：识别结束了，停表并把颜色还原】
+        //   放在最前面（`if (!IsVisible)` 之后、判成功之前），是因为
+        //   识别失败也会走到这里 —— 失败时同样要把「识别中.」停掉，
+        //   否则那行蓝字会一直跳到卡片关闭。
+        //   还原用的是 RecognizeBrush（#FFCBD5E1，DetailText 的原色），
+        //   不是 DetailBrush（那是 TransDetail 的灰）。
+        // ==========================================================
+        StopHint();
+        DetailText.Foreground = RecognizeBrush;
 
         if (result.Success)
         {
@@ -548,14 +602,32 @@ public partial class DebugToastWindow : Window
     ///   用户分不清「这行字是它翻的，还是它还在翻」。
     ///   现在改写到译文下面那行小字（TransDetail，11 号），颜色临时换成蓝色。
     /// </summary>
-    private void StartTranslatingHint()
+    /// <summary>
+    /// 起一套跳点：往指定控件里循环写「前缀 + 0~3 个点」。
+    ///
+    /// 【2026-11-06 第24轮：从「只服务翻译」改成「谁要谁传」】
+    ///   原来叫 StartTranslatingHint()，里面把 TransDetail 写死了。
+    ///   用户要求识别阶段也来一套，那行字在 DetailText，于是改成带参数。
+    ///   名字也改短了 —— 它现在不只服务翻译。
+    /// 【400ms 一跳，不是随手取的】200ms 像在闪，800ms 像卡住了。
+    /// 【点用英文句号】中文省略号 '…' 是单个字符、宽度固定，跳不起来。
+    /// </summary>
+    private void StartHint(System.Windows.Controls.TextBlock target, string prefix)
     {
+        _hintTarget = target;
+        _hintPrefix = prefix;
         _hintDots = 0;
         _hintTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _hintTimer.Tick -= OnHintTick;
         _hintTimer.Tick += OnHintTick;
-        ApplyHintText();
+        // 【顺序不能反：先 Start，再写第一帧。】ApplyHintText 里有一道
+        //   "if (!_hintTimer.IsEnabled) return;" 的护栏（挡住 Stop() 之后
+        //   已经排进队列的那一次 Tick）。原来先 ApplyHintText 后 Start，
+        //   于是这一次调用什么字都没写出去 —— 翻译分支因为在调用前手写了
+        //   TransDetail.Text 看不出来，识别分支只靠这里，结果卡片前 400ms
+        //   是空的，用户看到的就是「点了框选没反应」。
         _hintTimer.Start();
+        ApplyHintText();
     }
 
     private void OnHintTick(object? sender, EventArgs e)
@@ -567,18 +639,20 @@ public partial class DebugToastWindow : Window
     /// <summary>
     /// 只在定时器活着的时候写文字。
     /// 【为什么要判 IsEnabled】Stop() 之后 Tick 不会再触发，但已经在排队的
-    ///   那一次仍可能进来，进了就会把「正在翻译剩余段落」覆盖成「翻译中.」，
-    ///   看着像倒退了。
+    ///   那一次仍可能进来，进了就会把已经写好的「翻译中.」或识别结果覆盖掉，
+    ///   看着像倒退。
     /// </summary>
     private void ApplyHintText()
     {
+        if (_hintTarget is null) return;
         if (_hintTimer is null || !_hintTimer.IsEnabled) return;
-        TransDetail.Text = "翻译中" + new string('.', _hintDots);
+        _hintTarget.Text = _hintPrefix + new string('.', _hintDots);
     }
 
-    private void StopTranslatingHint()
+    private void StopHint()
     {
         _hintTimer?.Stop();
+        _hintTarget = null;
     }
 
     /// <summary>
@@ -619,7 +693,7 @@ public partial class DebugToastWindow : Window
             TransDetail.Foreground = HintBrush;
             TransDetail.Text = "翻译中";
             TransDetail.Visibility = Visibility.Visible;
-            StartTranslatingHint();
+            StartHint(TransDetail, "翻译中");
             Core.Logging.AppLogger.Info("译文区已切到「翻译中」（蓝色小字带跳点）");
             return;
         }
@@ -638,13 +712,15 @@ public partial class DebugToastWindow : Window
             TransScroll.Visibility = Visibility.Visible;
             TransSep.Visibility = Visibility.Visible;
             // ==========================================================
-            // 【2026-11-06 第23轮：已经有译文了，但后面还有段没翻完】
-            //   点必须停掉 —— 再跳就成了「附件」跟着译文一起闪。
-            //   留一行蓝字说明还在继续，用户知道后面还会变长。
+            // 【2026-11-06 第24轮：不再写「正在翻译剩余段落」】
+            //   用户原话：「翻译中会被正在翻译剩余段落顶掉，这俩重复了，
+            //   把翻译剩余段落去掉。」
+            //   确实重复 —— 上一段刚显示「翻译中.」，这里换个说法说同一件事，
+            //   还把跳点停了，看着像卡住。现在什么都不换：
+            //   跳点继续跳，前缀还是「翻译中」，直到整块翻完才变灰色详情行。
             // ==========================================================
-            StopTranslatingHint();
             TransDetail.Foreground = HintBrush;
-            TransDetail.Text = "正在翻译剩余段落";
+            StartHint(TransDetail, "翻译中");
             TransDetail.Visibility = Visibility.Visible;
             return;
         }
@@ -683,7 +759,7 @@ public partial class DebugToastWindow : Window
             // ==========================================================
             string failedNote = translation.Detail.Length == 0 ? string.Empty : $"（{translation.Detail}）";
             // 2026-11-06 第23轮：译文落地，跳点必须停，颜色换回详情行的灰。
-            StopTranslatingHint();
+            StopHint();
             TransDetail.Foreground = DetailBrush;
             TransDetail.Text = translation.FromCache
                 ? $"{ProviderNameOf(translation.Provider)} · 0 ms（上次的结果） · {translation.Text.Length} 字{failedNote}"
@@ -721,7 +797,7 @@ public partial class DebugToastWindow : Window
         TransScroll.Visibility = Visibility.Visible;
         TransSep.Visibility = Visibility.Visible;
         // 2026-11-06 第23轮：失败了就别让蓝点继续跳 —— 它看着像「还在努力」。
-        StopTranslatingHint();
+        StopHint();
         // 失败时译文详情行藏起来：下面那句原因就是全部信息，
         // 再挂一个「Bing 网页翻译 · 2401 ms」反而像在说「它翻成了这样」。
         TransDetail.Visibility = Visibility.Collapsed;
@@ -730,8 +806,9 @@ public partial class DebugToastWindow : Window
     private void HideTranslation()
     {
         // 2026-11-06 第23轮：这里是所有「本来就不该有译文」的出口（翻译关着、
-        // 判成中文不翻、服务端没回字）。定时器不在这里停，卡片关掉之前它会一直跳。
-        StopTranslatingHint();
+        // 判成中文不翻、服务端没回字）。第24轮起跳点改成通用版（StopHint），
+        // 顺手把目标控件也清掉，免得指向一个已经藏起来的控件。
+        StopHint();
         TranslationText.Text = string.Empty;
         TransScroll.Visibility = Visibility.Collapsed;
         TransSep.Visibility = Visibility.Collapsed;

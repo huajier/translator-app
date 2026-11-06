@@ -60,7 +60,11 @@ internal static class TranslationMessages
     public static string ToUserMessage(this TranslationFailure failure) => failure switch
     {
         TranslationFailure.Disabled => string.Empty,
-        TranslationFailure.NoNetwork => "没连上网，只显示原文",
+        // 【2026-11-06 第24轮】用户原话：「没有连上网只显示原文给我改成『网络链接失败』。」
+        //   用户写的是「链接」，正确写法是「连接」（链接 = hyperlink）。按正确写法写。
+        //   只改这一条：其它失败文案（超时、额度、没翻出内容……）一个字都没动。
+        //   注意断网时原文照旧完整显示 ——「只显示原文」那半句没了，但行为没变。
+        TranslationFailure.NoNetwork => "网络连接失败",
         // 用户 2026-11-02 指定的原话，别改
         TranslationFailure.Timeout => "翻译超时，原文已保留",
         TranslationFailure.QuotaExceeded => "翻译额度用完了，只显示原文",
