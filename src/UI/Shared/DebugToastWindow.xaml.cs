@@ -33,6 +33,37 @@ public partial class DebugToastWindow : Window
     /// <summary>自动关闭的定时器（做成字段，更新文字时要能重新计时）。</summary>
     private readonly DispatcherTimer _closeTimer = new() { Interval = TimeSpan.FromSeconds(3) };
 
+    /// <summary>
+    /// 「翻译中」那几个点的循环定时器（2026-11-06 第23轮）。
+    ///
+    /// 【为什么用 DispatcherTimer 改字符串，不用 Storyboard 做动画】
+    ///   卡片的 UI 线程就是这个定时器的线程，改 Text 不会有跨线程问题；
+    ///   Storyboard 要为「三个点」写三条关键帧动画，代码比这多一倍，
+    ///   而用户要的只是「让人知道它还在动」。
+    ///
+    /// 【400ms 一跳，不是随手取的】200ms 像在闪，800ms 像卡住了。
+    /// 【点用英文句号】中文省略号 '…' 是单个字符、宽度固定，跳不起来；
+    ///   六个点会把卡片撑宽再缩回。'.' 一到三个，宽度变化最小。
+    /// </summary>
+    private DispatcherTimer? _hintTimer;
+
+    /// <summary>当前「翻译中」后面有几个点（0~3，循环）。</summary>
+    private int _hintDots;
+
+    /// <summary>
+    /// 提示色：卡片里本来就有的蓝（原文文字和边框用的就是它）。
+    /// 【为什么不硬编码在四个地方】翻译中、边翻边长、要恢复灰色，三处以上都用它，
+    ///   散着写迟早改一处漏三处。两个色都取自卡片既有配色，不引入新颜色。
+    /// 【为什么写全名 System.Windows.Media.Brush】本工程同时 using System.Drawing
+    ///   （Bitmap/Screen），`Brush` 会被判成不明确引用 CS0104。
+    /// </summary>
+    private static readonly System.Windows.Media.Brush HintBrush =
+        (System.Windows.Media.Brush)new BrushConverter().ConvertFromString("#FF38BDF8")!;
+
+    /// <summary>详情行的灰色（和 XAML 里 TransDetail 的 Foreground 一致）。</summary>
+    private static readonly System.Windows.Media.Brush DetailBrush =
+        (System.Windows.Media.Brush)new BrushConverter().ConvertFromString("#FF94A3B8")!;
+
     /// <summary>这一轮有没有框选过（决定短提示摆哪儿，见 <see cref="ShowNotice"/>）。</summary>
     private bool _hasSelection;
 
@@ -141,6 +172,7 @@ public partial class DebugToastWindow : Window
         {
             _hoverTimer.Stop();
             _closeTimer.Stop();
+            _hintTimer?.Stop();
         };
     }
 
@@ -507,6 +539,49 @@ public partial class DebugToastWindow : Window
     }
 
     /// <summary>
+    /// 开始「翻译中」的跳点（2026-11-06 第23轮）。
+    ///
+    /// 【用户原话】「这个翻译中能不能换个样式，不要和翻译出来的文字一个颜色、大小，
+    ///   换个明显点的样式，然后翻译完成后再消失。」
+    ///   改之前「翻译中…」是写进 TranslationText 的，那个控件是译文正文
+    ///   （13 号、近白 #FFE2E8F0），于是提示和译文长得一模一样，
+    ///   用户分不清「这行字是它翻的，还是它还在翻」。
+    ///   现在改写到译文下面那行小字（TransDetail，11 号），颜色临时换成蓝色。
+    /// </summary>
+    private void StartTranslatingHint()
+    {
+        _hintDots = 0;
+        _hintTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _hintTimer.Tick -= OnHintTick;
+        _hintTimer.Tick += OnHintTick;
+        ApplyHintText();
+        _hintTimer.Start();
+    }
+
+    private void OnHintTick(object? sender, EventArgs e)
+    {
+        _hintDots = (_hintDots + 1) % 4;
+        ApplyHintText();
+    }
+
+    /// <summary>
+    /// 只在定时器活着的时候写文字。
+    /// 【为什么要判 IsEnabled】Stop() 之后 Tick 不会再触发，但已经在排队的
+    ///   那一次仍可能进来，进了就会把「正在翻译剩余段落」覆盖成「翻译中.」，
+    ///   看着像倒退了。
+    /// </summary>
+    private void ApplyHintText()
+    {
+        if (_hintTimer is null || !_hintTimer.IsEnabled) return;
+        TransDetail.Text = "翻译中" + new string('.', _hintDots);
+    }
+
+    private void StopTranslatingHint()
+    {
+        _hintTimer?.Stop();
+    }
+
+    /// <summary>
     /// 把译文塞进卡片下半截，或者藏起来并在详情里说一句人话。
     ///
     /// 【什么时候藏】没有译文 / 翻译关着 / 判成中文不翻（都是 Disabled）—— 完全静默，
@@ -530,13 +605,22 @@ public partial class DebugToastWindow : Window
         // ==========================================================
         if (translating && (translation is null || !translation.Success))
         {
-            TranslationText.Text = "翻译中…";
-            TransScroll.Visibility = Visibility.Visible;
+            // ==========================================================
+            // 【2026-11-06 第23轮：提示从小字里出，不再占着译文正文】
+            //   TranslationText 是译文正文（13 号近白），"翻译中" 写进去就跟
+            //   译文长得一样；改写到下面那行 11 号小字，临时刷成蓝色。
+            //   TransScroll 藏起来：此刻译文区一个字都没有，留着空滚动区
+            //   会白白撑出 200px 高度（MaxHeight=200，空的时候也占位）。
+            //   TransSep 那根横线留着 —— 它把「原文」和「正在进行的翻译」分开。
+            // ==========================================================
+            TranslationText.Text = string.Empty;
+            TransScroll.Visibility = Visibility.Collapsed;
             TransSep.Visibility = Visibility.Visible;
-            // 译文还没回来，此刻没有耗时字数可写，详情行必须藏起来，
-            // 否则会留着上一次那行「Bing 网页翻译 · 2170 ms · 89 字」，等于撒谎。
-            TransDetail.Visibility = Visibility.Collapsed;
-            Core.Logging.AppLogger.Info("译文区已切到「翻译中…」");
+            TransDetail.Foreground = HintBrush;
+            TransDetail.Text = "翻译中";
+            TransDetail.Visibility = Visibility.Visible;
+            StartTranslatingHint();
+            Core.Logging.AppLogger.Info("译文区已切到「翻译中」（蓝色小字带跳点）");
             return;
         }
 
@@ -553,7 +637,15 @@ public partial class DebugToastWindow : Window
             TranslationText.Text = translation.Text;
             TransScroll.Visibility = Visibility.Visible;
             TransSep.Visibility = Visibility.Visible;
-            TransDetail.Visibility = Visibility.Collapsed;
+            // ==========================================================
+            // 【2026-11-06 第23轮：已经有译文了，但后面还有段没翻完】
+            //   点必须停掉 —— 再跳就成了「附件」跟着译文一起闪。
+            //   留一行蓝字说明还在继续，用户知道后面还会变长。
+            // ==========================================================
+            StopTranslatingHint();
+            TransDetail.Foreground = HintBrush;
+            TransDetail.Text = "正在翻译剩余段落";
+            TransDetail.Visibility = Visibility.Visible;
             return;
         }
 
@@ -590,6 +682,9 @@ public partial class DebugToastWindow : Window
             //   一段都没失败时 Detail 是空串，括号整个不加。
             // ==========================================================
             string failedNote = translation.Detail.Length == 0 ? string.Empty : $"（{translation.Detail}）";
+            // 2026-11-06 第23轮：译文落地，跳点必须停，颜色换回详情行的灰。
+            StopTranslatingHint();
+            TransDetail.Foreground = DetailBrush;
             TransDetail.Text = translation.FromCache
                 ? $"{ProviderNameOf(translation.Provider)} · 0 ms（上次的结果） · {translation.Text.Length} 字{failedNote}"
                 : $"{ProviderNameOf(translation.Provider)} · {translation.ElapsedMs} ms · {translation.Text.Length} 字{failedNote}";
@@ -625,6 +720,8 @@ public partial class DebugToastWindow : Window
         TranslationText.Text = msg;
         TransScroll.Visibility = Visibility.Visible;
         TransSep.Visibility = Visibility.Visible;
+        // 2026-11-06 第23轮：失败了就别让蓝点继续跳 —— 它看着像「还在努力」。
+        StopTranslatingHint();
         // 失败时译文详情行藏起来：下面那句原因就是全部信息，
         // 再挂一个「Bing 网页翻译 · 2401 ms」反而像在说「它翻成了这样」。
         TransDetail.Visibility = Visibility.Collapsed;
@@ -632,6 +729,9 @@ public partial class DebugToastWindow : Window
 
     private void HideTranslation()
     {
+        // 2026-11-06 第23轮：这里是所有「本来就不该有译文」的出口（翻译关着、
+        // 判成中文不翻、服务端没回字）。定时器不在这里停，卡片关掉之前它会一直跳。
+        StopTranslatingHint();
         TranslationText.Text = string.Empty;
         TransScroll.Visibility = Visibility.Collapsed;
         TransSep.Visibility = Visibility.Collapsed;
