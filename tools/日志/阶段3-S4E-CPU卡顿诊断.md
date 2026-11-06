@@ -77,7 +77,7 @@ InitModels(RapidOcrModelSet models, SessionOptions op)
 
 ## 5. `OcrWorker` 优先级是不是卡顿来源 —— 不是（实测否决）
 
-`src/Core/Capture/OcrWorker.cs:35` 现在是 `ThreadPriority.Normal`（`d32224e` 改的）。
+`src/Core/Capture/OcrWorker.cs:35` 现在是 `ThreadPriority.Normal`（`8fd17b9` 改的）。
 
 关键机理：**`ThreadPriority` 只作用于我们自己那条 worker 线程，管不到 ONNX Runtime 内部
 创建的 intra-op 线程池**——那些线程由 ORT 建，优先级是 Normal。所以降优先级不会减少 CPU，
@@ -117,7 +117,7 @@ ocr.InitModels(det, cls, rec, keys, new SessionOptions { IntraOpNumThreads = 2, 
 
 ## 7. `rapidOcrSmallBoxUpscale`（本条按用户指示写结论，不再推广）
 
-实机开/关无差别 → **保持默认 false**。开关与其代码留在仓库作记录（`ec98c4e`，
+实机开/关无差别 → **保持默认 false**。开关与其代码留在仓库作记录（`3e36ad4`，
 tag `S4-D-小框3倍重试`），不写进默认路径、不再做变体。回放收益（+2 行）只在语料上成立，
 实机没体现 → 不推广。
 
