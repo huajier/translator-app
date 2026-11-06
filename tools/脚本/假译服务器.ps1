@@ -76,7 +76,14 @@ param(
     # 为什么要它：S6 要验的是「同一个进程里先成功、token 失效、205、刷新、再成功」。
     # 重启服务器换 -TokenSalt 只能让**下个进程**拿到新票，走不到 205 分支。
     # 0 = 关闭。
-    [int]$RotateAfter = 0
+    [int]$RotateAfter = 0,
+    # 【第22轮 S4 专用】让第 N 次（接受后的第 N 个）翻译请求必定失败。
+    # 为什么要它：S4 要验「第 2 段挂了、第 1 段和第 3 段还在」，
+    # 现有的 -DefaultMode 是「整轮全挂」，-RotateAfter 是「换票后程序自己会重试成功」，
+    # 两个都造不出「只有中间某一段失败」。传 2 就只挂第 2 个。
+    # 用 403（QuotaExceeded）而不是 205：205 会触发程序强制刷新 token 再重试，
+    # 那样第 2 段最后会成功，测不出失败分支。
+    [int[]]$FailAt = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -320,6 +327,13 @@ try {
             if ($RotateAfter -gt 0 -and $okCount -eq $RotateAfter) {
                 $currentToken = 'FAKE' + $TokenSalt + 'ROTATED' + $okCount
                 Write-Host ("       >>> 已换票（第 {0} 次成功后），旧 token 从此回 205：{1}" -f $okCount, $currentToken)
+            }
+
+            # 【第22轮 S4】第 N 个请求必挂（不触发 205 重试路径）
+            if ($FailAt -contains $okCount) {
+                Write-Host ("       >>> FailAt 命中第 {0} 个请求，回 403" -f $okCount)
+                Send-Json -Stream $stream -Code 200 -Reason "OK" -Body (Bing-Error 403 'fake FailAt segment')
+                continue
             }
 
             $translated = "【假译文】" + $text

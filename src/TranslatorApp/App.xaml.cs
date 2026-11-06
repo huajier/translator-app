@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
@@ -759,11 +759,26 @@ public partial class App : System.Windows.Application
             //   这个常数 2026-11-03 又从 2500 提到 5000，理由见
             //   TranslationService.HardTimeoutMs 上的注释（显示口径变了，用户不再盯空白）。
             // ==========================================================
+            // ==========================================================
+            // 【2026-11-06 第22轮：走分段翻译，每翻好一段就把字画出来】
+            //   真机日志里长文本成败看运气（966 字 4889ms 放弃 / 1071 字 4894ms 放弃，
+            //   同量级 971 字 4466ms 成功），因为整块只走一次 5000ms 硬闸。
+            //   分段后每段各走一次硬闸，一次抖动只毁一段。
+            //
+            //   progress 用 Progress<T>：**它自己会把回调切回创建它的线程**
+            //   （这里就是 UI 线程），所以 lambda 里可以直接动卡片，不用 Dispatcher。
+            //
+            //   计时器不用管：分段期间 translating 一直是 true，
+            //   卡片那边自动拿 PendingCloseDelay（8 秒），
+            //   段与段之间不会出现「卡片自己关掉」。
+            // ==========================================================
             int budget = Core.Translate.TranslationService.HardTimeoutMs;
+            var progress = new Progress<Core.Translate.TranslationResult>(
+                p => card.UpdateWith(result, p, translating: true));
             try
             {
-                translation = await Core.Translate.TranslationService.Shared
-                    .TranslateAsync(result.Text, budget, CancellationToken.None)
+                translation = await Core.Translate.LongTextTranslator
+                    .TranslateAsync(result.Text, budget, progress, CancellationToken.None)
                     .ConfigureAwait(true);
             }
             catch (Exception ex)
@@ -954,7 +969,7 @@ public partial class App : System.Windows.Application
     private static string GetVersion()
     {
         var v = Assembly.GetEntryAssembly()?.GetName().Version;
-        if (v == null) return "v0.4.4.0";
+        if (v == null) return "v0.4.5.0";
 
         // 【2026-10-10 顺带修的老毛病】
         //   原来只显示 `v{Major}.{Minor}`，也就是 **v0.3.1 和 v0.3.2 显示出来一模一样**。

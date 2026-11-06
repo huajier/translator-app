@@ -107,7 +107,16 @@ internal sealed class TranslationService
     /// 是**从翻译入口起算**的，认字已经花掉的那几百毫秒不在闸内，于是
     /// 「翻译没超闸、用户却等了 2930ms」。硬闸要管的是用户等多久，不是某一层跑多久。
     /// </remarks>
-    public async Task<TranslationResult> TranslateAsync(string? text, int budgetMs, CancellationToken ct)
+    /// <param name="quiet">
+    /// 【2026-11-06 第22轮：长文本分段用】true = 这条日志不发。
+    ///   分段翻译时每一段都会走这个方法，如果每段都打一条「翻译：成功」，
+    ///   验收脚本（`验收-T3a-翻译.py` 等靠 grep 精确子串数条数）会把一条
+    ///   长文本数成三条，等于把已经验过的历史验收全破坏掉。
+    ///   所以段级调用一律传 true，改由 LongTextTranslator 在整块结束时
+    ///   照原格式打一条汇总日志 —— **已有脚本一行都不用改**。
+    ///   默认 false，所有老调用点行为一个字节都没变。
+    /// </param>
+    public async Task<TranslationResult> TranslateAsync(string? text, int budgetMs, CancellationToken ct, bool quiet = false)
     {
         if (!AppSettings.TranslateEnabled)
             return new TranslationResult { Failure = TranslationFailure.Disabled };
@@ -140,9 +149,11 @@ internal sealed class TranslationService
         {
             hitSw.Stop();
             CacheHits++;
-            AppLogger.Info($"翻译：命中缓存（{hit!.Text.Length} 字，本次命中 {hitSw.ElapsedMilliseconds} ms，" +
-                           $"累计命中 {CacheHits} 次；当初联网那次 {hit.ElapsedMs} ms）");
-            return hit;
+            // 分段调用（quiet）不打这条：命中日志同样是验收脚本的计数依据之一。
+            if (!quiet)
+                AppLogger.Info($"翻译：命中缓存（{hit!.Text.Length} 字，本次命中 {hitSw.ElapsedMilliseconds} ms，" +
+                               $"累计命中 {CacheHits} 次；当初联网那次 {hit.ElapsedMs} ms）");
+            return hit!;
         }
         hitSw.Stop();
 
@@ -195,13 +206,18 @@ internal sealed class TranslationService
             // Empty 是失败，但成功分支里 Text 一定非空；这里只缓存真译文。
             result = Clone(result, total);
             Put(key, result);
-            AppLogger.Info($"翻译：成功，{text.Length} 字 → 译 {result.Text.Length} 字，" +
-                           $"用时 {total} ms（{provider.Name}，检测到源语言「{result.DetectedLanguage}」）");
+            // 分段调用（quiet）不发「翻译：成功」：一条长文本会被数成 N 条成功。
+            // 汇总那条由 LongTextTranslator 在整块结束时照原格式补上。
+            if (!quiet)
+                AppLogger.Info($"翻译：成功，{text.Length} 字 → 译 {result.Text.Length} 字，" +
+                               $"用时 {total} ms（{provider.Name}，检测到源语言「{result.DetectedLanguage}」）");
         }
         else
         {
             result = Clone(result, total);
-            AppLogger.Warn($"翻译：放弃，{result.Failure.ToUserMessage()}（{result.Detail}，用时 {total} ms）");
+            // 同上：失败那条也不发，否则一次长文本失败会被数成 N 次放弃。
+            if (!quiet)
+                AppLogger.Warn($"翻译：放弃，{result.Failure.ToUserMessage()}（{result.Detail}，用时 {total} ms）");
         }
 
         return result;

@@ -1,0 +1,9 @@
+时间: 09:01:36
+窗口: notepad.exe
+通道: RapidOCR
+语言: 外文（拉丁字母）（中文 0 %，西里尔 0 %）
+耗时: 78 毫秒
+说明: RapidOCR 平均分 0.99
+字数: 498
+原文: Key takeaways⏎GitHub is a platform that lets you manage code, coordinate team updates, and explore shared projects to learn from real examples.⏎GitHub's free tier gives access to a vast library of public repositories across many languages and use cases.⏎GitHub centralizes code, version history, and discussion so teams can coordinate contributions without duplicating work.⏎You can use GitHub's extensive documentation and community guides to troubleshoot issues and adopt more advanced workflows.
+##### 记录结束 #####

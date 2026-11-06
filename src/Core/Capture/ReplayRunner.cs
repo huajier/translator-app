@@ -118,8 +118,12 @@ internal static class ReplayRunner
                     var transSw = System.Diagnostics.Stopwatch.StartNew();
                     try
                     {
-                        translation = await TranslationService.Shared
-                            .TranslateAsync(result.Text, TranslationService.HardTimeoutMs, CancellationToken.None)
+                        // 【2026-11-06 第22轮】和真机走同一个函数（App.xaml.cs 那边同名调用），
+                        // progress 传 null：回放不建卡片窗口，没有地方画「边翻边长」。
+                        // 目的是让回放和真机永远走同一条代码路径，不许再出现
+                        // 「回放全绿、真机挂」那种第二次。
+                        translation = await LongTextTranslator
+                            .TranslateAsync(result.Text, TranslationService.HardTimeoutMs, null, CancellationToken.None)
                             .ConfigureAwait(true);
                     }
                     catch (Exception ex)

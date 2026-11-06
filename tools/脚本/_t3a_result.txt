@@ -1,69 +1,16 @@
-exe = D:\111Desktop\deepseek\翻译软件\release\v1.6\TranslatorApp.exe
-时间 = 2026-11-03 13:46:47
-
-== S1 假服务器逐模式（Bing 协议：HTTP 恒 200，错误藏在 body.statusCode）==
-  端口 = 5099
-  授权页 OK：IG=6B73902B… IID=translator.5023 token=FAKEv1TOKE…
-  mode=ok       HTTP=200 statusCode=无      译文='【假译文】Hello'
-  mode=401      HTTP=200 statusCode=205    译文=[]
-  mode=403      HTTP=200 statusCode=403    译文=[]
-  mode=408      HTTP=200 statusCode=408    译文=[]
-  mode=429      HTTP=200 statusCode=429    译文=[]
-  mode=empty    HTTP=200 statusCode=无      译文=[]
-  mode=badjson  HTTP=200 statusCode=无      译文=[]
-  缺 to：      HTTP=200 statusCode=400（应 400）
-  缺 token：   HTTP=200 statusCode=205（应 205）
-  缺 fromLang：HTTP=200 statusCode=400（应 400，真 Bing 实测过）
-  未知 mode：  HTTP=200 statusCode=400（应 400）
-  GET 该方法： HTTP=405（应 405）
-  to=de 回显： HTTP=200 译文='【假译文】Hello'
-  mode=timeout HTTP=200 耗时 6.0 秒（应 ~6 秒后放开）
-  判定：PASS（逐模式与预期一致）
-
-== P0-E1 目标语言不是中文时，中文原文必须翻（原来会死锁）==
-  回放原文：中文-01|这是一段中文测试文字用来验证目标语言不是中文
-  [2026-11-03 13:47:05.705] [INFO] 翻译：成功，22 字 → 译 27 字，用时 287 ms（Bing 网页翻译（免密钥），检测到源语言「en」）
-  判定：PASS（中文原文在目标语言=en 时真的翻了）
+exe = release/v0.4.5/TranslatorApp.exe
+时间 = 2026-11-06 09:43:38
 
 == S2 80 张全量回放（假服务器，拆两段：原文可见 / 译文可见）==
   清单 80 张 ｜ 认字成功 80 ｜ 翻译成功 80（其中命中缓存 2）失败 0 没走 0
-  原文可见(认字) min 16 / P50 41 / P95 250 / max 705 ms
-  译文可见(合计) min 19 / P50 43 / P95 253 / max 1010 / 平均 88 ms ｜ 墙钟 8.7 秒
-  翻译段 P50 2 / P95 3 / max 305 ms
-  翻译段超 2500ms 的样本 0 条
+  原文可见(认字) min 16 / P50 42 / P95 236 / max 726 ms
+  译文可见(合计) min 19 / P50 44 / P95 238 / max 1058 / 平均 89 ms ｜ 墙钟 8.7 秒
+  翻译段 P50 2 / P95 5 / max 332 ms
+  翻译段超 5000ms 的样本 0 条
   判定：PASS
 
-== S5 同一张连跑两次，第二次必须命中缓存 ==
-  联网那次：[2026-11-03 13:47:27.614] [INFO] 翻译：成功，31 字 → 译 36 字，用时 322 ms（Bing 网页翻译（免密钥），检测到源语言「en」）
-  缓存命中：[2026-11-03 13:47:27.801] [INFO] 翻译：命中缓存（36 字，本次命中 0 ms，累计命中 1 次；当初联网那次 322 ms）
-  命中次数 1 ｜ 本次命中耗时 [0] ms
-  判定：PASS（< 10ms）
-
-== S6 token 被拒（205）→ 强制刷新 → 继续翻 ==
-  [2026-11-03 13:47:35.714] [WARN] 翻译：token 被拒（statusCode=205 {"statusCode":205,"errorMessage":""}），强制刷新后重试一次
-  205 被拒 = 1 次（应 1）｜ 取票 = 2（应 2）｜ 成功 = 3（应 3）｜ 放弃 = 0（应 0）
-  判定：PASS
-
-== S3 断网（endpoint 指向拒连端口）：必须全降级、原文一字不少 ===
-  翻译段(断网) P50 2026 / P95 2047 / max 2054 ms ｜ 墙钟 170.1 秒
-  译文可见(合计) P50 2072 / P95 2240 / max 2704 ms
-  失败 80 ｜ 成功 0 ｜ 结果行 80/80 ｜ 原文为空 0 行 ｜ 翻译段超 2500ms 0 条
-  文案「没连上网，只显示原文」x80
-  判定：PASS
-
-== S4 开关关：零外发、卡片与阶段三完全一致 ==
-  ns，地址 = http://127.0.0.1:5099，来自 C:\Users\Administrator\AppData\Roaming\TranslatorApp\settings.json）
-  外发相关日志 0 行（应 0）｜ 翻译=没走 80 条（应 80）
-  判定：PASS
-
-配置已还原：12 个键，translateEnabled=False translateEndpoint=''
+配置已还原：13 个键，translateEnabled=True translateEndpoint=''
 
 == 汇总 ==
-  S1    PASS
-  P0E1  PASS
   S2    PASS
-  S5    PASS
-  S6    PASS
-  S3    PASS
-  S4    PASS
   总计：全 PASS

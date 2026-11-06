@@ -55,6 +55,15 @@
   <ItemGroup>
     <!-- Core\Capture\TesseractOcr.cs 等直接 using Tesseract，版本必须和主工程一致。 -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
+    <!--
+      【2026-11-06 第22轮补】Core\Capture\RapidOcrEngine.cs 直接 using RapidOcrNet（还有它带进来的 SkiaSharp）。
+      少了这条，上面那行 <Compile Include="..\Core\**\*.cs" /> 一编就报
+        error CS0234: 命名空间"Microsoft"中不存在"ML"
+        error CS0246: 未能找到类型或命名空间名"RapidOcrNet"/"SkiaSharp"/"SessionOptions"
+      也就是说：**这个测试工程以前根本编不过**，只是没人往里面加过一条要跑的测试，所以一直没被发现。
+      版本和 src\TranslatorApp\TranslatorApp.csproj 保持一致。
+    -->
+    <PackageReference Include="RapidOcrNet" Version="4.2.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />

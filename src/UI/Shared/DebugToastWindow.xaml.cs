@@ -522,8 +522,13 @@ public partial class DebugToastWindow : Window
         //   只动译文区，**不碰原文和详情** —— 用户此刻正在读原文。
         //   措辞「翻译中…」：用户原话写的是「翻译中...」（三个点），
         //   项目里其它文案一律用中文省略号，跟着项目走。
+        //
+        //   【2026-11-06 第22轮：长文本分段后，翻译态也可能已经有字了】
+        //     分段翻译每翻好一段就回调一次，此时 translating 仍是 true
+        //     （后面还有段没翻完，计时器要继续拿 8 秒）。那种情况走下面那个
+        //     「边翻边长」分支，这里只管「手上一个字都还没有」。
         // ==========================================================
-        if (translating)
+        if (translating && (translation is null || !translation.Success))
         {
             TranslationText.Text = "翻译中…";
             TransScroll.Visibility = Visibility.Visible;
@@ -532,6 +537,23 @@ public partial class DebugToastWindow : Window
             // 否则会留着上一次那行「Bing 网页翻译 · 2170 ms · 89 字」，等于撒谎。
             TransDetail.Visibility = Visibility.Collapsed;
             Core.Logging.AppLogger.Info("译文区已切到「翻译中…」");
+            return;
+        }
+
+        // ==========================================================
+        // 【2026-11-06 第22轮：还在翻，但已经有译文了 —— 只让字长出来】
+        //   用户原话：「不写进度，只让译文长出来」。
+        //   所以这里画译文正文，**刻意不显示**「引擎 · 耗时 · 字数」那一行：
+        //   分段期间那个数字每段都变一次，一直跳，比没有更烦人。
+        //   等最后一段翻完，App 会带着 translating=false 再调一次，
+        //   那时候才由下面的成功分支补上详情行。
+        // ==========================================================
+        if (translating && translation is not null && translation.Success)
+        {
+            TranslationText.Text = translation.Text;
+            TransScroll.Visibility = Visibility.Visible;
+            TransSep.Visibility = Visibility.Visible;
+            TransDetail.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -561,9 +583,16 @@ public partial class DebugToastWindow : Window
             //   原来那句「这段字刚翻过，直接用了上次的结果（没有再发出去）」
             //   从 DetailText 里删掉：同一件事不再两处都说。
             // ==========================================================
+            // ==========================================================
+            // 【2026-11-06 第22轮：分段失败要写在详情行末尾】
+            //   LongTextTranslator 会把「第 2、4 段没翻出来」放进 Detail。
+            //   用户拍板：已翻好的照样显示，只在末尾注明哪几段没出来。
+            //   一段都没失败时 Detail 是空串，括号整个不加。
+            // ==========================================================
+            string failedNote = translation.Detail.Length == 0 ? string.Empty : $"（{translation.Detail}）";
             TransDetail.Text = translation.FromCache
-                ? $"{ProviderNameOf(translation.Provider)} · 0 ms（上次的结果） · {translation.Text.Length} 字"
-                : $"{ProviderNameOf(translation.Provider)} · {translation.ElapsedMs} ms · {translation.Text.Length} 字";
+                ? $"{ProviderNameOf(translation.Provider)} · 0 ms（上次的结果） · {translation.Text.Length} 字{failedNote}"
+                : $"{ProviderNameOf(translation.Provider)} · {translation.ElapsedMs} ms · {translation.Text.Length} 字{failedNote}";
             TransDetail.Visibility = Visibility.Visible;
             return;
         }
