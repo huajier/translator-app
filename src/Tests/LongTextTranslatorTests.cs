@@ -83,4 +83,14 @@ public class LongTextTranslatorTests
         int after = string.Join(string.Empty, segments).Replace("\n", string.Empty).Length;
         Assert.Equal(before, after);
     }
+
+    [Fact]
+    public void 三千三百字不会切出九段()
+    {
+        // 3332 字 = 400 阈值下 8.33 段，整数除法判不出来（8 > 8 为 false），
+        // 会切出 9 段。这是 2026-11-06 第22轮审阅抓到的漏洞：
+        // 旧写法 text.Length / SegmentChars > MaxSegments 在 3201~3599 字整个区间都漏判。
+        var segments = LongTextTranslator.SplitIntoParagraphs(Lines(33, 100));
+        Assert.True(segments.Count <= 8, $"切出了 {segments.Count} 段");
+    }
 }

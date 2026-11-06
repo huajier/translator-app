@@ -210,9 +210,17 @@ internal static class LongTextTranslator
     {
         int threshold = SegmentChars;
 
-        // 段数上限：总长除以默认阈值超过上限时，把阈值抬高到「刚好 8 段」，
+        // 段数上限：总长超过「默认阈值 × 上限」时，把阈值抬高到「刚好 8 段」，
         // 保证最多 8 次网络往返（否则 5000 字会被切成 13 段，用户等 30 秒）。
-        if (text.Length / SegmentChars > MaxSegments)
+        //
+        // 【2026-11-06 第22轮审阅：这里原来是整数除法，漏掉了边界】
+        //   旧写法 text.Length / SegmentChars > MaxSegments 是整数除法：
+        //   3599 / 400 = 8，8 > 8 为 false → 不抬阈值，但 3599 字按 400 一段
+        //   实际能切出 9 段。上面注释写着「保证最多 8 次网络往返」，代码没做到。
+        //   实测越界区间（每行 100 字）：3130 字 8 段、3332 字 9 段、3433 字 9 段、
+        //   3534 字 9 段、3635 字 8 段（3635 恰好被整数除法判出来了）。
+        //   改成乘法比较就没有这个缝：> 3200 字才抬阈值，≤ 3200 走 400 一段。
+        if (text.Length > SegmentChars * MaxSegments)
             threshold = (int)Math.Ceiling(text.Length / (double)MaxSegments);
 
         var segments = new List<string>();
