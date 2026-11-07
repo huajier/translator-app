@@ -107,6 +107,10 @@ function Align-Lines([string[]]$want, [string[]]$got) {
 function Get-LineReport($entries, [hashtable]$actualRaw) {
     $rows = New-Object System.Collections.ArrayList
     $missing = New-Object System.Collections.ArrayList
+    # 行级基线要的是「每张图每一行过没过」。Rows 只记失败的，回答不了这个问题，
+    # 所以另外记全量键。键 = 图 id + '#' + 行序号（从 0 起，只数真值里的非空行，和 Total 同口径）。
+    $allKeys = New-Object System.Collections.ArrayList
+    $okKeys = New-Object System.Collections.ArrayList
     $modes = @{}
     $total = 0; $ok = 0; $changed = 0; $lost = 0; $extra = 0
 
@@ -124,15 +128,26 @@ function Get-LineReport($entries, [hashtable]$actualRaw) {
             [void]$missing.Add([string]$e.id)
             $lost += $want.Count
             $st.丢 += $want.Count
+            $mi = -1
             foreach ($w in $want) {
+                $mi++
+                # 缺测的图：键照记（否则下次拿它当基线会「少一批行」而不是「这批行错了」）
+                [void]$allKeys.Add("$($e.id)#$mi")
                 [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '丢'; Want = $w; Got = '<缺测>'; Dist = $w.Length })
             }
             continue
         }
 
+        # 对/改/丢 三件事都占掉一行真值，「多」是凭空多出来的、不占 —— 序号要跟着它跳。
+        $wi = -1
         foreach ($op in (Align-Lines $want (Split-Lines $actualRaw[[string]$e.id]))) {
+            if ($op.Kind -ne '多') {
+                $wi++
+                [void]$allKeys.Add("$($e.id)#$wi")
+            }
+            $key = "$($e.id)#$wi"
             switch ($op.Kind) {
-                '对' { $ok++; $st.对++ }
+                '对' { $ok++; $st.对++; [void]$okKeys.Add($key) }
                 '改' {
                     $changed++; $st.改++
                     [void]$rows.Add([pscustomobject]@{ Id = [string]$e.id; Mode = $mode; Kind = '改'; Want = $op.Want; Got = $op.Got; Dist = (EditDist $op.Want $op.Got) })
@@ -153,6 +168,7 @@ function Get-LineReport($entries, [hashtable]$actualRaw) {
         Total = $total; Ok = $ok; Changed = $changed; Lost = $lost; Extra = $extra
         Bad = ($changed + $lost + $extra)
         Rows = @($rows); Missing = @($missing); Modes = $modes
+        AllKeys = @($allKeys); OkKeys = @($okKeys)
     }
 }
 
@@ -347,7 +363,60 @@ if ($按行) {
         [pscustomobject]@{ id = $id; mode = [string]$e.mode; lines = @($e.lines) }
     }
 
-    Show-LineReport (Get-LineReport @($entries) $actualRaw)
+    $r = Get-LineReport @($entries) $actualRaw
+    Show-LineReport $r
+
+    if ($Approve) {
+        # ---------- 行级基线的闸门（同段级三步，只是键换成「图 id#行号」）----------
+        # 为什么单独一个文件（不塞进基线.json）：段级 -Approve 是整文件覆写，
+        # 行级的键写进同一个文件会被下一次段级 -Approve 冲掉。
+        # 放 tools\素材\（进 git），和段级基线同一个理由：这里才不会被语料清理带走。
+        $lineBasePath = Join-Path $root 'tools\素材\行基线.json'
+        if ($r.Missing.Count -gt 0) {
+            Write-Host ("  ⛔ 缺测 {0} 张图（{1}），不能当基线（缺的图会被记成「错」，下次就会谎报退步）" -f $r.Missing.Count, ($r.Missing -join '、')) -ForegroundColor Red
+            Write-Host ""
+            exit 1
+        }
+        # 这份 map 必须在 if 之前建：第一次跑没有基线文件，走完 skipped 的 if 还得用它写文件。
+        $nowLineOk = @{}
+        foreach ($k in $r.OkKeys) { $nowLineOk[$k] = $true }
+        if (Test-Path $lineBasePath) {
+            $oldLine = Get-Content $lineBasePath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $oldLineOk = @{}
+            foreach ($p in $oldLine.行.PSObject.Properties) { $oldLineOk[$p.Name] = [bool]$p.Value }
+            # 只看「两边都有」的键：新图多了行、旧图删了行，都不该算退步。
+            $lineRegress = @(
+                $r.AllKeys | Where-Object { $oldLineOk.ContainsKey($_) -and $oldLineOk[$_] -and -not $nowLineOk.ContainsKey($_) } | Sort-Object
+            )
+            if ($lineRegress.Count -gt 0 -and -not $Force) {
+                Write-Host ("  拒绝写新行基线：这轮比旧基线退步 {0} 行（{1}）。" -f $lineRegress.Count, (($lineRegress | Select-Object -First 20) -join '、')) -ForegroundColor Red
+                if ($lineRegress.Count -gt 20) { Write-Host ("  （只列前 20 行，共 {0} 行）" -f $lineRegress.Count) -ForegroundColor Red }
+                Write-Host "  退步不该被写成标准。先修好再 -Approve；确实要接受这个退步，加 -Force。" -ForegroundColor Red
+                Write-Host ("  行基线文件没有改动：{0}" -f $lineBasePath) -ForegroundColor DarkGray
+                Write-Host ""
+                exit 1
+            }
+            if ($lineRegress.Count -gt 0 -and $Force) {
+                Write-Host ("  ⚠️ -Force：明知这轮比旧行基线退步 {0} 行（{1}），照样写。" -f $lineRegress.Count, (($lineRegress | Select-Object -First 20) -join '、')) -ForegroundColor Yellow
+            }
+        }
+
+        $lineOkMap = [ordered]@{}
+        foreach ($k in $r.AllKeys) { $lineOkMap[$k] = $nowLineOk.ContainsKey($k) }
+        $lineObj = [ordered]@{
+            时间 = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+            结果 = $Result
+            行   = $lineOkMap
+        }
+        $lineDir = Split-Path -Parent $lineBasePath
+        if (-not (Test-Path $lineDir)) { New-Item -ItemType Directory -Path $lineDir -Force | Out-Null }
+        [System.IO.File]::WriteAllText($lineBasePath, ($lineObj | ConvertTo-Json -Depth 4), (New-Object System.Text.UTF8Encoding($false)))
+        Write-Host ("  ✅ 已写入 {0} 行行级基线（{1} 行判对）：{2}" -f $r.AllKeys.Count, $r.Ok, $lineBasePath) -ForegroundColor Green
+        Write-Host ""
+        return
+    }
+
+    # 没加 -Approve：跟以前一样只打印成绩，一个文件都不写。
     return
 }
 
