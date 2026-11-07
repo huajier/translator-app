@@ -12,6 +12,8 @@ param(
     [string]$Result = 'tools\临时\回放-结果.txt',
     [switch]$All,
     [switch]$Approve,
+    [switch]$自检,
+    [switch]$Force,
     [switch]$按行,
     [string]$行真值 = 'tools\素材\行真值.json'
 )
@@ -50,45 +52,6 @@ function EditDist([string]$a, [string]$b) {
         $t = $prev; $prev = $cur; $cur = $t
     }
     return $prev[$n]
-}
-
-# ---------- 读标准答案 ----------
-$answers = [ordered]@{}
-$matNo = 0
-foreach ($n in '验收标准答案.txt', '验收标准答案2.txt', '验收标准答案3.txt') {
-    $matNo++
-    $p = Join-Path $root "tools\素材\$n"
-    if (-not (Test-Path $p)) { throw "找不到标准答案：$p" }
-    $curId = $null; $curText = ''
-    foreach ($l in [System.IO.File]::ReadAllLines($p, [System.Text.Encoding]::UTF8)) {
-        if ($l -match '^\s*#' -or $l.Trim() -eq '') { continue }
-        if ($l -match '^([A-Z]\d+)\|(.*)$') {
-            if ($curId) { $answers["材料$matNo-$curId"] = Norm $curText }
-            $curId = $Matches[1]; $curText = $Matches[2]
-        } elseif ($curId) {
-            $curText = $curText + ' ' + $l.Trim()
-        }
-    }
-    if ($curId) { $answers["材料$matNo-$curId"] = Norm $curText }
-}
-
-# ---------- 读回放结果 ----------
-$resultPath = if ([IO.Path]::IsPathRooted($Result)) { $Result } else { Join-Path $root $Result }
-if (-not (Test-Path $resultPath)) { throw "找不到回放结果：$resultPath" }
-
-# ---------- 实战图：答案就存在图库清单里，不进 56 段 ----------
-# 不加进 $answers 是故意的：56 段是验收尺子，加进实战图会让这把尺子永远动。
-# 实战图单独列一段「实战」成绩，有错的就大声报出来。
-$corpusManifest = Join-Path $root 'tools\语料\清单.json'
-$battle = [ordered]@{}
-if (Test-Path $corpusManifest) {
-    $doc = [System.IO.File]::ReadAllText($corpusManifest, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
-    foreach ($it in @($doc.images)) {
-        if ($it.mat -ne 0 -or -not $it.answer) { continue }
-        $n = [int]([IO.Path]::GetFileNameWithoutExtension($it.file))
-        $key = if ($n -gt 1) { "实战-$($it.id)-$n" } else { "实战-$($it.id)" }
-        $battle[$key] = Norm ([string]$it.answer)
-    }
 }
 
 # ---------- 行级量具（S0）----------
@@ -226,6 +189,115 @@ function Show-LineReport($r) {
     }
     Write-Host ""
 }
+
+# 量具自检：注入「改 1 字 / 删 1 行 / 加 1 行」，必须各报 1 错；恢复后必须 0 错。
+# 这是 S0 的闸门：自检不过 = 尺子坏，停，不许改识别代码（方案第 4 节 S0）。
+function Invoke-LineSelfCheck {
+    Write-Host ""
+    Write-Host "=== 行级量具自检（S0）===" -ForegroundColor Cyan
+    $fixture = @(
+        [pscustomobject]@{ id = '自检-单行-1'; mode = '单行'; lines = @('STRE', 'ATTRIBUTES') },
+        [pscustomobject]@{ id = '自检-整块-1'; mode = '整块'; lines = @('Name: Barony', 'Level 3', 'HP 20/20') }
+    )
+    $base = @{
+        '自检-单行-1' = 'STRE⏎ATTRIBUTES'
+        '自检-整块-1' = 'Name: Barony⏎Level 3⏎HP 20/20'
+    }
+    $cases = @(
+        [pscustomobject]@{ Name = '基准（无注入）'; Expect = 0; Kind = ''; Map = $base },
+        [pscustomobject]@{ Name = '改 1 字（Level 3 → Level 8）'; Expect = 1; Kind = '改'; Map = @{
+                '自检-单行-1' = 'STRE⏎ATTRIBUTES'
+                '自检-整块-1' = 'Name: Barony⏎Level 8⏎HP 20/20'
+            } },
+        [pscustomobject]@{ Name = '删 1 行（删掉 ATTRIBUTES）'; Expect = 1; Kind = '丢'; Map = @{
+                '自检-单行-1' = 'STRE'
+                '自检-整块-1' = 'Name: Barony⏎Level 3⏎HP 20/20'
+            } },
+        [pscustomobject]@{ Name = '加 1 行（多出 EXTRA LINE）'; Expect = 1; Kind = '多'; Map = @{
+                '自检-单行-1' = 'STRE⏎ATTRIBUTES'
+                '自检-整块-1' = 'Name: Barony⏎Level 3⏎EXTRA LINE⏎HP 20/20'
+            } },
+        [pscustomobject]@{ Name = '恢复（改回原样）'; Expect = 0; Kind = ''; Map = $base }
+    )
+
+    $fail = 0
+    $n = 0
+    foreach ($c in $cases) {
+        $n++
+        $r = Get-LineReport $fixture $c.Map
+        $badOk = ($r.Bad -eq $c.Expect)
+        $kindOk = $true
+        if ($c.Kind -ne '') {
+            $kindCount = switch ($c.Kind) { '改' { $r.Changed } '丢' { $r.Lost } '多' { $r.Extra } }
+            $kindOk = ($kindCount -eq 1)
+        }
+        $totalOk = ($r.Total -eq 5)
+        if ($badOk -and $kindOk -and $totalOk) {
+            Write-Host ("  [{0}] {1}：真值 {2} 行、错 {3}（改 {4}/丢 {5}/多 {6}）→ PASS" -f `
+                $n, $c.Name, $r.Total, $r.Bad, $r.Changed, $r.Lost, $r.Extra) -ForegroundColor Green
+        } else {
+            $fail++
+            Write-Host ("  [{0}] {1}：真值 {2} 行、错 {3}（改 {4}/丢 {5}/多 {6}）→ FAIL（期望错 {7}）" -f `
+                $n, $c.Name, $r.Total, $r.Bad, $r.Changed, $r.Lost, $r.Extra, $c.Expect) -ForegroundColor Red
+        }
+    }
+
+    Write-Host ""
+    if ($fail -eq 0) {
+        Write-Host ("  自检 {0}/{0} PASS：行级尺子能用" -f $n) -ForegroundColor Green
+        Write-Host ""
+        return $true
+    }
+    Write-Host ("  自检 {0}/{1} PASS —— 量具坏，停，不许改识别代码" -f ($n - $fail), $n) -ForegroundColor Red
+    Write-Host ""
+    return $false
+}
+
+# 自检只用量具本身，不依赖语料/答案文件 —— 放在最前面，语料还没造也能验尺子。
+if ($自检) {
+    if (-not (Invoke-LineSelfCheck)) { exit 1 }
+    return
+}
+
+# ---------- 读标准答案 ----------
+$answers = [ordered]@{}
+$matNo = 0
+foreach ($n in '验收标准答案.txt', '验收标准答案2.txt', '验收标准答案3.txt') {
+    $matNo++
+    $p = Join-Path $root "tools\素材\$n"
+    if (-not (Test-Path $p)) { throw "找不到标准答案：$p" }
+    $curId = $null; $curText = ''
+    foreach ($l in [System.IO.File]::ReadAllLines($p, [System.Text.Encoding]::UTF8)) {
+        if ($l -match '^\s*#' -or $l.Trim() -eq '') { continue }
+        if ($l -match '^([A-Z]\d+)\|(.*)$') {
+            if ($curId) { $answers["材料$matNo-$curId"] = Norm $curText }
+            $curId = $Matches[1]; $curText = $Matches[2]
+        } elseif ($curId) {
+            $curText = $curText + ' ' + $l.Trim()
+        }
+    }
+    if ($curId) { $answers["材料$matNo-$curId"] = Norm $curText }
+}
+
+# ---------- 读回放结果 ----------
+$resultPath = if ([IO.Path]::IsPathRooted($Result)) { $Result } else { Join-Path $root $Result }
+if (-not (Test-Path $resultPath)) { throw "找不到回放结果：$resultPath" }
+
+# ---------- 实战图：答案就存在图库清单里，不进 56 段 ----------
+# 不加进 $answers 是故意的：56 段是验收尺子，加进实战图会让这把尺子永远动。
+# 实战图单独列一段「实战」成绩，有错的就大声报出来。
+$corpusManifest = Join-Path $root 'tools\语料\清单.json'
+$battle = [ordered]@{}
+if (Test-Path $corpusManifest) {
+    $doc = [System.IO.File]::ReadAllText($corpusManifest, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+    foreach ($it in @($doc.images)) {
+        if ($it.mat -ne 0 -or -not $it.answer) { continue }
+        $n = [int]([IO.Path]::GetFileNameWithoutExtension($it.file))
+        $key = if ($n -gt 1) { "实战-$($it.id)-$n" } else { "实战-$($it.id)" }
+        $battle[$key] = Norm ([string]$it.answer)
+    }
+}
+
 
 
 
@@ -383,6 +455,29 @@ if ($Approve) {
         Write-Host ""
         return
     }
+    # ---------- 写基线前的闸门：有退步就不许写 ----------
+    # 为什么要有这一关：-Approve 是整个流程里唯一会「写标准」的操作。
+    # 这轮要是跑得比上次差，按下去就等于把退步洗白成「本来就这样」，从此再也不报警。
+    # 这一关不许靠人记得查 —— 让工具自己拒绝。逃生门是 -Force（明知会掉几段也要接受时用）。
+    if (Test-Path $baselinePath) {
+        $oldBase = Get-Content $baselinePath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $oldOk = @{}
+        foreach ($p in $oldBase.段.PSObject.Properties) { $oldOk[$p.Name] = [bool]$p.Value }
+        $wouldRegress = @(
+            $nowOk.Keys | Where-Object { $oldOk.ContainsKey($_) -and $oldOk[$_] -and -not $nowOk[$_] } | Sort-Object
+        )
+        if ($wouldRegress.Count -gt 0 -and -not $Force) {
+            Write-Host ("  拒绝写新基线：这轮比旧基线退步 {0} 段（{1}）。" -f $wouldRegress.Count, ($wouldRegress -join '、')) -ForegroundColor Red
+            Write-Host "  退步不该被写成标准。先修好再 -Approve；确实要接受这个退步，加 -Force。" -ForegroundColor Red
+            Write-Host ("  基线文件没有改动：{0}" -f $baselinePath) -ForegroundColor DarkGray
+            Write-Host ""
+            exit 1
+        }
+        if ($wouldRegress.Count -gt 0 -and $Force) {
+            Write-Host ("  ⚠️ -Force：明知这轮比旧基线退步 {0} 段（{1}），照样写。" -f $wouldRegress.Count, ($wouldRegress -join '、')) -ForegroundColor Yellow
+        }
+    }
+
     $obj = [ordered]@{
         时间 = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
         结果 = $Result
