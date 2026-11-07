@@ -15,11 +15,79 @@ param(
     [switch]$自检,
     [switch]$Force,
     [switch]$按行,
-    [string]$行真值 = 'tools\素材\行真值.json'
+    [string]$行真值 = 'tools\素材\行真值.json',
+    [switch]$忽略配置
 )
 
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+
+# ---------- 配置指纹（2026-11-07 补）----------
+# 为什么要有：2026-11-07 报出「假退步 28 段」，根因不是代码退步，是基线在
+#   rapidOcrPrimary=false（全走 Tesseract）时生成，今天配置改成 true 换了通道，
+#   拿新配置的成绩比旧配置的基线，比出来的「退步」根本不是代码干的。
+# 所以基线必须自己记下它是「在什么配置下」跑出来的；比成绩之前先比配置，
+#   配置一变就拒绝比对，免得配置漂移长期伪装成代码退步。
+# 默认值照抄 src\Core\Capture\AppSettings.cs（:45 / :65 / :82 / :106 / :124 / :152）。
+# 读不到 / 缺字段 / JSON 坏了都退回默认值，绝不因为读配置失败中断量具。
+function Get-ConfigFingerprint {
+    $fp = [ordered]@{
+        rapidOcrPrimary           = $false
+        rapidOcrRec               = 'en'
+        rapidOcrUseOriginal       = $false
+        rapidOcrKeepTrailingPunct = $true
+        rapidOcrSmallBoxUpscale   = $true
+        windowsOnly               = $false
+    }
+    $settingsPath = Join-Path $env:APPDATA 'TranslatorApp\settings.json'
+    if (-not (Test-Path $settingsPath)) { return $fp }
+    try {
+        $doc = [System.IO.File]::ReadAllText($settingsPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+    } catch {
+        return $fp
+    }
+    if ($null -eq $doc) { return $fp }
+    foreach ($p in $doc.PSObject.Properties) {
+        if (-not $fp.Contains($p.Name)) { continue }
+        if ($null -eq $p.Value) { continue }
+        if ($fp[$p.Name] -is [bool]) { $fp[$p.Name] = [bool]$p.Value }
+        else { $fp[$p.Name] = [string]$p.Value }
+    }
+    return $fp
+}
+
+# 返回真正变了的字段（空数组 = 一致）。$old 可能是 $null（老格式基线没有「配置」）。
+# 🔴 必须写成「返回数组本体」，不许 return @(...)：只有一个字段变了时，return 会把单元素
+#   数组拆成对象本身，调用方拿到的是 PSCustomObject，.Count 为 $null，`-gt 0` 静默为假
+#   —— 配置不一致就再也拦不住了（2026-11-07 自测 A4 当场踩到，红字一条都不出、exit 0）。
+function Compare-ConfigFingerprint($old, $cur) {
+    $diff = New-Object System.Collections.ArrayList
+    foreach ($k in $cur.Keys) {
+        $o = Get-ConfigValue $old $k
+        $n = $cur[$k]
+        # 老基线里的 bool 可能存成了字符串（手改过），统一按原文比，避免 $false→'false' 假报警。
+        if ("$o" -ne "$n") { [void]$diff.Add([pscustomobject]@{ Name = $k; Was = $o; Now = $n }) }
+    }
+    return , $diff.ToArray()
+}
+
+function Get-ConfigValue($cfg, [string]$name) {
+    if ($null -eq $cfg) { return $null }
+    if ($cfg -is [System.Collections.IDictionary]) { if ($cfg.Contains($name)) { return $cfg[$name] } else { return $null } }
+    $p = $cfg.PSObject.Properties[$name]
+    if ($null -eq $p) { return $null }
+    return $p.Value
+}
+
+# 打印变了哪些字段。bool 打成 settings.json 那样的 false/true，方便照着改文件。
+function Show-ConfigDiff($diff, $color = 'Red') {
+    foreach ($d in @($diff)) {
+        $was = if ($d.Was -is [bool]) { "$($d.Was)".ToLower() } else { $d.Was }
+        $now = if ($d.Now -is [bool]) { "$($d.Now)".ToLower() } else { $d.Now }
+        Write-Host ("   {0}: {1} → {2}" -f $d.Name, $was, $now) -ForegroundColor $color
+    }
+}
+
 
 # ---------- 归一化（与 比对成绩.ps1 同一份）----------
 function Norm([string]$s) {
@@ -380,8 +448,28 @@ if ($按行) {
         # 这份 map 必须在 if 之前建：第一次跑没有基线文件，走完 skipped 的 if 还得用它写文件。
         $nowLineOk = @{}
         foreach ($k in $r.OkKeys) { $nowLineOk[$k] = $true }
+        # 配置指纹也必须在 if 之前取：没有行基线文件（第一次跑）也要把它写进新基线。
+        $curCfg = Get-ConfigFingerprint
         if (Test-Path $lineBasePath) {
             $oldLine = Get-Content $lineBasePath -Raw -Encoding UTF8 | ConvertFrom-Json
+
+            # 配置一改，旧行基线就悄悄作废了 —— 和段级同一道坎，这里比它先拦。
+            # 读不出来就当老格式（返回空指纹），不会把坏文件当成「配置一致」。
+            $oldCfg = if ($null -ne $oldLine -and $null -ne $oldLine.PSObject.Properties['配置']) { $oldLine.配置 } else { $null }
+            if ($忽略配置) {
+                Write-Host "  ⚠️ -忽略配置：跳过了配置比对，本次成绩可能不可比" -ForegroundColor Yellow
+            } elseif ($null -eq $oldCfg) {
+                if ($null -ne $oldLine) { Write-Host "  行基线没有配置指纹（老格式），本轮跳过配置比对" -ForegroundColor DarkGray }
+            } else {
+                $cfgDiff = @(Compare-ConfigFingerprint $oldCfg $curCfg)
+                # 这段整块就在 if ($Approve) 里（行基线只有 -Approve 才会写），
+                # 所以和段级不一样：这里只提示，不 exit 1。配置变了正是它要重写基线的时候。
+                if ($cfgDiff.Count -gt 0) {
+                    Write-Host "  配置与旧基线不同，将写入新配置：" -ForegroundColor DarkGray
+                    Show-ConfigDiff $cfgDiff 'DarkGray'
+                }
+            }
+
             $oldLineOk = @{}
             foreach ($p in $oldLine.行.PSObject.Properties) { $oldLineOk[$p.Name] = [bool]$p.Value }
             # 只看「两边都有」的键：新图多了行、旧图删了行，都不该算退步。
@@ -406,6 +494,7 @@ if ($按行) {
         $lineObj = [ordered]@{
             时间 = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
             结果 = $Result
+            配置 = $curCfg
             行   = $lineOkMap
         }
         $lineDir = Split-Path -Parent $lineBasePath
@@ -518,6 +607,42 @@ if ($extra.Count -gt 0) {
 # 放 `tools\素材\`（进 git）而不是 `tools\语料\`（被 .gitignore 忽略，会被清掉）。
 $baselinePath = Join-Path $root 'tools\素材\基线.json'
 
+# ---------- 比成绩之前先比配置（2026-11-07 补，本轮核心）----------
+# 规则：老格式（没「配置」）→ 灰字放行；一致 → 静默；不一致 → 纯比对拒绝（exit 1），
+#       -Approve 只提示（配置变了正是它要写新基线的时候）。
+# -忽略配置 是唯一逃生门，但要说清楚这次成绩不可比。
+$curCfg = Get-ConfigFingerprint
+$oldBase = $null
+$oldCfg = $null
+if (Test-Path $baselinePath) {
+    $oldBase = Get-Content $baselinePath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($null -ne $oldBase -and $null -ne $oldBase.PSObject.Properties['配置']) { $oldCfg = $oldBase.配置 }
+}
+$cfgDiff = @()
+if ($忽略配置) {
+    Write-Host "  ⚠️ -忽略配置：跳过了配置比对，本次成绩可能不可比" -ForegroundColor Yellow
+} elseif ($null -ne $oldBase -and $null -eq $oldCfg) {
+    Write-Host "  基线没有配置指纹（老格式），本轮跳过配置比对" -ForegroundColor DarkGray
+} elseif ($null -ne $oldCfg) {
+    # @() 兜底：保证 $cfgDiff 永远是数组，.Count 永远有值。
+    $cfgDiff = @(Compare-ConfigFingerprint $oldCfg $curCfg)
+}
+
+if ($Approve) {
+    if ($cfgDiff.Count -gt 0) {
+        Write-Host "  配置与旧基线不同，将写入新配置：" -ForegroundColor DarkGray
+        Show-ConfigDiff $cfgDiff 'DarkGray'
+    }
+} elseif ($cfgDiff.Count -gt 0 -and -not $忽略配置) {
+    Write-Host "  ⛔ 基线的配置和当前不一致，不可比：" -ForegroundColor Red
+    Show-ConfigDiff $cfgDiff
+    Write-Host "  先把配置改回基线那样，或者用 -Approve 重新生成基线。" -ForegroundColor Red
+    Write-Host "  这道检查是为了防止「配置改了、比出来的退步其实不是代码退步」。" -ForegroundColor Red
+    Write-Host "  确实要拿不同配置的成绩硬比，加 -忽略配置。" -ForegroundColor DarkGray
+    Write-Host ""
+    exit 1
+}
+
 if ($Approve) {
     if ($missing.Count -gt 0 -or $battleMissing.Count -gt 0) {
         Write-Host ("  ⛔ 缺测 {0} 段（56 段里缺 {1}、实战图缺 {2}），不能当基线（缺的段会被记成「错」，下次就会谎报退步）" -f ($missing.Count + $battleMissing.Count), $missing.Count, $battleMissing.Count) -ForegroundColor Red
@@ -550,6 +675,7 @@ if ($Approve) {
     $obj = [ordered]@{
         时间 = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
         结果 = $Result
+        配置 = $curCfg
         段   = $nowOk
         # 差多少字符：只给「本来就错」的段用。它让「错得更厉害」也能报警。
         差   = $nowDist
