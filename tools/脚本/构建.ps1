@@ -13,6 +13,7 @@
 它按顺序做 5 件事：
   1. 关掉正在运行的 TranslatorApp —— 不关的话 exe 被占用，新文件写不进去（报"拒绝访问"）
   2. dotnet publish → 输出到 release\v<版本号>\
+  2.5 把 en 识别模型装进发布目录并核对 SHA256（缺了就 fail）
   3. 检查并去掉新文件可能带上的「强制完整性标签」
   3.5 确保托盘图标 assets\tray.ico 真的在发布目录里（否则退回白图标）
   3.7 把 x64\ 下的原生库强制换成 Tesseract 5.5.3，并当场核对版本
@@ -77,6 +78,36 @@ if ($problems) {
     exit 1
 }
 Write-Host "编译完成：0 错误，0 警告。" -ForegroundColor Green
+
+# ---- 第 2.5 步：把 en 识别模型装进发布目录（缺了就 fail，不许静默降级） ----
+# 【2026-11-07 加：这一段补的是一个「静默退化了大半个月」的洞】
+#
+#   RapidOcrEngine.cs:86-95 的选模型逻辑是对的：有 en_PP-OCRv5_rec_mobile.onnx
+#   + ppocrv5_en_dict.txt 就用 en，缺了就 Warn 一句「英文识别模型缺失」退回包自带 latin。
+#   问题不在那段代码，在于**构建从来没把 en 模型放进发布目录**：
+#   grep "装模型" 在本文件里长期是 0 命中，tools\脚本\装模型.ps1 是手工作坊，
+#   结果 v1.9 ~ v0.4.7 全部只有 latin，阶段四日志里那条警告出现 183 次。
+#   76.8% 的 L_行 是 release\v0.3.4.3-1c 上用 en 模型测出来的，
+#   后面这些版本量出来的成绩和那不是一个模型，没有可比性。
+#
+#   所以模型跟 Tesseract 5.5.3 一样，必须**由构建脚本保证**：
+#   源目录 tools\模型\en_v5\（不在 tools\临时\ 下，不会被当临时文件清走），
+#   调 装模型.ps1 -核对 拷进去并比对 SHA256，对不上直接 exit 1。
+#   ——宁可停下来报错，也不要交一个「能跑但认字能力悄悄降级」的产物。
+$modelScript = Join-Path $PSScriptRoot '装模型.ps1'
+Write-Host ""
+Write-Host "第 2.5 步：把 en 识别模型装进 $outDir ……"
+& $modelScript -目标目录 $outDir -核对
+$modelDir = Join-Path $outDir 'models\v5'
+foreach ($必需 in @('en_PP-OCRv5_rec_mobile.onnx', 'ppocrv5_en_dict.txt')) {
+    $p = Join-Path $modelDir $必需
+    if (-not (Test-Path $p)) {
+        Write-Host ""
+        Write-Host "致命：发布目录里没有 $必需 —— 程序会悄悄退回 latin，成绩和阶段三没有可比性。" -ForegroundColor Red
+        exit 1
+    }
+}
+Write-Host "en 识别模型已就位：$modelDir" -ForegroundColor Green
 
 # ---- 第 3 步：去掉文件上的强制完整性标签 ----
 Write-Host "第 3 步：检查并清理 $outDir 下的文件标签……"

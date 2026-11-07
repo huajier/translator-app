@@ -66,7 +66,12 @@ if (Test-Path $logPath) {
     $all = [IO.File]::ReadAllLines($logPath, [Text.Encoding]::UTF8)
     $new = if ($all.Count -gt $logBefore) { $all[$logBefore..($all.Count - 1)] } else { @() }
     foreach ($l in $new) {
-        if ($l -match '回放\s+(\S+?)：.*?耗时\s+(\d+)\s*ms') { $times[$Matches[1]] = [int]$Matches[2] }
+        # 【2026-11-07 改正则】第 11 轮（T3a-补）把回放日志从「…耗时 780 ms」改成
+        #   「回放 行-01：成功，31 字，认字 780 ms / 翻译 1002 ms / 合计 1782 ms，翻译 = …」，
+        #   老正则 `耗时 (\d+) ms` 再也匹配不上 → 这一段从此静默输出「日志里没抓到」，
+        #   连续几轮报耗时都是空的，没人发现。现在按新格式抓「合计」，老格式作兜底。
+        if ($l -match '回放\s+(\S+?)：.*?合计\s+(\d+)\s*ms') { $times[$Matches[1]] = [int]$Matches[2] }
+        elseif ($l -match '回放\s+(\S+?)：.*?耗时\s+(\d+)\s*ms') { $times[$Matches[1]] = [int]$Matches[2] }
     }
 }
 $msList = @($times.Values)

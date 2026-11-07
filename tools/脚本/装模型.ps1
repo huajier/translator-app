@@ -5,15 +5,23 @@
 #   .\tools\脚本\装模型.ps1 -目标目录 release\v0.3.4.3-Rapid-en -核对
 #
 # 做的事：
-#   1. 从 tools\临时\models\en_v5\ 拷 en_PP-OCRv5_rec_mobile.onnx + ppocrv5_en_dict.txt
+#   1. 从 tools\模型\en_v5\ 拷 en_PP-OCRv5_rec_mobile.onnx + ppocrv5_en_dict.txt
 #      到 <目标目录>\models\v5\
+#
+# 【2026-11-07 改源目录：tools\临时\models\en_v5 → tools\模型\en_v5】
+#   旧目录在 tools\临时\ 下，被清过，模型全机只剩 release\v0.3.4.3-1c\models\v5\ 一份。
+#   构建流程从来没调过本脚本（grep "装模型" 在 构建.ps1 里是 0 命中），
+#   于是 v1.9~v0.4.7 全都没有 en 模型，程序每次启动都落回 latin，
+#   日志里「英文识别模型缺失」在阶段四出现 183 次。
+#   现在源目录固定在 tools\模型\en_v5\（不在 tools\临时\ 下，不会被当临时文件清走），
+#   并且由 构建.ps1 第 2.5 步强制调用 + -核对：缺一个文件就构不出来。
 #   2. 打印体积、SHA256，并与已知值对比（-核对 时不一致就报错退出）
 #
 # 为什么不在 git 里：.onnx 是二进制，用户规定模型不进仓库（见 .gitignore 的 *.onnx 兜底）。
 
 param(
     [Parameter(Mandatory = $true)][string]$目标目录,
-    [string]$源目录 = 'tools\临时\models\en_v5',
+    [string]$源目录 = 'tools\模型\en_v5',
     [switch]$核对
 )
 
@@ -34,7 +42,7 @@ New-Item -ItemType Directory -Force -Path $目标模型目录 | Out-Null
 $失败 = 0
 foreach ($名 in $期望.Keys) {
     $源 = Join-Path $源目录 $名
-    if (-not (Test-Path $源)) { throw "源文件不存在：$源（先下载模型，见 tools\日志\阶段3-S3-换模型.md）" }
+    if (-not (Test-Path $源)) { throw "源文件不存在：$源（模型不进 git；本机固定备份在 tools\模型\en_v5\，指纹见 tools\日志\阶段3-S3-换模型.md）" }
     $目标 = Join-Path $目标模型目录 $名
     Copy-Item -Path $源 -Destination $目标 -Force
 
