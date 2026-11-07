@@ -62,6 +62,37 @@ internal sealed partial class OcrTextCapture : ITextCapture
                 if (trimmed.Length > 0) rapidText = trimmed;
 
                 // ==========================================================
+                // 【2026-11-07 字数量闸门】
+                //
+                //   问题：RapidOcrMinScore（0.55）只管分数，不管认出几个字。
+                //     一个孤零零的 `c` 平均分也有 0.59，于是直接 return，
+                //     把后面已经读到 32 个字的 Tesseract 顶掉（材料2-E1 就是这么废的）。
+                //
+                //   依据（2026-11-07 实测）：
+                //     · 全量 331 张 15 段失败，全部是「只认到 0~1 个字就采纳」
+                //       （13 段 1 个字、2 段 0 个字）；
+                //     · 这 15 段在 10-26 那次回放里全对（那天走的是 Tesseract）；
+                //     · 1,867 + 10,586 个样本交叉验证：认到 0~1 个字的 60 次，
+                //       最终成功 0 次 —— 这条路上一次都没对过；
+                //     · 防误杀：认到 2~3 个字被采纳的样本里成功 11 段，
+                //       都是 UI 上的真短文本（Back / ON / PER），不能动。
+                //
+                //   做法：置 rapidText = null 等于「没认出来」，直接出这个 if，
+                //     落到下面那个**原封不动**的回退分支（不需要 goto、不需要改它）。
+                //   字数必须在这行之后数：trim 会削标点，削完的才是要采纳的内容。
+                // ==========================================================
+                int rapidChars = TextNormalizer.CountMeaningfulChars(rapidText);
+                if (rapidChars < RapidOcrMinChars)
+                {
+                    AppLogger.Info(
+                        $"【RapidOCR 主通道】只认到 {rapidChars} 个有效字符（门槛 {RapidOcrMinChars}），视为没认出来，回退旧通道");
+                    rapidText = null;
+                }
+            }
+
+            if (rapidText is not null && rapidScore >= RapidOcrMinScore)
+            {
+                // ==========================================================
                 // 【2026-10-29 阶段三 S4：整块没认好的提示信号】
                 //
                 //   触发条件（申请单 tools\日志\阶段3-S4-申请单-整块提示.md）：
