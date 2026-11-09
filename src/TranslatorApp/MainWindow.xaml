@@ -94,7 +94,23 @@
                       KeyDown="OnLangKeyDown" />
         </StackPanel>
 
-        <!-- 第三行：怎么用（只这一句；退出方式不写进来，用户拍板过） -->
+        <!-- 第三行：RapidOCR 引擎开关（2026-11-09 用户要求「开关不能放在主页面里面吗」） -->
+        <!-- 只有一个勾选框，取舍说明全部放进 tooltip（DESIGN.md：主窗口不许有大段说明） -->
+        <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+            <CheckBox x:Name="RapidOcrCheck"
+                      VerticalAlignment="Center"
+                      Content="游戏字识别（快）"
+                      Checked="OnRapidOcrChecked"
+                      Unchecked="OnRapidOcrUnchecked">
+                <CheckBox.ToolTip>
+                    <ToolTip MaxWidth="320" ToolTipService.ShowDuration="60000">
+                        <TextBlock TextWrapping="Wrap">开：长文本快（2 秒级），但小字可能读歪&#x0a;关：长文本准，但慢很多（可能十几秒）</TextBlock>
+                    </ToolTip>
+                </CheckBox.ToolTip>
+            </CheckBox>
+        </StackPanel>
+
+        <!-- 第四行：怎么用（只这一句；退出方式不写进来，用户拍板过） -->
         <TextBlock Text="按住 Ctrl + Alt 在屏幕上拖出一个框，松手就能识别并翻译。"
                    FontSize="12"
                    Foreground="#777777"

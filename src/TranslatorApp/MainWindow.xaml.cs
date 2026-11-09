@@ -80,6 +80,9 @@ public partial class MainWindow : Window
         {
             TranslateCheck.IsChecked = AppSettings.TranslateEnabled;
 
+            // 2026-11-09：RapidOCR 开关也搬到主界面，这里把当前值搬上去
+            RapidOcrCheck.IsChecked = AppSettings.RapidOcrPrimary;
+
             string cur = AppSettings.TranslateTargetLang;
             var hit = LangBox.Items.OfType<ComboBoxItem>()
                                      .FirstOrDefault(i => i.Tag as string == cur);
@@ -132,6 +135,29 @@ public partial class MainWindow : Window
 
         // 第一次打开要弹那张「文字会发到微软」的卡片（和托盘走同一个入口，不另写一套）
         if (on) App.EnsureTranslateNotice();
+    }
+
+    // ------------------------------------------------------------------ RapidOCR 引擎
+
+    /// <summary>
+    /// 主界面「游戏字识别（快）」勾选框（2026-11-09）。
+    ///
+    /// 【为什么要放主界面】用户原话「开关不能放在主页面里面吗」——
+    ///   以前只能手改 settings.json，对零基础用户等于没有这个开关。
+    /// 【改了即时存盘】AppSettings.SetRapidOcrPrimary 内部 Save()，
+    ///   重启后维持用户的选择。
+    /// 【下一帧生效】这次取词已开始的不会被打断，从下一次框选起走新通道。
+    /// </summary>
+    private void OnRapidOcrChecked(object sender, RoutedEventArgs e) => ApplyRapidOcrChecked(true);
+
+    private void OnRapidOcrUnchecked(object sender, RoutedEventArgs e) => ApplyRapidOcrChecked(false);
+
+    private void ApplyRapidOcrChecked(bool on)
+    {
+        if (_loading) return;
+
+        AppSettings.SetRapidOcrPrimary(on);
+        AppLogger.Info($"主窗口：游戏字识别（RapidOCR）被点成「{(on ? "开" : "关")}」");
     }
 
     // ------------------------------------------------------------------ 目标语言

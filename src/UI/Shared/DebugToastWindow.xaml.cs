@@ -34,6 +34,17 @@ public partial class DebugToastWindow : Window
     private readonly DispatcherTimer _closeTimer = new() { Interval = TimeSpan.FromSeconds(3) };
 
     /// <summary>
+    /// 还在等结果（识别中 / 翻译中）。**为 true 时任何地方都不许启动关闭倒计时。**
+    ///
+    /// 【2026-11-09 加：修「24 秒识别、8 秒卡片就没了」】
+    ///   以前三处都会启动倒计时（提示框显示、翻译中、鼠标移开），只要识别/翻译
+    ///   超过 8 秒，用户就看不到结果。现在统一由一个标志位把关：
+    ///   起点（ShowFor → 置 true）到终点（ApplyRecognition / 终态 → 置 false）之间，
+    ///   卡片必须一直留着。
+    /// </summary>
+    private bool _waitingForResult;
+
+    /// <summary>
     /// 「翻译中」那几个点的循环定时器（2026-11-06 第23轮）。
     ///
     /// 【为什么用 DispatcherTimer 改字符串，不用 Storyboard 做动画】
@@ -266,8 +277,11 @@ public partial class DebugToastWindow : Window
         catch (Exception ex) { Core.Logging.AppLogger.Warn($"提示框释放鼠标失败（不影响使用）：{ex.Message}"); }
 
         _closeTimer.Stop();
-        _closeTimer.Interval = TimeSpan.FromSeconds(CloseDelaySeconds);
-        _closeTimer.Start();
+        if (!_waitingForResult)
+        {
+            _closeTimer.Interval = TimeSpan.FromSeconds(CloseDelaySeconds);
+            _closeTimer.Start();
+        }
     }
 
     /// <summary>这次点击是不是落在「要选字的那块文字」里（含它的滚动条）。</summary>
@@ -300,9 +314,11 @@ public partial class DebugToastWindow : Window
             // 鼠标在卡片上：停掉倒计时，让卡片一直留着
             if (_closeTimer.IsEnabled) _closeTimer.Stop();
         }
-        else if (!_closeTimer.IsEnabled)
+        else if (!_closeTimer.IsEnabled && !_waitingForResult)
         {
-            // 刚移开：从头开始 3 秒
+            // 刚移开：从头开始 3 秒。
+            // 【2026-11-09 加 _waitingForResult】：还在识别/翻译时，鼠标移开**不许**顺手启动
+            //   倒计时 —— 否则用户一挪鼠标，8 秒后又把没出结果的卡片关掉了。
             _closeTimer.Stop();
             _closeTimer.Start();
         }
@@ -392,9 +408,17 @@ public partial class DebugToastWindow : Window
                 $"提示框尺寸异常（{Width}×{Height}），界面上可能看不到 —— 这是 SizeToContent 没生效");
         }
 
+        // ==========================================================
+        // 【2026-11-09 修】这里以前是「Stop → Interval=8 秒 → Start」。
+        //   那句「识别期间不会自动关闭」的日志是**假的**：它启的是 8 秒倒计时，
+        //   识别一超过 8 秒卡片就自己消失了 —— 用户实测 24 秒的长文本必然看不到结果。
+        //   证据：tools\日志\app-20261109.log 09:12 那几次 811 字 / 23796 ms。
+        //
+        //   正确行为：识别期间**根本不启动计时器**。终态（识别结果 / 翻译结果）
+        //   到达时各自会重新设置并启动（ApplyRecognition / ApplyTranslation）。
+        // ==========================================================
+        _waitingForResult = true;
         _closeTimer.Stop();
-        _closeTimer.Interval = PendingCloseDelay;
-        _closeTimer.Start();
     }
 
     /// <summary>
@@ -450,8 +474,13 @@ public partial class DebugToastWindow : Window
         }
 
         _closeTimer.Stop();
-        _closeTimer.Interval = TimeSpan.FromSeconds(seconds);
-        _closeTimer.Start();
+        // 【2026-11-09】这条是「与框选无关的短提示」（如调试截图已保存），本来就不参与识别；
+        //   但万一它被复用到识别流程上，_waitingForResult 这道锁能挡住提前关闭。
+        if (!_waitingForResult)
+        {
+            _closeTimer.Interval = TimeSpan.FromSeconds(seconds);
+            _closeTimer.Start();
+        }
 
         Core.Logging.AppLogger.Info(
             $"短提示已显示（{seconds} 秒）：{title} —— {detail}");
@@ -513,6 +542,11 @@ public partial class DebugToastWindow : Window
         // ==========================================================
         StopHint();
         DetailText.Foreground = RecognizeBrush;
+
+        // 【2026-11-09】结果到了，解除「等结果」锁 —— 后面的 ApplyRecognition /
+        //   ApplyTranslation 才允许启动关闭倒计时。识别失败也走到这里，同样要解锁，
+        //   否则失败的卡片会一直挂着不关。
+        _waitingForResult = false;
 
         if (result.Success)
         {
@@ -587,9 +621,16 @@ public partial class DebugToastWindow : Window
         //   译文真正落地时会再进一次 UpdateWith(translating:false)，
         //   那时才换回 3 秒 —— 用户重新拿到完整 3 秒看译文。
         // ==========================================================
+        // 【2026-11-09 改：待翻译期间也不启动计时器】
+        //   以前 translating=true 时启 8 秒兜底。那同样会在「翻译还在路上」时把卡片关掉
+        //   （长文本翻译 2.5 秒是常态，I/O 一抖就超）。
+        //   现在：待翻译 = 只停表，等译文真正落地时再启动 3 秒（译文本就只有 3 秒可看）。
         _closeTimer.Stop();
-        _closeTimer.Interval = translating ? PendingCloseDelay : TimeSpan.FromSeconds(CloseDelaySeconds);
-        _closeTimer.Start();
+        if (!translating)
+        {
+            _closeTimer.Interval = TimeSpan.FromSeconds(CloseDelaySeconds);
+            _closeTimer.Start();
+        }
     }
 
     /// <summary>
