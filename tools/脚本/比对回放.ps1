@@ -57,9 +57,22 @@ function Get-ConfigFingerprint {
 }
 
 # 返回真正变了的字段（空数组 = 一致）。$old 可能是 $null（老格式基线没有「配置」）。
-# 🔴 必须写成「返回数组本体」，不许 return @(...)：只有一个字段变了时，return 会把单元素
-#   数组拆成对象本身，调用方拿到的是 PSCustomObject，.Count 为 $null，`-gt 0` 静默为假
-#   —— 配置不一致就再也拦不住了（2026-11-07 自测 A4 当场踩到，红字一条都不出、exit 0）。
+#
+# 【2026-11-09 修：这里连踩过两次坑，两条都得留着】
+#
+#   坑①「单元素被拆包」：写成 `return @($diff)` 时，只有一个字段变了的话 return 会把
+#     单元素数组拆成对象本身，调用方拿到 PSCustomObject，.Count 为 $null，
+#     `-gt 0` 静默为假 —— 配置不一致却 exit 0（2026-11-07 自测 A4 当场踩到）。
+#
+#   坑②「空数组被多包一层」：为了修坑① 改成 `return , $diff.ToArray()`，
+#     结果**一致时**（空数组）返回 @(@())，调用方 `@(...)` 再包一层 → Count=1，
+#     于是「配置完全一样」也被判成不一样，正常比对全被拦住（2026-11-09 踩到）。
+#
+#   正确写法：用 PowerShell 的 0/1/N 元素一致语义 —— 直接输出数组本体，不要逗号：
+#     · 空       → 调用方 @() 得到 Count=0  ✅
+#     · 1 个元素 → 调用方 @() 得到 Count=1  ✅
+#     · N 个元素 → 调用方 @() 得到 Count=N  ✅
+#   唯一的例外是 1 个元素时不加 @() 会被拆包 —— 但**所有调用点都写了 @()**，所以安全。
 function Compare-ConfigFingerprint($old, $cur) {
     $diff = New-Object System.Collections.ArrayList
     foreach ($k in $cur.Keys) {
@@ -68,7 +81,7 @@ function Compare-ConfigFingerprint($old, $cur) {
         # 老基线里的 bool 可能存成了字符串（手改过），统一按原文比，避免 $false→'false' 假报警。
         if ("$o" -ne "$n") { [void]$diff.Add([pscustomobject]@{ Name = $k; Was = $o; Now = $n }) }
     }
-    return , $diff.ToArray()
+    return $diff.ToArray()
 }
 
 function Get-ConfigValue($cfg, [string]$name) {
