@@ -1,6 +1,14 @@
 {
-    "时间":  "2026-11-07 11:01:36",
+    "时间":  "2026-11-07 14:53:31",
     "结果":  "tools\\临时\\回放-行结果.txt",
+    "配置":  {
+               "rapidOcrPrimary":  true,
+               "rapidOcrRec":  "en",
+               "rapidOcrUseOriginal":  false,
+               "rapidOcrKeepTrailingPunct":  true,
+               "rapidOcrSmallBoxUpscale":  true,
+               "windowsOnly":  false
+           },
     "行":  {
               "行-01#0":  true,
               "行-02#0":  false,
