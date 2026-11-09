@@ -43,6 +43,11 @@
 > - **默认开**：装上就开，首次启动弹一次隐私提示；老配置用 `translateDefaultOnMigrated` 一次性迁移。
 > - 交付包 `release\v0.4.7\`。
 >
+> **RapidOCR 主通道**：**默认关**（2026-11-09 拍板，A/B 实测长文本 +28.5pp）。
+> 存量配置用 `rapidOcrOffMigrated` 一次性迁移；想要可手动在 `settings.json` 写 `"rapidOcrPrimary": true`。
+> 已知代价：兜底路径 L_行 76.8%→52.2%、L_整块 73.1%→17.3%，21 张 UI 图无字（其中 16 张是 Tesseract 自己
+> 的 0.78 置信度门槛扔的，与本开关无关，另立课题）。本轮实测：段级 **56/56**、实战图 35/55。
+>
 > **仓库状态**：`master` = `b0ca5ed` = `origin/master`，**已推 GitHub**（<https://github.com/huajier/translator-app>）。155 个 tag 全部推齐。
 > `release\`、`tools\日志\取证截图\`（124 张 65MB，图留本地）、模型与语言包**不入库**。
 >

@@ -181,6 +181,26 @@ internal static class AppSettings
     public static bool TranslateDefaultOnMigrated { get; private set; } = false;
 
     /// <summary>
+    /// RapidOCR 主通道「默认关」的一次性迁移标记（2026-11-09）。
+    ///
+    /// 【为什么要这个标记 —— 光改默认值没用】
+    ///   RapidOcrPrimary 的属性默认值**本来就是 false**。问题在于存量用户的
+    ///   settings.json 里明明白白写着 `"rapidOcrPrimary": true`，Load() 会照读回来，
+    ///   升级完照样开着。所以必须对老配置做一次强制改写。
+    /// 【为什么用标记而不是每次启动强制关】
+    ///   用户手动打开是**他的决定**。没有标记的话，下次启动又被关掉，等于程序不认设置。
+    ///   标记 `rapidOcrOffMigrated` 一旦写下去，这一支永远不再执行。
+    ///
+    /// 【为什么默认改关（A/B 实测，见方案 30 节）】
+    ///   同一批 331 张、同一个 release、只改这一个字段：
+    ///     长文本整块（主路径，用户约 90% 用法）段级 67.9% → 96.4%（+28.5pp），
+    ///       「只有开着才能对」的段 **0 段** —— RapidOCR 在长文本上一次都没赢过；
+    ///     短小 UI 行（兜底路径）L_行 76.8% → 52.2%、L_整块 73.1% → 17.3%（兜底变差，已知代价）。
+    ///   它本来就是为「游戏图片 UI 小字」这条兜底路径加的新引擎，不该占主通道。
+    /// </summary>
+    public static bool RapidOcrOffMigrated { get; private set; } = false;
+
+    /// <summary>
     /// 首次提示是否已经弹过（阶段四）。**弹过一次就写 true，重启不再弹。**
     ///
     /// 【为什么必须存盘】提示框自己只活 3 秒，它记不住「弹过没有」；
@@ -340,6 +360,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-11-09：RapidOCR 默认关的一次性迁移标记。读到它 = 迁移过了，不再强制关。
+                if (doc.RootElement.TryGetProperty("rapidOcrOffMigrated", out var rom)
+                    && rom.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    RapidOcrOffMigrated = rom.GetBoolean();
+                    any = true;
+                }
+
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}，" +
@@ -347,7 +375,7 @@ internal static class AppSettings
                     $"地址 = {(TranslateEndpoint.Length == 0 ? "默认 Bing" : TranslateEndpoint)}，" +
                     $"来自 {ConfigPath}）");
 
-                if (any) { ApplyDefaultOnMigration(); return; }
+                if (any) { ApplyDefaultOnMigration(); ApplyRapidOcrOffMigration(); return; }
 
                 AppLogger.Info($"设置文件里没有认识的项，按默认（新分工 + RapidOCR 主通道）处理：{ConfigPath}");
             }
@@ -358,6 +386,7 @@ internal static class AppSettings
             }
 
             ApplyDefaultOnMigration();
+            ApplyRapidOcrOffMigration();
         }
     }
 
@@ -382,6 +411,34 @@ internal static class AppSettings
         TranslateDefaultOnMigrated = true;
 
         if (changed) AppLogger.Info("v2.0 升级：翻译开关从「关」改成默认「开」（一次性迁移，之后以用户设置为准）");
+        Save(WindowsOnly);
+    }
+
+    /// <summary>
+    /// 2026-11-09 一次性迁移：把存量配置里开着的 RapidOCR 主通道关掉，**只做一次**。
+    ///
+    /// 【和 ApplyDefaultOnMigration 同一个套路的理由】
+    ///   属性默认值只在「配置里没有这个键」时生效；老用户 json 里写着 true，
+    ///   只改默认值等于没改。所以要显式覆盖一次，并打标记防止反复关。
+    /// 【只关开着的那一份】本来就是 false 的不用动，但标记照样写下去，
+    ///   免得以后用户自己打开、下次启动又被这段逻辑关掉。
+    /// 【迁移完成后用户完全可以手动改回 true，程序不再干预】
+    ///
+    /// ponytail: 只迁一次、只碰这一个键；将来若要迁移别的默认值，照这个形状复制。
+    /// </summary>
+    private static void ApplyRapidOcrOffMigration()
+    {
+        if (RapidOcrOffMigrated) return;
+
+        bool changed = RapidOcrPrimary;
+        RapidOcrPrimary = false;
+        RapidOcrOffMigrated = true;
+
+        if (changed)
+        {
+            AppLogger.Info("2026-11-09 升级：RapidOCR 主通道从「开」改成默认「关」" +
+                           "（一次性迁移，A/B 实测长文本 +28.5pp；之后以用户设置为准，想要可手动写 true）");
+        }
         Save(WindowsOnly);
     }
 
@@ -421,6 +478,9 @@ internal static class AppSettings
                         // 2026-11-04 v2.0：同理，少这一行下次保存就把迁移标记抹掉，
                         // 于是每次启动都会把用户手动关掉的翻译又强制打开一遍。
                         translateDefaultOnMigrated = TranslateDefaultOnMigrated,
+                        // 2026-11-09：同理，少这一行下次保存就把「RapidOCR 已迁移」标记抹掉，
+                        // 于是每次启动都会把用户手动打开的主通道又强制关掉一遍。
+                        rapidOcrOffMigrated = RapidOcrOffMigrated,
                     },
                     new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
