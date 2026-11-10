@@ -171,9 +171,19 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     int cyrChars = TextNormalizer.CountMeaningfulChars(cyrText);
                     double enMixed = CountMixedAlnumRatio(rapidText);
 
+                    // 【2026-11-10 用户实测补】加一条「比自信度」。
+                    //   问题：en 把俄文拼成形似拉丁的乱码（С→C/т→T/а→a）时，
+                    //     结果是「看起来正常的英文」—— 混排比 0.00、长度也和 cyr 差不多，
+                    //     下面两条老判据一条都命中不了，于是保了 en，用户看到乱码。
+                    //   实测：Старые хиты → en `CTapble xitbl`(0.823) vs cyr `Старые хиты`(0.971)。
+                    //   阈值见 Tuning.CyrillicConfidenceMargin（0.05，离线扫出来的）。
+                    double confMargin = cyrScore - rapidScore;
+
                     if (cyrCyrRatio >= MinCyrillicRatioForRussian
                         && cyrOutOfDict < 0.02
-                        && (enMixed >= 0.15 || enChars < cyrChars * 0.8))
+                        && (confMargin >= CyrillicConfidenceMargin   // ← 新增这一条
+                            || enMixed >= 0.15
+                            || enChars < cyrChars * 0.8))
                     {
                         chosenText = cyrText;
                         chosenChannel = "RapidOCR-cyrillic";
@@ -181,13 +191,15 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         choseCyr = true;
                         AppLogger.Info(
                             $"【RapidOCR 双模型】改用西里尔结果：西里尔 {cyrCyrRatio:P0}、" +
-                            $"字典外 {cyrOutOfDict:P2}；en 混排 {enMixed:F2}、en {enChars} 字 vs cyr {cyrChars} 字");
+                            $"字典外 {cyrOutOfDict:P2}；en 混排 {enMixed:F2}、en {enChars} 字 vs cyr {cyrChars} 字" +
+                            $"、分差 {confMargin:F3}");
                     }
                     else
                     {
                         AppLogger.Info(
                             $"【RapidOCR 双模型】保留 en 结果（西里尔 {cyrCyrRatio:P0}、" +
-                            $"字典外 {cyrOutOfDict:P2}；en 混排 {enMixed:F2}、en {enChars} 字 vs cyr {cyrChars} 字）");
+                            $"字典外 {cyrOutOfDict:P2}；en 混排 {enMixed:F2}、en {enChars} 字 vs cyr {cyrChars} 字" +
+                            $"、分差 {confMargin:F3}）");
                     }
                 }
 
