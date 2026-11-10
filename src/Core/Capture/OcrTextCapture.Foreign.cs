@@ -116,6 +116,56 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         ? $"；整块疑似没认好（{rapidBoxes} 行，弱字符 {rapidWeakChars}，单字框 {rapidSingleBoxes}），将提示逐行框"
                         : string.Empty));
 
+                // ==========================================================
+                // 【2026-11-10 阶段三 P1：俄文确认式闸门】
+                //
+                //   病根（已核实，不是推断）：
+                //     ppocrv5_en_dict.txt 全 436 行，含西里尔 U+0400~U+04FF 的条目 = **0 条**。
+                //     en 识别头 + en 字典结构上**不可能**输出俄文 —— 俄文必吐拉丁乱码。
+                //     11-07 回放实证：RapidOCR 通道 339 段产出西里尔 **0 段**；
+                //     11 个俄文段纯 RapidOCR 只判对 **2/11**。
+                //
+                //   做法：**确认式**，不是替换式。
+                //     先看 RapidOCR 自己的输出可不可疑；可疑才多跑一次 Tesseract 的 rus；
+                //     只有那一份**验明是真俄文**才替换，否则**原样保留** RapidOCR 的结论。
+                //     → 安全性质：最坏只变慢，不会变差。
+                //
+                //   为什么传 raw 而不是 rapidInput：rapidInput 可能是反色图（看
+                //     AppSettings.RapidOcrUseOriginal），那是给 RapidOCR 调过的输入；
+                //     Tesseract 旧通道一贯吃 raw，这里必须和旧通道一致。
+                // ==========================================================
+                bool suspectForRussian = CountMixedAlnumRatio(rapidText) >= SuspectMixedAlnumRatio
+                                         || rapidScore < SuspectRapidOcrScore;
+                if (suspectForRussian)
+                {
+                    if (TryRecognizeRussianForConfirm(raw, out string ruText))
+                    {
+                        double ruCyr = LanguageDetector.CountCyrillicRatio(ruText);
+                        double ruHomo = LanguageDetector.CountCyrillicHomoglyphRatio(ruText);
+                        // 护栏 0.50（不是 0.75）：这颗子弹是用来覆盖已有结果的，必须更硬。
+                        // 行-60 `SG-225 'Breaker'` 被读成 `ВгеаКег`，同形字 0.71 —— 0.75 放行就丢那一行。
+                        if (ruCyr > MinCyrillicRatioForRussian
+                            && ruHomo < MaxCyrillicHomoglyphRatioForConfirm)
+                        {
+                            AppLogger.Info(
+                                $"【俄文确认闸门】RapidOCR 结果可疑（混排比 {CountMixedAlnumRatio(rapidText):F2}、" +
+                                $"平均分 {rapidScore:F2}），改用它重新认出的俄文：" +
+                                $"西里尔 {ruCyr:P0}、同形字 {ruHomo:P0}，{TextNormalizer.CountMeaningfulChars(ruText)} 个有效字符");
+                            return new ForeignOutcome(
+                                ruText,
+                                TextNormalizer.CountLines(ruText),
+                                // 如实写：这份字确实是 Tesseract 认的，不是 RapidOCR 的
+                                "Tesseract",
+                                $"俄文确认闸门（Tesseract rus，西里尔 {ruCyr:P0}）",
+                                false);
+                        }
+
+                        AppLogger.Info(
+                            $"【俄文确认闸门】rus 的结果没通过验证（西里尔 {ruCyr:P0}、" +
+                            $"同形字 {ruHomo:P0}），保留 RapidOCR 原结果");
+                    }
+                }
+
                 return new ForeignOutcome(
                     rapidText,
                     TextNormalizer.CountLines(rapidText),
@@ -2014,4 +2064,73 @@ internal sealed partial class OcrTextCapture : ITextCapture
     ///   → 所以横杠**只进结尾名单**，开头一律不动。
     /// </summary>
     private static bool IsTrailingEdgeSymbol(char c) => c is '-' or '–' or '—' or '_';
+
+    /// <summary>
+    /// 【2026-11-10 阶段三 P1】词内数字字母混排比：含字母的词里，**同时含数字**的占多少。
+    ///
+    /// 【为什么要有】俄文被 en 头硬读时，字母会碎成一堆「字母+数字」的片段
+    ///   （`Mawe 3b Ha Apyr.`、`Cb Xe e 3 3 6 4 B`），这个比例会明显偏高；
+    ///   真俄文和真英文都接近 0。证据脚本 ⑤：俄文段 P50=0.250，非俄文段 P50=0.000。
+    ///
+    /// 【口径】与 tools\脚本\P1-俄文闸门-证据.py 的 mixed_ratio 一致：
+    ///   按空白切词 → 只统计「含字母」的词 → 其中同时含数字的占比。
+    ///   一个词都没有（纯符号/空）时返回 0，不返回 1（否则空结果会被当成「可疑」）。
+    ///
+    /// ponytail: 与证据脚本同口径，故意不抽公共类 —— 只有这一处在用。
+    /// </summary>
+    private static double CountMixedAlnumRatio(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0.0;
+
+        int withLetter = 0;
+        int withLetterAndDigit = 0;
+        foreach (string word in text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+        {
+            bool hasLetter = false;
+            bool hasDigit = false;
+            foreach (char c in word)
+            {
+                if (char.IsLetter(c)) hasLetter = true;
+                else if (char.IsDigit(c)) hasDigit = true;
+            }
+            if (!hasLetter) continue;
+            withLetter++;
+            if (hasDigit) withLetterAndDigit++;
+        }
+
+        return withLetter == 0 ? 0.0 : (double)withLetterAndDigit / withLetter;
+    }
+
+    /// <summary>
+    /// 【2026-11-10 阶段三 P1】为「俄文确认闸门」跑一次 rus 识别。
+    ///
+    /// 【只做一件事】raw → UpscaleForForeign → TesseractOcr.TryRecognize(rus) → 非空就返回。
+    ///   不要 eng 对照、不要 rus+eng、不要四路择优 —— 这里只需要一份「真英俄文长什么样」的证据，
+    ///   跑多路只会让最坏情况更慢。
+    ///
+    /// 【为什么传 raw 自己放大，而不是复用调用方的 rapidInput】
+    ///   rapidInput 可能是反色图（AppSettings.RapidOcrUseOriginal 决定），那是**给 RapidOCR 调过**的输入；
+    ///   Tesseract 旧通道一贯吃 raw + UpscaleForForeign，这里必须和旧通道保持同一份配方，
+    ///   否则确认出来的文本和旧通道对不上。
+    ///
+    /// 【为什么要先 EnsureInitialized】原来那句在 RunForeignPath 里比本调用更晚（采纳分支会 return），
+    ///   不先初始化就是空引擎。
+    ///
+    /// 【第一次会慢 200~300ms】rus 引擎懒建，属预期；不许靠启动预建引擎把这点抹平。
+    /// </summary>
+    private static bool TryRecognizeRussianForConfirm(Bitmap raw, out string text)
+    {
+        text = string.Empty;
+
+        TesseractOcr.EnsureInitialized();
+        if (!TesseractOcr.IsAvailable) return false;
+
+        using Bitmap forTess = ImagePreprocessor.UpscaleForForeign(raw);
+        var rusResult = TesseractOcr.TryRecognize(forTess, TesseractOcr.Languages.Russian);
+        // Result 是 readonly record struct（不可为 null），没认到内容时 Text 为 null/空
+        if (string.IsNullOrWhiteSpace(rusResult.Text)) return false;
+
+        text = rusResult.Text!;
+        return true;
+    }
 }
