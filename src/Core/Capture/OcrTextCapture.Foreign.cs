@@ -53,33 +53,44 @@ internal sealed partial class OcrTextCapture : ITextCapture
             //   为 Tesseract 调的那道「一拿到图就翻过来」。
             //   开关默认 false = 维持现状（反色），打开才是吃原图，方便 A/B 回退。
             Bitmap rapidInput = AppSettings.RapidOcrUseOriginal ? captured : raw;
-            string? rapidText = RapidOcrEngine.TryRecognize(
-                rapidInput, out double rapidScore, out string rapidNote,
-                out int rapidWeakChars, out int rapidSingleBoxes, out int rapidBoxes);
 
             // ==========================================================
-            // 【2026-11-10 阶段三 P1-西里尔】再跑一遍西里尔模型，拿它的候选结果。
+            // 【2026-11-10 去重：同一张图只完整识别一遍】
             //
-            //   为什么不用 RapidOCR 的结果替换掉上面的 rapidText：
-            //     en 字典 436 行里西里尔 **0 条**，俄文必吐拉丁乱码；
-            //     cyrillic 模型的字典 850 条（西里尔 242），能读俄文，
-            //     但它单独跑英文会差（拉丁字母只有 52 条）。
-            //     所以两个都跑，下面的判据择优，平手保 en。
+            //   改前这里有两处整图识别：
+            //     :56  RapidOcrEngine.TryRecognize(...)      ← 第一遍，结果被丢弃
+            //     :73  RapidOcrEngine.TryRecognizeBoth(...)  ← 第二遍，:78 又赋给 rapidText
+            //   实证（v0.4.13.cyr3，703×459 长文本）：同一张图的
+            //     「小框 3 倍重试：703×459 → 2000×1306」出现了**两次**，
+            //     第一遍白花 2.4 秒，总耗时 5860 ms。
             //
-            //   失败（文件缺失/引擎没起来）就返回 false，下面完全按原来的单模型行为走。
+            //   现在：先试双模型一把拿全（en + cyr 全部信息）；
+            //     西里尔引擎没起来（文件缺失/初始化失败）时**回退到原来的单模型路径**，
+            //     仍然调一次 TryRecognize，行为与改前完全一致 ——
+            //     这条回退必须有，否则模型文件一丢整个 RapidOCR 通道就废了。
             // ==========================================================
-            string? cyrText = null;
-            double cyrScore = 0;
+            string? rapidText;
+            double rapidScore;
+            string rapidNote;
+            int rapidWeakChars;
+            int rapidSingleBoxes;
+            int rapidBoxes;
+            string? cyrText;
+
             bool haveCyr = RapidOcrEngine.TryRecognizeBoth(
-                rapidInput, out string? enBothText, out _, out cyrText, out cyrScore);
-            if (haveCyr && enBothText is not null)
+                rapidInput,
+                out rapidText, out rapidScore, out rapidNote,
+                out rapidWeakChars, out rapidSingleBoxes, out rapidBoxes,
+                out cyrText, out double cyrScore);
+
+            if (!haveCyr)
             {
-                // 双跑路径下，采纳的基线就是 en 这一份（二者用同一张输入图，口径一致）
-                rapidText = enBothText;
-            }
-            else
-            {
+                // 单模型回退：与改前那条路径一字不差
                 cyrText = null;
+                cyrScore = 0;
+                rapidText = RapidOcrEngine.TryRecognize(
+                    rapidInput, out rapidScore, out rapidNote,
+                    out rapidWeakChars, out rapidSingleBoxes, out rapidBoxes);
             }
 
             if (rapidText is not null && rapidScore >= RapidOcrMinScore)

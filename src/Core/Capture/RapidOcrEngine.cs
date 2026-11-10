@@ -241,7 +241,7 @@ internal static class RapidOcrEngine
         //   80 张里只触发 2 张（行-68 的 ε、行-75 整块空），L_行 49→51、回归 0。
         //   3x 结果要「非空 且 非 ASCII 字符数不增加」才采用，否则保留 1x。
         //   开关关着时这段一次都不进，行为与没有这个功能完全一致。
-        if (AppSettings.RapidOcrSmallBoxUpscale && NeedsUpscaleRetry(first))
+        if (AppSettings.RapidOcrSmallBoxUpscale && NeedsUpscaleRetry(bitmap, first))
         {
             using Bitmap upscaled = UpscaleForRetry(bitmap);
             Pass second = RecognizeOnePass(upscaled);
@@ -353,15 +353,39 @@ internal static class RapidOcrEngine
     }
 
     /// <summary>
+    /// 【2026-11-10 用户实测补】图高超过这个值就不做 3 倍重试。
+    ///
+    /// 病根：3 倍重试是为「一行字太小读不清」设计的（60×30 的 3d 8h、487×19 的整行英文），
+    ///   但用户框整段长文本（704×474）时它也会触发：放大到 2000×1347 花 2578ms，
+    ///   1x/3x 读出来一样烂，最后两个都没被采用 —— 那 2.5 秒是纯浪费。
+    ///
+    /// 阈值 126 的依据（tools\脚本\量-重试尺寸阈值.py，80 张行级图逐张 1x vs 3x）：
+    ///   3x 真正救回来的 2 张：行-81(100×32)、行-07(86×26)；
+    ///   3x 反而读坏的 3 张：行-17(910×40)、行-20(910×42)、行-01(862×52)；
+    ///   从「高&lt;=40」扫到「宽&lt;=1500」共 19 个候选阈值，判对数全部是 67/80，
+    ///   和现在一模一样 —— 砍大图一分不损失。取 126（≈全量图的 P90）留足余量，
+    ///   让 92% 的图仍然保留重试能力。
+    ///
+    /// ponytail: 阈值 126 是按「一行字的高度」定的。整段多行图（高几百像素）
+    ///   一律不重试；将来若真出现「很高的单行图」，再按宽高比细分。
+    /// </summary>
+    private const int UpscaleRetryMaxHeight = 126;
+
+    /// <summary>
     /// 1x 结果要不要 3x 重试（S1 / S2 / S3 三个信号）。
     ///   S1 空：没有文本。
     ///   S2 非 ASCII：逐行判，任一行里有 <c>c &gt; 127</c> 的字符（典型是 行-68 的 ε）。
     ///   S3 塌行：某一块里 0.60 分以下的字占该块四分之一以上且至少 2 个（行-76 / 行-83）。
     /// S2 是**逐行**判：首版按整图串判，把含 <c>'</c> <c>-</c> <c>?</c> 的图误触 12 张，
     /// 整块 -5.7pp。中文行/块也跳过——中文本来就该是汉字，这两条信号对它没有意义。
+    ///
+    /// 【2026-11-10 补：前面多一道尺寸闸】大图（整段长文本）一律不重试，
+    /// 三条老信号原样保留，只是先被尺寸挡掉。
     /// </summary>
-    private static bool NeedsUpscaleRetry(Pass pass)
+    private static bool NeedsUpscaleRetry(Bitmap bitmap, Pass pass)
     {
+        if (bitmap.Height > UpscaleRetryMaxHeight) return false;
+
         if (pass.Text is null) return true;
         if (pass.WeakBlock) return true;
 
@@ -521,17 +545,26 @@ internal static class RapidOcrEngine
     /// </summary>
     /// <param name="enText">en 模型结果（可为 null 表示没认到内容）。</param>
     /// <param name="enScore">en 模型各检测行平均分。</param>
+    /// <param name="enNote">en 侧失败原因（与 TryRecognize 的 note 同口径）。</param>
+    /// <param name="enWeakChars">en 侧弱字符数（字符分 &lt; 0.60，跨块累加）。</param>
+    /// <param name="enSingleBoxes">en 侧单字框数（有效字母/数字 ≤1 的框）。</param>
+    /// <param name="enBoxCount">en 侧检测框总数。</param>
     /// <param name="cyrText">cyrillic 模型结果（可为 null 表示没认到内容）。</param>
     /// <param name="cyrScore">cyrillic 模型各检测行平均分。</param>
     public static bool TryRecognizeBoth(
         Bitmap bitmap,
-        out string? enText, out double enScore,
+        out string? enText, out double enScore, out string enNote,
+        out int enWeakChars, out int enSingleBoxes, out int enBoxCount,
         out string? cyrText, out double cyrScore)
     {
         enText = null;
         cyrText = null;
         enScore = 0;
         cyrScore = 0;
+        enNote = string.Empty;
+        enWeakChars = 0;
+        enSingleBoxes = 0;
+        enBoxCount = 0;
 
         if (!IsAvailable) return false;
         // 第二套没起来（文件缺失/初始化失败）：调用方按原有单模型流程走
@@ -561,6 +594,13 @@ internal static class RapidOcrEngine
 
             enText = en.Text;
             enScore = en.AverageScore;
+            // 【2026-11-10 去重】这四个值和 TryRecognize 的出参一一对齐，
+            //   调用方靠它们跑字数量闸门 / blockLooksBad / 「整块疑似没认好」日志。
+            //   直接取自上面那次 Pass en，**不许多跑一次识别**。
+            enNote = en.Note;
+            enWeakChars = en.WeakChars;
+            enSingleBoxes = en.SingleCharBoxes;
+            enBoxCount = en.BoxCount;
             cyrText = cyr.Text;
             cyrScore = cyr.AverageScore;
             return true;
