@@ -109,6 +109,25 @@ foreach ($必需 in @('en_PP-OCRv5_rec_mobile.onnx', 'ppocrv5_en_dict.txt')) {
 }
 Write-Host "en 识别模型已就位：$modelDir" -ForegroundColor Green
 
+# ---- 第 2.6 步：装西里尔识别模型（和 en 双跑择优，缺了就 fail）----
+# 【2026-11-10 阶段三 P1-西里尔】
+#   en 模型的字典 436 行里西里尔 0 条，结构上不可能读俄文；
+#   cyrillic 模型字典 850 条（西里尔 242），两个都跑才能同时保住英文和俄文。
+#   缺文件时 RapidOcrEngine 会 Warn 并只跑 en —— 那等于俄文继续乱码，
+#   所以这里必须 fail，不许静默降级。
+Write-Host ""
+Write-Host "第 2.6 步：把西里尔识别模型装进 $outDir ……"
+& $modelScript -目标目录 $outDir -核对 -组 cyrillic
+foreach ($必需 in @('cyrillic_PP-OCRv5_rec_mobile.onnx', 'ppocrv5_cyrillic_dict.txt')) {
+    $p = Join-Path $modelDir $必需
+    if (-not (Test-Path $p)) {
+        Write-Host ""
+        Write-Host "致命：发布目录里没有 $必需 —— 俄文会继续读成拉丁乱码（主通道只剩 en）。" -ForegroundColor Red
+        exit 1
+    }
+}
+Write-Host "西里尔识别模型已就位：$modelDir" -ForegroundColor Green
+
 # ---- 第 3 步：去掉文件上的强制完整性标签 ----
 Write-Host "第 3 步：检查并清理 $outDir 下的文件标签……"
 Add-Type @'

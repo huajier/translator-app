@@ -41,8 +41,23 @@ internal static class RapidOcrEngine
     private static readonly object Gate = new();
     private static RapidOcr? _ocr;
 
+    /// <summary>
+    /// 【2026-11-10 阶段三 P1-西里尔】第二套 rec 会话（西里尔模型）。
+    ///
+    /// 【为什么需要它】en 模型的字典 436 行里西里尔字母 **0 条** ——
+    ///   en 识别头结构上就不可能在输出里出现俄文字母，俄文必吐拉丁乱码。
+    ///   实测：俄文 11 段，en 单独 0/11。
+    /// 【为什么是第二套实例而不是换掉 _ocr】det/cls 复用同一批文件，
+    ///   两套 RapidOcr 实例各自带一份 rec；同一张图跑两遍 rec、各自出文本，交给调用方择优。
+    /// 【为 null 时】文件缺失 → 只跑 en，主通道不受影响（绝不允许因此整条失效）。
+    /// </summary>
+    private static RapidOcr? _ocrCyr;
+
     /// <summary>会话选项。创建好之后必须一直活着 —— 提前 Dispose 会让推理抛异常。</summary>
     private static SessionOptions? _sessionOptions;
+
+    /// <summary>第二套实例的会话选项（和第一套分开持有，同样不能提前 Dispose）。</summary>
+    private static SessionOptions? _sessionOptionsCyr;
     private static bool _tried;
 
     /// <summary>识别要串行：一个引擎实例带三份 ONNX 会话，并发调用没有意义也不保证安全。</summary>
@@ -114,6 +129,45 @@ internal static class RapidOcrEngine
                 _ocr = ocr;
                 _sessionOptions = options;
                 AppLogger.Info($"RapidOCR 引擎已就绪：PP-OCRv5 {recName}，耗时 {start.ElapsedMilliseconds} 毫秒（之后复用，不再重建）");
+
+                // ==========================================================
+                // 【2026-11-10 阶段三 P1-西里尔】第二套 rec：西里尔模型
+                //
+                //   det/cls 共用同一批文件，只是再挂一份 rec + dict。
+                //   文件缺失 → Warn 一句、只跑 en（主通道绝不因此失效）。
+                //   初始化失败也降级到「只有 en」，不影响第一套。
+                // ==========================================================
+                string cyrRec = Path.Combine(dir, "cyrillic_PP-OCRv5_rec_mobile.onnx");
+                string cyrKeys = Path.Combine(dir, "ppocrv5_cyrillic_dict.txt");
+                if (!File.Exists(cyrRec) || !File.Exists(cyrKeys))
+                {
+                    AppLogger.Warn(
+                        $"西里尔识别模型缺失（{dir}），本次只跑 en 模型 —— 俄文会读成拉丁乱码，但不影响英文");
+                }
+                else
+                {
+                    try
+                    {
+                        var cyrStart = Stopwatch.StartNew();
+                        var ocrCyr = new RapidOcr();
+                        var optionsCyr = new SessionOptions
+                        {
+                            IntraOpNumThreads = 2,
+                            InterOpNumThreads = 1
+                        };
+                        ocrCyr.InitModels(det, cls, cyrRec, cyrKeys, optionsCyr);
+                        _ocrCyr = ocrCyr;
+                        _sessionOptionsCyr = optionsCyr;
+                        AppLogger.Info(
+                            $"RapidOCR 第二模型已就绪：PP-OCRv5 cyrillic，耗时 {cyrStart.ElapsedMilliseconds} 毫秒（与 en 双跑择优）");
+                    }
+                    catch (Exception exCyr)
+                    {
+                        _ocrCyr = null;
+                        AppLogger.Warn(
+                            $"西里尔模型初始化失败（只跑 en，俄文会读成拉丁乱码）：{exCyr.GetType().Name} {exCyr.Message}");
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -151,26 +205,7 @@ internal static class RapidOcrEngine
 
         try
         {
-            Pass first = RecognizeOnePass(bitmap);
-
-            // 【2026-10-30 阶段三 S4-D：小框 3 倍重试（默认关）】
-            //   申请单与全量模拟见 tools\日志\阶段3-S4D-申请单-小框3倍重试.md。
-            //   1x 结果「空」或「某块里有非 ASCII 字符」时，把同一张输入图放大 3 倍再认一次。
-            //   80 张里只触发 2 张（行-68 的 ε、行-75 整块空），L_行 49→51、回归 0。
-            //   3x 结果要「非空 且 非 ASCII 字符数不增加」才采用，否则保留 1x。
-            //   开关关着时这段一次都不进，行为与没有这个功能完全一致。
-            if (AppSettings.RapidOcrSmallBoxUpscale && NeedsUpscaleRetry(first))
-            {
-                using Bitmap upscaled = UpscaleForRetry(bitmap);
-                Pass second = RecognizeOnePass(upscaled);
-                if (IsBetterUpscaledResult(first, second))
-                {
-                    AppLogger.Info(
-                        $"小框 3 倍重试：{bitmap.Width}×{bitmap.Height} → {upscaled.Width}×{upscaled.Height}，" +
-                        $"1x「{Preview(first.Text)}」→ 3x「{Preview(second.Text)}」");
-                    first = second;
-                }
-            }
+            Pass first = RecognizeWithRetry(bitmap);
 
             note = first.Note;
             averageScore = first.AverageScore;
@@ -187,13 +222,57 @@ internal static class RapidOcrEngine
         }
     }
 
+    /// <summary>
+    /// 【2026-11-10 阶段三 P1-西里尔】「一次识别 + 小框 3 倍重试」的完整流程。
+    ///
+    /// 【为什么要抽出来】TryRecognize 和 TryRecognizeBoth 必须走**同一份**重试逻辑。
+    ///   上一轮的 bug 就是把 TryRecognizeBoth 的 en 侧写成裸调 RecognizeOnePass，
+    ///   漏掉了这段重试 —— 行-68 从 3d 8h 退成 48 pε、行-76/83 整段崩掉，
+    ///   而那三张正是下面注释里「80 张里只触发 2 张」救回来的。
+    ///   **绝不许把这段重试代码抄第二份。**
+    /// </summary>
+    private static Pass RecognizeWithRetry(Bitmap bitmap)
+    {
+        Pass first = RecognizeOnePass(bitmap);
+
+        // 【2026-10-30 阶段三 S4-D：小框 3 倍重试（默认关）】
+        //   申请单与全量模拟见 tools 日志 阶段3-S4D-申请单-小框3倍重试.md。
+        //   1x 结果「空」或「某块里有非 ASCII 字符」时，把同一张输入图放大 3 倍再认一次。
+        //   80 张里只触发 2 张（行-68 的 ε、行-75 整块空），L_行 49→51、回归 0。
+        //   3x 结果要「非空 且 非 ASCII 字符数不增加」才采用，否则保留 1x。
+        //   开关关着时这段一次都不进，行为与没有这个功能完全一致。
+        if (AppSettings.RapidOcrSmallBoxUpscale && NeedsUpscaleRetry(first))
+        {
+            using Bitmap upscaled = UpscaleForRetry(bitmap);
+            Pass second = RecognizeOnePass(upscaled);
+            if (IsBetterUpscaledResult(first, second))
+            {
+                AppLogger.Info(
+                    $"小框 3 倍重试：{bitmap.Width}×{bitmap.Height} → {upscaled.Width}×{upscaled.Height}，" +
+                    $"1x「{Preview(first.Text)}」→ 3x「{Preview(second.Text)}」");
+                first = second;
+            }
+        }
+
+        return first;
+    }
+
     /// <summary>一次 Detect 的全部产出（1x 与 3x 各产生一个，用来比较与择优）。</summary>
     private readonly record struct Pass(
         string? Text, string Note, double AverageScore,
         int WeakChars, int SingleCharBoxes, int BoxCount, bool WeakBlock);
 
     /// <summary>对一张位图跑一次完整识别，不涉及任何重试决策。原 TryRecognize 的实现原样搬到这里。</summary>
-    private static Pass RecognizeOnePass(Bitmap bitmap)
+    private static Pass RecognizeOnePass(Bitmap bitmap) => RecognizeOnePass(bitmap, _ocr);
+
+    /// <summary>
+    /// 【2026-11-10 阶段三 P1-西里尔】按指定引擎实例跑一次识别。
+    ///
+    ///   与上面那个重载唯一的区别就是「用哪个 RapidOcr」——
+    ///   这样 en / cyrillic 两套 rec 可以吃同一张图、走完全相同的检测与拼装逻辑，
+    ///   两边的输出才有可比性（择优才站得住）。
+    /// </summary>
+    private static Pass RecognizeOnePass(Bitmap bitmap, RapidOcr? engine)
     {
         // GDI 位图 → Skia 位图：走一次内存 PNG 编码（裁样都只有几十 KB，1 毫秒量级），
         // 比手写 LockBits 逐像素搬运短得多，也不用碰指针。
@@ -207,7 +286,7 @@ internal static class RapidOcrEngine
         OcrResult? result;
         lock (RunGate)
         {
-            result = _ocr!.Detect(skBitmap, RapidOcrOptions.Default);
+            result = engine!.Detect(skBitmap, RapidOcrOptions.Default);
         }
 
         var blocks = result?.TextBlocks;
@@ -419,9 +498,77 @@ internal static class RapidOcrEngine
         {
             try { _ocr?.Dispose(); } catch { /* 退出路径，忽略 */ }
             try { _sessionOptions?.Dispose(); } catch { /* 退出路径，忽略 */ }
+            try { _ocrCyr?.Dispose(); } catch { /* 退出路径，忽略 */ }
+            try { _sessionOptionsCyr?.Dispose(); } catch { /* 退出路径，忽略 */ }
             _ocr = null;
             _sessionOptions = null;
+            _ocrCyr = null;
+            _sessionOptionsCyr = null;
             _tried = false;
+        }
+    }
+
+    /// <summary>
+    /// 【2026-11-10 阶段三 P1-西里尔】同一张图跑两套 rec（en + cyrillic），各自出结果。
+    ///
+    /// 【为什么要这个】en 字典里西里尔 0 条，俄文必吐拉丁乱码；
+    ///   cyrillic 模型能读俄文（离线 11 段 10/11），但它的英文字典只有 52 个拉丁字母，
+    ///   单独用会把英文读差。两个都跑、交给调用方择优，才能同时保住英文和俄文。
+    ///
+    /// 【返回】两套都成功才返回 true，任一失败返回 false（调用方保持原有单模型行为）。
+    /// 【不在这里做择优】判据属于识别策略，放在 OcrTextCapture.Foreign.cs 里，
+    ///   和「什么时候采纳 RapidOCR」的其他判据待在一起，便于一处读懂。
+    /// </summary>
+    /// <param name="enText">en 模型结果（可为 null 表示没认到内容）。</param>
+    /// <param name="enScore">en 模型各检测行平均分。</param>
+    /// <param name="cyrText">cyrillic 模型结果（可为 null 表示没认到内容）。</param>
+    /// <param name="cyrScore">cyrillic 模型各检测行平均分。</param>
+    public static bool TryRecognizeBoth(
+        Bitmap bitmap,
+        out string? enText, out double enScore,
+        out string? cyrText, out double cyrScore)
+    {
+        enText = null;
+        cyrText = null;
+        enScore = 0;
+        cyrScore = 0;
+
+        if (!IsAvailable) return false;
+        // 第二套没起来（文件缺失/初始化失败）：调用方按原有单模型流程走
+        if (_ocrCyr is null) return false;
+
+        DumpIfAsked(bitmap);
+
+        try
+        {
+            // en 侧：走 RecognizeWithRetry（含小框 3 倍重试），和 TryRecognize 完全同一条路。
+            // 【2026-11-10 修】上一轮这里是裸调 RecognizeOnePass，漏掉重试，
+            //   行-68 从 3d 8h 退成 48 pε、行-76/83 整段崩 —— 就是这段的代价。
+            Pass en = RecognizeWithRetry(bitmap);
+
+            // cyr 侧：仍然裸调，不加重试。
+            //   它只服务俄文长文本，小框 3x 对那种场景没有意义，加了只会更慢。
+            Pass cyr = RecognizeOnePass(bitmap, _ocrCyr);
+
+            // 【只加日志，不改检测参数】cyr 返回空时记清楚现场，
+            //   便于判断是不是 DBNet 在窄图上没出框（架构师离线切行后直接喂 rec 是全对的）。
+            if (string.IsNullOrWhiteSpace(cyr.Text))
+            {
+                AppLogger.Info(
+                    $"【西里尔模型】返回空（图 {bitmap.Width}×{bitmap.Height}，" +
+                    $"检测框 {cyr.BoxCount} 个，note={cyr.Note}）");
+            }
+
+            enText = en.Text;
+            enScore = en.AverageScore;
+            cyrText = cyr.Text;
+            cyrScore = cyr.AverageScore;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warn($"RapidOCR 双模型识别失败（本次按无结果处理）：{ex.GetType().Name} {ex.Message}");
+            return false;
         }
     }
 }

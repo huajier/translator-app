@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.IO;
 using TranslatorApp.Core.Abstractions;
 using TranslatorApp.Core.Logging;
 
@@ -55,6 +56,31 @@ internal sealed partial class OcrTextCapture : ITextCapture
             string? rapidText = RapidOcrEngine.TryRecognize(
                 rapidInput, out double rapidScore, out string rapidNote,
                 out int rapidWeakChars, out int rapidSingleBoxes, out int rapidBoxes);
+
+            // ==========================================================
+            // 【2026-11-10 阶段三 P1-西里尔】再跑一遍西里尔模型，拿它的候选结果。
+            //
+            //   为什么不用 RapidOCR 的结果替换掉上面的 rapidText：
+            //     en 字典 436 行里西里尔 **0 条**，俄文必吐拉丁乱码；
+            //     cyrillic 模型的字典 850 条（西里尔 242），能读俄文，
+            //     但它单独跑英文会差（拉丁字母只有 52 条）。
+            //     所以两个都跑，下面的判据择优，平手保 en。
+            //
+            //   失败（文件缺失/引擎没起来）就返回 false，下面完全按原来的单模型行为走。
+            // ==========================================================
+            string? cyrText = null;
+            double cyrScore = 0;
+            bool haveCyr = RapidOcrEngine.TryRecognizeBoth(
+                rapidInput, out string? enBothText, out _, out cyrText, out cyrScore);
+            if (haveCyr && enBothText is not null)
+            {
+                // 双跑路径下，采纳的基线就是 en 这一份（二者用同一张输入图，口径一致）
+                rapidText = enBothText;
+            }
+            else
+            {
+                cyrText = null;
+            }
 
             if (rapidText is not null && rapidScore >= RapidOcrMinScore)
             {
@@ -116,11 +142,67 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         ? $"；整块疑似没认好（{rapidBoxes} 行，弱字符 {rapidWeakChars}，单字框 {rapidSingleBoxes}），将提示逐行框"
                         : string.Empty));
 
+                // ==========================================================
+                // 【2026-11-10 阶段三 P1-西里尔】en / cyrillic 择优
+                //
+                //   采纳 cyr 的条件（四条同时满足，参数是离线 91 样本扫出来的，别自己调）：
+                //     a) cyr 结果非空
+                //     b) cyr 里西里尔字母占「字母」比例 >= 0.50   （复用 MinCyrillicRatioForRussian）
+                //     c) cyr 里「不在 cyrillic 字典中的非空白字符」占比 < 0.02
+                //     d) 且满足任一：
+                //        · en 的词内数字字母混排比 >= 0.15
+                //        · en 有效字符数 < cyr 有效字符数 × 0.8
+                //   否则一律保留 en —— **平手保 en 是硬规则**。
+                //
+                //   为什么要有 c)：cyrillic 模型的字典只有 850 条，
+                //     遇到字典外的字母（比如英文标点混进俄文）会吐生僻字；
+                //     0.02 的含义是「几乎每个非空白字符都在字典里」。
+                // ==========================================================
+                string? chosenText = rapidText;
+                string chosenChannel = "RapidOCR";
+                string chosenNote = $"RapidOCR 平均分 {rapidScore:F2}";
+                bool choseCyr = false;
+
+                if (cyrText is not null)
+                {
+                    double cyrCyrRatio = LanguageDetector.CountCyrillicRatio(cyrText);
+                    double cyrOutOfDict = CountOutOfCyrillicDictRatio(cyrText);
+                    int enChars = TextNormalizer.CountMeaningfulChars(rapidText);
+                    int cyrChars = TextNormalizer.CountMeaningfulChars(cyrText);
+                    double enMixed = CountMixedAlnumRatio(rapidText);
+
+                    if (cyrCyrRatio >= MinCyrillicRatioForRussian
+                        && cyrOutOfDict < 0.02
+                        && (enMixed >= 0.15 || enChars < cyrChars * 0.8))
+                    {
+                        chosenText = cyrText;
+                        chosenChannel = "RapidOCR-cyrillic";
+                        chosenNote = $"RapidOCR 西里尔模型（西里尔 {cyrCyrRatio:P0}，平均分 {cyrScore:F2}）";
+                        choseCyr = true;
+                        AppLogger.Info(
+                            $"【RapidOCR 双模型】改用西里尔结果：西里尔 {cyrCyrRatio:P0}、" +
+                            $"字典外 {cyrOutOfDict:P2}；en 混排 {enMixed:F2}、en {enChars} 字 vs cyr {cyrChars} 字");
+                    }
+                    else
+                    {
+                        AppLogger.Info(
+                            $"【RapidOCR 双模型】保留 en 结果（西里尔 {cyrCyrRatio:P0}、" +
+                            $"字典外 {cyrOutOfDict:P2}；en 混排 {enMixed:F2}、en {enChars} 字 vs cyr {cyrChars} 字）");
+                    }
+                }
+
+                // 采用 cyr 时也走一次 trim，和 en 分支的清洗口径保持一致
+                if (choseCyr)
+                {
+                    string cyrTrimmed = TrimEdgeSymbols(chosenText!, AppSettings.RapidOcrKeepTrailingPunct);
+                    if (cyrTrimmed.Length > 0) chosenText = cyrTrimmed;
+                }
+
                 return new ForeignOutcome(
-                    rapidText,
-                    TextNormalizer.CountLines(rapidText),
-                    "RapidOCR",
-                    $"RapidOCR 平均分 {rapidScore:F2}",
+                    chosenText!,
+                    TextNormalizer.CountLines(chosenText!),
+                    chosenChannel,
+                    chosenNote,
                     false)
                 {
                     BlockLooksBad = blockLooksBad,
@@ -2014,4 +2096,107 @@ internal sealed partial class OcrTextCapture : ITextCapture
     ///   → 所以横杠**只进结尾名单**，开头一律不动。
     /// </summary>
     private static bool IsTrailingEdgeSymbol(char c) => c is '-' or '–' or '—' or '_';
+
+    /// <summary>
+    /// 【2026-11-10 阶段三 P1-西里尔】词内数字字母混排比：含字母的词里，**同时含数字**的占多少。
+    ///
+    /// 【为什么用它判】en 模型硬读俄文时，字母会碎成一堆「字母+数字」的片段
+    ///   （`Mawe 3b Ha Apyr.`、`Cb Xe e 3 3 6 4 B`），这个比例明显偏高；
+    ///   真英文和真俄文都接近 0。实测分布：俄文段 P50=0.250，非俄文段 P50=0.000。
+    ///
+    /// 【口径】按空白切词 → 只统计含字母的词 → 其中同时含数字的占比。
+    ///   没有词时返回 0（空结果不该被当成「可疑」）。
+    /// </summary>
+    private static double CountMixedAlnumRatio(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0.0;
+
+        int withLetter = 0;
+        int withLetterAndDigit = 0;
+        foreach (string word in text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+        {
+            bool hasLetter = false;
+            bool hasDigit = false;
+            foreach (char c in word)
+            {
+                if (char.IsLetter(c)) hasLetter = true;
+                else if (char.IsDigit(c)) hasDigit = true;
+            }
+            if (!hasLetter) continue;
+            withLetter++;
+            if (hasDigit) withLetterAndDigit++;
+        }
+
+        return withLetter == 0 ? 0.0 : (double)withLetterAndDigit / withLetter;
+    }
+
+    /// <summary>cyrillic 字典缓存（懒加载；读不到就为空集 = 不做字典外检查）。</summary>
+    private static HashSet<char>? _cyrDictChars;
+
+    private static readonly object CyrDictGate = new();
+
+    /// <summary>
+    /// 【2026-11-10 阶段三 P1-西里尔】文本里「不在 cyrillic 字典中的非空白字符」占比。
+    ///
+    /// 【为什么需要】cyrillic 模型的字典只有 850 条。遇到字典外的字符（生僻字、
+    ///   被误认的标点），它照样输出，那些字符几乎必然是错的。
+    ///   判据要求这个比例 < 0.02 —— 也就是「几乎每个非空白字符都在字典里」。
+    ///
+    /// 【读不到字典时返回 0】等于不做这道检查，不去拦。宁可少拦，也不因为
+    ///   文件问题把正常结果判死。
+    ///
+    /// 【字典格式】每行一个字符（和 ppocrv5_en_dict.txt 同格式），UTF-8 无 BOM。
+    /// </summary>
+    private static double CountOutOfCyrillicDictRatio(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0.0;
+
+        HashSet<char>? dict = _cyrDictChars;
+        if (dict is null)
+        {
+            lock (CyrDictGate)
+            {
+                if (_cyrDictChars is null)
+                {
+                    var loaded = new HashSet<char>();
+                    try
+                    {
+                        string path = Path.Combine(
+                            AppContext.BaseDirectory, "models", "v5", "ppocrv5_cyrillic_dict.txt");
+                        if (File.Exists(path))
+                        {
+                            foreach (string line in File.ReadAllLines(path))
+                            {
+                                string t = line.TrimEnd('\r', '\n');
+                                if (t.Length == 1) loaded.Add(t[0]);
+                            }
+                        }
+                        else
+                        {
+                            AppLogger.Warn($"西里尔字典缺失（{path}），跳过「字典外字符」检查");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Warn($"读西里尔字典失败（跳过该检查）：{ex.GetType().Name} {ex.Message}");
+                    }
+                    _cyrDictChars = loaded;
+                }
+                dict = _cyrDictChars;
+            }
+        }
+
+        if (dict.Count == 0) return 0.0;
+
+        int total = 0;
+        int outside = 0;
+        foreach (char c in text)
+        {
+            if (char.IsWhiteSpace(c)) continue;
+            total++;
+            if (!dict.Contains(c)) outside++;
+        }
+
+        return total == 0 ? 0.0 : (double)outside / total;
+    }
 }

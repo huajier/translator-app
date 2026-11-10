@@ -22,7 +22,11 @@
 param(
     [Parameter(Mandatory = $true)][string]$目标目录,
     [string]$源目录 = 'tools\模型\en_v5',
-    [switch]$核对
+    [switch]$核对,
+    # 【2026-11-10 阶段三 P1-西里尔】选哪一组模型。
+    #   en       = 原来的英文模型（默认，向后兼容）
+    #   cyrillic = 西里尔模型（与 en 双跑择优，见 RapidOcrEngine.TryRecognizeBoth）
+    [ValidateSet('en', 'cyrillic')][string]$组 = 'en'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,9 +34,22 @@ $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 Set-Location $root
 
 # 已知的 en 模型指纹（2026-10-27 从 modelscope v3.10.0 下载）
-$期望 = @{
+$期望en = @{
     'en_PP-OCRv5_rec_mobile.onnx' = @{ 大小 = 7872351; SHA256 = 'C3461ADD59BB4323ECBA96A492AB75E06DDA42467C9E3D0C18DB5D1D21924BE8' }
     'ppocrv5_en_dict.txt'         = @{ 大小 = 1416;    SHA256 = $null }
+}
+
+# 【2026-11-10 阶段三 P1-西里尔】西里尔模型指纹
+#   来源 itextresearch/itext-cyrillic_PP-OCRv5_mobile_rec（架构师已下好，本机备份 tools\模型\cyrillic_v5\）
+#   字典 850 行（西里尔 242 + 拉丁 52），由 itext_cyr.yml 的 character_dict 抽出。
+$期望西里尔 = @{
+    'cyrillic_PP-OCRv5_rec_mobile.onnx' = @{ 大小 = 8074890; SHA256 = '1B248A527759307854FA8BADAB0DBE3C0DAB7296322FE30579E0B92C50A0A41B' }
+    'ppocrv5_cyrillic_dict.txt'         = @{ 大小 = 2780;    SHA256 = '2DE016B31EDD687ACFC1BF72170F4FEFF9F0C4893EDAC87CEF30B2C5A82443EC' }
+}
+
+$期望 = if ($组 -eq 'cyrillic') { $期望西里尔 } else { $期望en }
+if ($组 -eq 'cyrillic' -and -not $PSBoundParameters.ContainsKey('源目录')) {
+    $源目录 = 'tools\模型\cyrillic_v5'
 }
 
 $目标模型目录 = Join-Path $目标目录 'models\v5'
@@ -42,7 +59,7 @@ New-Item -ItemType Directory -Force -Path $目标模型目录 | Out-Null
 $失败 = 0
 foreach ($名 in $期望.Keys) {
     $源 = Join-Path $源目录 $名
-    if (-not (Test-Path $源)) { throw "源文件不存在：$源（模型不进 git；本机固定备份在 tools\模型\en_v5\，指纹见 tools\日志\阶段3-S3-换模型.md）" }
+    if (-not (Test-Path $源)) { throw "源文件不存在：$源（模型不进 git；本机固定备份在 $源目录，指纹见本脚本顶部核对表）" }
     $目标 = Join-Path $目标模型目录 $名
     Copy-Item -Path $源 -Destination $目标 -Force
 
