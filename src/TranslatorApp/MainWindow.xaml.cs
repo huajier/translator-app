@@ -57,9 +57,98 @@ public partial class MainWindow : Window
         InitializeComponent();
         Title = App.WindowTitle;   // 标题只此一处取值，别在 XAML 里再写一份
 
+        // 【2026-11-11 第19轮 用户同意】窗口最大不超过屏幕工作区，
+        //   免得拖到底被任务栏挡住。工作区尺寸运行时才知道，所以只能在代码里设。
+        //   放在最前面（InitializeComponent 之后立刻）：先定好上限，
+        //   后面 LoadFromSettings / 读记录都不会让窗口先撑大再被限制，避免闪一下。
+        MaxHeight = SystemParameters.WorkArea.Height;
+        MaxWidth = SystemParameters.WorkArea.Width;
+
         BuildLangItems();
         LoadFromSettings();
+
+        // 【2026-11-11 用户需求 3】常驻记录区：每次窗口被激活时读一次。
+        //   用 Activated 而不是 Loaded + 定时器：用户从游戏切回来、点托盘、再点主窗口
+        //   都会触发 Activated，这正是「我想看最新记录」的时刻。
+        //   构造函数里**不读**，只在这里挂事件，保证启动不被拖慢。
+        Activated += OnWindowActivated;
     }
+
+    /// <summary>
+    /// 【2026-11-11】主窗口激活 → 刷新常驻识别记录区。
+    /// 只在激活时读一次文件，不用定时器、不起后台线程。
+    /// </summary>
+    private void OnWindowActivated(object? sender, EventArgs e) => RefreshHistoryPanel();
+
+    /// <summary>
+    /// 把最近 10 条渲染成多行纯文本，塞进常驻区那个只读 TextBox。
+    ///
+    /// 【2026-11-11 用户反馈 2/3】
+    ///   · 「摘要」看不懂（用户原话「摘要是什么，不是识别？」）→ 改成「识别:」
+    ///   · 只显示前 60 字被否掉（「直接...给我省略了我看鸡毛」「我要看全的」）
+    ///     → 全文照登，不截断、不省略；外层 ScrollViewer 负责滚。
+    ///
+    /// 每条形如（条与条之间空一行，便于分辨）：
+    ///     ──────────────────────────
+    ///     08:49:02 · RapidOCR · 170 字
+    ///     识别:
+    ///     &lt;原文全文，保留换行&gt;
+    ///     译文:
+    ///     &lt;译文全文，保留换行&gt;      ← 有译文才有这两行
+    ///
+    /// 分隔线用 24 个「─」纯文本，不用分隔线控件 —— 整块可以原样选中复制。
+    /// </summary>
+    private void RefreshHistoryPanel()
+    {
+        try
+        {
+            var entries = CaptureRecord.ReadRecent(10);
+            if (entries.Count == 0)
+            {
+                HistoryBox.Text = "还没有识别记录。";
+                return;
+            }
+
+            const string Rule = "────────────────────────";
+            var sb = new System.Text.StringBuilder();
+            foreach (CaptureRecord.CaptureRecordEntry e in entries)
+            {
+                if (sb.Length > 0) sb.Append('\n');      // 条与条之间空一行
+                sb.Append(Rule).Append('\n');
+                sb.Append($"{e.Time} · {e.Channel} · {e.CharCount} 字").Append('\n');
+                sb.Append("识别:").Append('\n');
+                // 全文照登：原文里的换行原样留在文本里，TextBox 会渲染成换行
+                sb.Append(string.IsNullOrEmpty(e.Text) ? "（空）" : e.Text).Append('\n');
+                if (!string.IsNullOrEmpty(e.Translation))
+                {
+                    sb.Append("译文:").Append('\n');
+                    sb.Append(e.Translation).Append('\n');
+                }
+            }
+            HistoryBox.Text = sb.ToString();
+            // 【2026-11-11 修】刚赋完 Text 立刻 ScrollToHome 不管用 —— 那时还没排版，
+            //   滚动位置会停在旧位置（实测停在最底部，用户看到的是最后一条的结尾）。
+            // 【2026-11-11 第18轮再修】用 Loaded 优先级仍不够：窗口已经显示的情况下，
+            //   布局可能在 Loaded 之后才完成，实测切回窗口后仍停在中间某条。
+            //   改用 ContextIdle（比 Loaded 更低，等排版彻底完成再滚），
+            //   并且同时把外层 ScrollViewer 也滚回顶部 —— TextBox 自己不是滚动宿主。
+            HistoryBox.Dispatcher.BeginInvoke(
+                new Action(() =>
+                {
+                    HistoryBox.ScrollToHome();
+                    HistoryBox.CaretIndex = 0;          // 光标回开头，TextBox 会跟着滚
+                    HistoryBox.ScrollToLine(0);
+                }),
+                System.Windows.Threading.DispatcherPriority.ContextIdle);
+        }
+        catch (Exception ex)
+        {
+            // 读记录失败绝不能影响主界面
+            AppLogger.Warn($"刷新识别记录失败（不影响取词）：{ex.GetType().Name} {ex.Message}");
+            HistoryBox.Text = "还没有识别记录。";
+        }
+    }
+
 
     /// <summary>按 LangOptions 建下拉项，最后追加「其他…」。</summary>
     private void BuildLangItems()
@@ -158,6 +247,36 @@ public partial class MainWindow : Window
 
         AppSettings.SetRapidOcrPrimary(on);
         AppLogger.Info($"主窗口：游戏字识别（RapidOCR）被点成「{(on ? "开" : "关")}」");
+    }
+
+    // ------------------------------------------------------------------ 识别记录
+
+    /// <summary>
+    /// 【2026-11-10 用户需求】打开「识别记录」窗口，找回最近 10 次识别。
+    ///
+    /// 【用户原话】「我现在主页面下面加个识别日志，让用户识别出来后不小心点掉了
+    ///   还能在识别日志里面找出来。」
+    ///
+    /// 【只在点击时读文件】主窗口构造/显示时**不碰** logs 目录，
+    ///   保证这个功能对启动速度零影响（读文件发生在新窗口的构造函数里）。
+    /// </summary>
+    private void OnHistoryClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var win = new TranslatorApp.UI.Shared.CaptureHistoryWindow
+            {
+                Owner = this,
+            };
+            win.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            // 窗口打不开也绝不能把主界面带崩
+            AppLogger.Warn($"打开识别记录失败：{ex.GetType().Name} {ex.Message}");
+            System.Windows.MessageBox.Show(this, "打不开识别记录窗口。", "识别记录",
+                            System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+        }
     }
 
     // ------------------------------------------------------------------ 目标语言

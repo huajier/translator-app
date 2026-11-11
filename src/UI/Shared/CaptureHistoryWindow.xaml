@@ -1,0 +1,80 @@
+<Window x:Class="TranslatorApp.UI.Shared.CaptureHistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="识别记录"
+        Width="620" Height="480"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        Background="White"
+        FontFamily="Microsoft YaHei UI"
+        KeyDown="OnWindowKeyDown">
+
+    <!-- 颜色/字号全部沿用主窗口已有取值（#333333 / #777777 / 12），不新增配色 -->
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="150" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="EmptyHint"
+                   Grid.Row="0"
+                   Text="还没有识别记录。"
+                   Foreground="#777777"
+                   FontSize="12"
+                   Margin="2,0,0,8"
+                   Visibility="Collapsed" />
+
+        <!-- 10 条列表：每条两行（时间·通道·字数 / 原文前 40 字） -->
+        <ListBox x:Name="RecordList"
+                 Grid.Row="1"
+                 FontSize="12"
+                 SelectionChanged="OnRecordSelectionChanged"
+                 BorderBrush="#DDDDDD"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="0,3">
+                        <TextBlock Text="{Binding Header}" Foreground="#333333" FontSize="12" />
+                        <TextBlock Text="{Binding Preview}" Foreground="#777777" FontSize="12"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Grid.Row="2"
+                   Text="选中上面一条，这里显示完整原文："
+                   Foreground="#777777"
+                   FontSize="12"
+                   Margin="2,10,0,6" />
+
+        <!-- 只读文本框：可选中、可 Ctrl+C（IsReadOnly 不等于不能复制） -->
+        <TextBox x:Name="FullTextBox"
+                 Grid.Row="3"
+                 IsReadOnly="True"
+                 TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 FontSize="12"
+                 Foreground="#333333"
+                 Padding="6"
+                 BorderBrush="#DDDDDD" />
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button x:Name="CopyButton"
+                    Content="复制原文"
+                    Padding="14,4"
+                    FontSize="12"
+                    Click="OnCopyClick" />
+            <Button Content="关闭"
+                    Padding="14,4"
+                    FontSize="12"
+                    Margin="8,0,0,0"
+                    IsCancel="True"
+                    Click="OnCloseClick" />
+        </StackPanel>
+    </Grid>
+</Window>

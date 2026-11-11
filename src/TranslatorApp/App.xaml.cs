@@ -797,6 +797,30 @@ public partial class App : System.Windows.Application
         {
             AppLogger.Warn($"更新提示框失败（不影响取词结果）：{ex.Message}");
         }
+
+        // ==========================================================
+        // 【2026-11-11 用户需求：识别记录里也要有译文】
+        //
+        //   挂在这里，是因为**这里是整段翻译真正结束的唯一位置**：
+        //     · 上面 :776 那个 progress 回调是**分段**的，长文本会触发好几次，
+        //       在那里补写会写进半截译文；
+        //     · 这里的 translation 是 LongTextTranslator 汇总后的最终结果
+        //       （可能是 null = 没翻/翻失败）。
+        //   所以只在这儿挂一次。
+        //
+        //   失败也记（写「译文: （翻译失败）」），让用户在记录里看得出「这条没翻成」。
+        // ==========================================================
+        try
+        {
+            bool tranOk = translation is not null && translation.Success;
+            string tranText = tranOk ? (translation!.Text ?? string.Empty) : string.Empty;
+            Core.Capture.CaptureRecord.AttachTranslation(result.Text ?? string.Empty, tranText, tranOk);
+        }
+        catch (Exception ex)
+        {
+            // 记录补写失败绝不能影响取词/翻译
+            AppLogger.Warn($"补写译文到取词记录失败（不影响取词）：{ex.GetType().Name} {ex.Message}");
+        }
     }
 
     /// <summary>
