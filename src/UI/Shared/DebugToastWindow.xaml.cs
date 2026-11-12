@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using TranslatorApp.Core.Input;
@@ -43,6 +45,45 @@ public partial class DebugToastWindow : Window
     ///   卡片必须一直留着。
     /// </summary>
     private bool _waitingForResult;
+
+    // ==========================================================
+    // 【2026-11-11 第20轮「句句对照」】逐句高亮状态。
+    //
+    //   同一句序号 i 的原文 Run 和译文 Run 都记在 _runsByParagraph[i] 里，
+    //   悬停任意一侧的 Run 就把这一组全部刷上高亮底色 —— 这就是「双向」。
+    //
+    //   【为什么用 Dictionary 而不是 Run.Tag】Run 是 ContentElement 不是
+    //   FrameworkElement，拿 Tag 做事要先找个容器，Dictionary 直白也好断点。
+    //   【高亮色 #38 开头】探针给的 #55 偏亮，压到 #38（alpha 0x38 = 56/255）。
+    // ==========================================================
+    private readonly Dictionary<int, List<System.Windows.Documents.Run>> _runsByParagraph = new();
+
+    /// <summary>
+    /// 【2026-11-12 第22轮】最近一次翻译的对齐结果，由 App 交进来。
+    ///   两侧句子 + Gale-Church 对齐组（组号 → 哪些源句 / 哪些目标句）。
+    ///   卡片复用时（同一窗口对象）也跟着换，所以不缓存在别处。
+    /// </summary>
+    private IReadOnlyList<string>? _alignedSource;
+    private IReadOnlyList<string>? _alignedTarget;
+    private IReadOnlyList<(List<int> Source, List<int> Target)>? _alignedPairs;
+
+    /// <summary>
+    /// 【2026-11-12 第22轮】由 App 调：把这次翻译的句子与对齐结果交给卡片。
+    /// 任一侧为空或对齐为空 → 卡片走 UsePlainTextMode（整段显示，不高亮）。
+    /// </summary>
+    internal void SetAlignedSentences(
+        IReadOnlyList<string>? source,
+        IReadOnlyList<string>? target,
+        IReadOnlyList<(List<int> Source, List<int> Target)>? pairs)
+    {
+        _alignedSource = source;
+        _alignedTarget = target;
+        _alignedPairs = pairs;
+    }
+    private readonly SolidColorBrush _highlightBrush =
+        new(System.Windows.Media.Color.FromArgb(0x38, 0x38, 0xBD, 0xF8));
+
+
 
     /// <summary>
     /// 「翻译中」那几个点的循环定时器（2026-11-06 第23轮）。
@@ -551,6 +592,9 @@ public partial class DebugToastWindow : Window
         if (result.Success)
         {
             TitleText.Text = "识别结果";
+            // 【2026-11-11 第20轮】复用同一个卡片窗口时先回普通模式，
+            //   免得上一轮的 Rich 还亮着（新一次识别还没翻译完，句数无从谈起）。
+            UsePlainTextMode();
 
             // 【2026-10-08 用户反馈】「太长的文字超出对话框大小就被省略掉了，我要完整显示」
             //   原来这里调了 Truncate(120)，超过 120 字直接砍掉加省略号——用户要看全文。
@@ -785,6 +829,19 @@ public partial class DebugToastWindow : Window
             TranslationText.Text = translation.Text;
             TransScroll.Visibility = Visibility.Visible;
             TransSep.Visibility = Visibility.Visible;
+
+            // ==========================================================
+            // 【2026-11-11 第20轮「句句对照」】**只在这里**尝试逐句渲染。
+            //
+            //   为什么是整个文件里唯一的位置：这是一次「整段翻译真正完成」的分支
+            //   —— 上面 translating=true 的两支（翻译中 / 半截译文）都提前 return 了，
+            //   走不到这里。所以在这里切句不会出现「翻到一半句数对不上、高亮闪烁」。
+            //
+            //   开关关着 → TryRenderSentencePairs 直接返回 false，走下面原逻辑，
+            //   卡片行为和以前逐字节一致。
+            // ==========================================================
+            bool rendered = TryRenderSentencePairs();
+            if (!rendered) UsePlainTextMode();
             // ==========================================================
             // 【2026-11-04 v2.0 译文详情行】跟原文详情行同一个格式。
             //   缓存命中那一支的耗时写 0 ms 并注明「上次的结果」——
@@ -1009,4 +1066,302 @@ public partial class DebugToastWindow : Window
             Core.Logging.AppLogger.Warn($"关闭残留提示框失败（不影响框选）：{ex.Message}");
         }
     }
+
+    // ==========================================================
+    // 【2026-11-11 第20轮「句句对照」】
+    // ==========================================================
+
+    /// <summary>
+    /// 滚轮事件放行：RichTextBox 默认会吃掉滚轮，导致卡片外面的 TextScroll 滚不动。
+    /// 探针里实测踩过这个坑 —— e.Handled 保持 false 才能冒泡上去。
+    /// </summary>
+    private void OnRichPreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        e.Handled = false;
+    }
+
+    /// <summary>
+    /// 把一组句子灌进 RichTextBox，每句一个 Run，并登记到 _runsByParagraph。
+    ///
+    /// 【句间那个空格 Run 不登记】它不属于任何一句，悬停它不该有高亮。
+    /// 【全部写完整限定名】这个项目开了 WinForms 隐式 using，
+    ///   Run / Brush / Brushes / Color / RichTextBox 全都有两套同名类型，
+    ///   不写命名空间编译不过（本轮实测踩过）。
+    /// </summary>
+    private void SetRichText(System.Windows.Controls.RichTextBox box,
+                             IReadOnlyList<string> sentences,
+                             System.Windows.Media.Brush fg,
+                             int baseIndex)
+    {
+        var doc = new System.Windows.Documents.FlowDocument { PagePadding = new Thickness(0) };
+        var para = new System.Windows.Documents.Paragraph { Margin = new Thickness(0) };
+
+        for (int i = 0; i < sentences.Count; i++)
+        {
+            int idx = baseIndex + i;
+            var run = new System.Windows.Documents.Run(sentences[i])
+            {
+                Foreground = fg,
+                Background = System.Windows.Media.Brushes.Transparent,
+            };
+            run.MouseEnter += (_, _) => Highlight(idx);
+            run.MouseLeave += (_, _) => ClearHighlight();
+
+            para.Inlines.Add(run);
+
+            if (!_runsByParagraph.TryGetValue(idx, out List<System.Windows.Documents.Run>? list))
+            {
+                list = new List<System.Windows.Documents.Run>();
+                _runsByParagraph[idx] = list;
+            }
+            list.Add(run);
+
+            if (i < sentences.Count - 1)
+            {
+                para.Inlines.Add(new System.Windows.Documents.Run(" ")
+                {
+                    Background = System.Windows.Media.Brushes.Transparent,
+                });
+            }
+        }
+
+        doc.Blocks.Add(para);
+        box.Document = doc;
+    }
+
+    /// <summary>
+    /// 【2026-11-12 第22轮】按**对齐组**把句子灌进 RichTextBox。
+    ///
+    /// 【为什么不能复用 SetRichText】那个方法是「一句一号」登记的，
+    ///   而这里要的是「一句属于哪个对齐组」—— 1:N / N:1 时一个组有多个 Run，
+    ///   悬停任一句都要点亮整组，所以字典的键必须是组号。
+    ///
+    /// 【句间分隔】原文句之间加一个空格 Run（英文需要），译文句之间不加（中文不需要）。
+    ///   这个分隔 Run 不登记组号，悬停它不会有任何高亮。
+    /// </summary>
+    private void SetRichTextByGroup(
+        System.Windows.Controls.RichTextBox box,
+        IReadOnlyList<string> sentences,
+        IReadOnlyList<(List<int> Source, List<int> Target)> pairs,
+        bool isSource,
+        System.Windows.Media.Brush fg)
+    {
+        var doc = new System.Windows.Documents.FlowDocument { PagePadding = new Thickness(0) };
+
+        // ==========================================================
+        // 【2026-11-12 第24轮 修「全部挤在一个段落里」】
+        //
+        //   问题：原来所有 Run 都塞进**同一个 Paragraph**，句间只补一个空格。
+        //     后果是原文的换行全丢了、3 句话连成一大坨（用户原话「我的分段啥的都没了」），
+        //     译文也挤成一团（「行距很挤，直接堆成一坨了」）。
+        //     —— 光加空格治不了，因为换行信息本来就没进文档结构。
+        //
+        //   改法：**每个对齐组一个 Paragraph**。
+        //     · 1:1 对齐时 = 一句一段，句子之间靠段落边界自然换行
+        //     · 1:N 时那一组的多句仍留在同一段里（它们本来就该在一起），组内补空格
+        //   段落样式：组间留 4px、行距 19（13px 字配 19 舒展而不散）。
+        // ==========================================================
+        for (int g = 0; g < pairs.Count; g++)
+        {
+            var para = new System.Windows.Documents.Paragraph
+            {
+                Margin = new Thickness(0, 0, 0, 4),
+                LineHeight = 19,
+                LineStackingStrategy = System.Windows.LineStackingStrategy.BlockLineHeight,
+            };
+
+            List<int> idxs = isSource ? pairs[g].Source : pairs[g].Target;
+
+            for (int k = 0; k < idxs.Count; k++)
+            {
+                int si = idxs[k];
+                if (si < 0 || si >= sentences.Count) continue;
+
+                var run = new System.Windows.Documents.Run(sentences[si])
+                {
+                    Foreground = fg,
+                    Background = System.Windows.Media.Brushes.Transparent,
+                };
+                // 【2026-11-12 第25轮】把组号记在 Tag 上，高亮改由 RichTextBox 命中测试驱动。
+                //   原来这里挂的是 Run.MouseEnter —— WPF 里 Run 不是 Visual、
+                //   没有自己的命中区域，事件在 RichTextBox 里基本不触发（架构师探针实测：
+                //   派发 MouseEnter 后 Background 没变，而直接调 Highlight 就变）。
+                run.Tag = g;
+
+                para.Inlines.Add(run);
+
+                if (!_runsByParagraph.TryGetValue(g, out List<System.Windows.Documents.Run>? list))
+                {
+                    list = new List<System.Windows.Documents.Run>();
+                    _runsByParagraph[g] = list;
+                }
+                list.Add(run);
+
+                // 组内多句之间补空格（原文要；中文不加）。
+                // 空格 Run 不挂 MouseEnter —— 它不属于任何一句，悬停不该高亮。
+                if (isSource && k < idxs.Count - 1)
+                {
+                    para.Inlines.Add(new System.Windows.Documents.Run(" ")
+                    {
+                        // 空格 Run 不带 Tag —— FindRunAt 会跳过它，悬停空格不该高亮
+                        Background = System.Windows.Media.Brushes.Transparent,
+                    });
+                }
+            }
+
+            // 每组一个段落进文档 —— 句子之间就靠段落边界换行。
+            doc.Blocks.Add(para);
+        }
+
+        box.Document = doc;
+    }
+
+    /// <summary>
+    /// 【2026-11-12 第25轮】给 RichTextBox 挂「命中测试式」悬停高亮（幂等，只挂一次）。
+    ///
+    /// 【为什么不用 Run.MouseEnter】WPF 里 Run 是 Inline 不是 Visual，没有自己的命中区域，
+    ///   鼠标事件一律由 RichTextBox 统一处理 —— 挂在 Run 上的 MouseEnter 基本不触发。
+    ///   架构师探针实测：给它派发 MouseEnter 后 Background 不变，而直接调 Highlight 就变，
+    ///   说明高亮逻辑没问题，是事件根本没到。
+    ///
+    /// 【为什么不抢选择操作】只挂 MouseMove，不碰任何鼠标按下/KeyDown；
+    ///   用户拖选文字时 MouseMove 照样触发高亮，但选择本身完全不受影响。
+    /// </summary>
+    private void EnsureHoverWiring(System.Windows.Controls.RichTextBox box)
+    {
+        if (box.Tag is string s && s == "hover-wired") return;   // 已挂过，别重复挂
+        box.Tag = "hover-wired";
+
+        box.MouseMove += (_, e) =>
+        {
+            try
+            {
+                // snapToText=true：吸附到最近的文字，指到句尾空白也能命中
+                System.Windows.Documents.TextPointer? pos =
+                    box.GetPositionFromPoint(e.GetPosition(box), true);
+                if (pos is null) { ClearHighlight(); return; }
+
+                System.Windows.Documents.Run? hit = FindRunAt(box, pos);
+                if (hit is null || hit.Tag is not int g) { ClearHighlight(); return; }
+
+                Highlight(g);
+            }
+            catch
+            {
+                // 悬停出任何岔子都不该影响卡片（最坏就是不亮）
+                ClearHighlight();
+            }
+        };
+
+        box.MouseLeave += (_, _) => ClearHighlight();
+    }
+
+    /// <summary>
+    /// 【2026-11-12 第25轮】找出「光标位置落在哪个 Run 的文本区间里」。
+    ///   Run.ContentStart &lt;= pos &lt;= Run.ContentEnd
+    ///   没有 Tag 的 Run（句间空格）一律跳过 —— 悬停空格不该触发高亮。
+    /// </summary>
+    private static System.Windows.Documents.Run? FindRunAt(
+        System.Windows.Controls.RichTextBox box,
+        System.Windows.Documents.TextPointer pos)
+    {
+        foreach (System.Windows.Documents.Block block in box.Document.Blocks)
+        {
+            if (block is not System.Windows.Documents.Paragraph para) continue;
+            foreach (System.Windows.Documents.Inline inl in para.Inlines)
+            {
+                if (inl is not System.Windows.Documents.Run r) continue;
+                if (r.Tag is not int) continue;          // 空格 Run 跳过
+
+                if (r.ContentStart.CompareTo(pos) <= 0 && r.ContentEnd.CompareTo(pos) >= 0)
+                    return r;
+            }
+        }
+        return null;
+    }
+
+
+    /// <summary>高亮第 idx 句（原文那句 + 译文那句一起）。</summary>
+    private void Highlight(int idx)
+    {
+        ClearHighlight();
+        if (!_runsByParagraph.TryGetValue(idx, out List<System.Windows.Documents.Run>? runs)) return;
+        foreach (System.Windows.Documents.Run r in runs) r.Background = _highlightBrush;
+    }
+
+    /// <summary>清掉所有高亮底色。</summary>
+    private void ClearHighlight()
+    {
+        foreach (List<System.Windows.Documents.Run> runs in _runsByParagraph.Values)
+        {
+            foreach (System.Windows.Documents.Run r in runs)
+            {
+                r.Background = System.Windows.Media.Brushes.Transparent;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 【2026-11-12 第22轮「句子级对照」】整段翻译完成时按句子渲染，并按对齐组联动高亮。
+    ///
+    /// 【为什么是句子级】上一轮段落级粒度太粗：用户截图那段只剩 2 段、307 字一大块，
+    ///   高亮亮的是"一整段"而不是"一句"，用户明确要的是句子级。
+    ///
+    /// 【怎么做到 1:N 也能正确高亮】
+    ///   每个 Run 的组号记的是「对齐组下标」，不是「句号」。
+    ///   悬停某句 → 取出它的组号 → 把该组在**原文侧的所有 Run** 和
+    ///   **译文侧的所有 Run** 一起点亮。这样一句英文被中文拆成两句时，
+    ///   悬停任一句都会点亮整组的两句 —— 这正是用户想要的效果。
+    /// </summary>
+    private bool TryRenderSentencePairs()
+    {
+        if (!TranslatorApp.Core.Capture.AppSettings.SentenceHighlight) return false;
+        if (_alignedSource is null || _alignedTarget is null || _alignedPairs is null) return false;
+        if (_alignedSource.Count == 0 || _alignedTarget.Count == 0 || _alignedPairs.Count == 0) return false;
+
+        _runsByParagraph.Clear();   // 字典是「组号 -> Run 列表」，语义已改成组
+
+        // 【2026-11-12 第25轮】挂一次鼠标命中测试（幂等：只挂一回）
+        EnsureHoverWiring(MainRich);
+        EnsureHoverWiring(TransRich);
+
+        SetRichTextByGroup(MainRich, _alignedSource, _alignedPairs, true,
+                           (System.Windows.Media.Brush)MainRich.Foreground);
+        SetRichTextByGroup(TransRich, _alignedTarget, _alignedPairs, false,
+                           (System.Windows.Media.Brush)TransRich.Foreground);
+
+        MainText.Visibility = Visibility.Collapsed;
+        MainRich.Visibility = Visibility.Visible;
+        TranslationText.Visibility = Visibility.Collapsed;
+        TransRich.Visibility = Visibility.Visible;
+
+        // ==========================================================
+        // 【2026-11-12 第25轮 修：译文区的外层容器没打开】
+        //
+        //   原来这里只设了 TransRich.Visible，可 TransRich 是套在 TransScroll 里的，
+        //   而 TransScroll 默认 Collapsed（"没有译文时一行都不占"）——
+        //   外层不打开，里面再 Visible 也看不见。同理 TransSep 那条分隔线。
+        //   后果：句子级对照一旦生效，**译文整块消失**，用户只看得到原文。
+        //   探针能截图但没注意译文，真机上一眼就能看出来。
+        // ==========================================================
+        TransScroll.Visibility = Visibility.Visible;
+        TransSep.Visibility = Visibility.Visible;
+
+        Core.Logging.AppLogger.Info(
+            $"句子对照：原文 {_alignedSource.Count} 句 / 译文 {_alignedTarget.Count} 句，" +
+            $"对齐成 {_alignedPairs.Count} 组");
+        return true;
+    }
+
+    /// <summary>退回普通 TextBox 模式（开关关着 / 句数不等 / 逐段翻译中）。</summary>
+    private void UsePlainTextMode()
+    {
+        _runsByParagraph.Clear();
+        if (MainRich is null || TransRich is null) return;   // 构造期还没 InitializeComponent
+        MainRich.Visibility = Visibility.Collapsed;
+        TransRich.Visibility = Visibility.Collapsed;
+        MainText.Visibility = Visibility.Visible;
+        TranslationText.Visibility = Visibility.Visible;
+    }
+
 }

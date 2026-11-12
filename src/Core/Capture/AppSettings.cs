@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -152,6 +152,18 @@ internal static class AppSettings
     public static bool RapidOcrSmallBoxUpscale { get; private set; } = true;
 
     /// <summary>
+    /// 【2026-11-11 第20轮 用户需求「句句对照」】**默认关。**
+    ///
+    /// 【做什么】开启后卡片里的原文/译文改成逐句富文本：
+    ///   鼠标移到某一句，原文那句和右边译文那句**同时高亮**。
+    /// 【为什么默认关】这是新功能，用户要自己决定要不要。关着时卡片行为必须和以前完全一致
+    ///   （普通 TextBox、可拖选、无高亮）—— 这条是硬要求，别为了省事把两条路径合并。
+    /// 【前提】整段翻译完成后再切句，句数相等才高亮（见 SentenceSplitter.TryPair）。
+    ///   句数不等时自动降级成整段显示 —— 强行按序号配会配错句，比不高亮更糟。
+    /// </summary>
+    public static bool SentenceHighlight { get; private set; } = false;
+
+    /// <summary>
     /// 翻译总开关（阶段四，2026-11-02）。**2026-11-04 起默认 true = 装好就能用。**
     ///
     /// 【为什么改成默认开（v2.0 用户实测反馈）】
@@ -292,6 +304,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-11-11 第20轮：句句对照开关（默认关）
+                if (doc.RootElement.TryGetProperty("sentenceHighlight", out var shl)
+                    && shl.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    SentenceHighlight = shl.GetBoolean();
+                    any = true;
+                }
+
                 // 2026-10-30 阶段三 S4-D：小框 3 倍重试开关（2026-10-31 起默认开）
                 if (doc.RootElement.TryGetProperty("rapidOcrSmallBoxUpscale", out var sbu)
                     && sbu.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
@@ -343,6 +363,7 @@ internal static class AppSettings
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
                     $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}，" +
+                    $"句句对照 = {(SentenceHighlight ? "是" : "否")}，" +
                     $"翻译 = {(TranslateEnabled ? "开" : "关")}（译成 {TranslateTargetLang}，" +
                     $"地址 = {(TranslateEndpoint.Length == 0 ? "默认 Bing" : TranslateEndpoint)}，" +
                     $"来自 {ConfigPath}）");
@@ -410,6 +431,8 @@ internal static class AppSettings
                         rapidOcrKeepTrailingPunct = RapidOcrKeepTrailingPunct,
                         blockFallbackHint = BlockFallbackHint,
                         rapidOcrSmallBoxUpscale = RapidOcrSmallBoxUpscale,
+                        // 2026-11-11 第20轮：少了这一行，下次保存就把句句对照开关抹回默认关
+                        sentenceHighlight = SentenceHighlight,
                         // 2026-11-02 阶段四 T1a：这两行少一行，下次保存就把开关状态抹掉，
                         // 用户会看到「我开的翻译怎么自己关了」。
                         translateEnabled = TranslateEnabled,
@@ -463,6 +486,20 @@ internal static class AppSettings
         {
             if (RapidOcrPrimary == on) return;
             RapidOcrPrimary = on;
+        }
+        Save(WindowsOnly);
+    }
+
+    /// <summary>
+    /// 【2026-11-11 第20轮】开/关「句句对照」，并立刻存盘。
+    /// 照 SetRapidOcrPrimary 的写法：先改属性再按现状存，只有一条路。
+    /// </summary>
+    public static void SetSentenceHighlight(bool on)
+    {
+        lock (Gate)
+        {
+            if (SentenceHighlight == on) return;
+            SentenceHighlight = on;
         }
         Save(WindowsOnly);
     }

@@ -1,4 +1,4 @@
-<Window x:Class="TranslatorApp.UI.Shared.DebugToastWindow"
+﻿<Window x:Class="TranslatorApp.UI.Shared.DebugToastWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="框选坐标提示"
@@ -117,6 +117,7 @@
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               MaxHeight="300">
+                  <Grid>
                     <TextBox x:Name="MainText" Foreground="#FF38BDF8"
                              FontSize="13" FontWeight="Bold"
                              TextWrapping="Wrap" MaxWidth="420"
@@ -124,6 +125,28 @@
                              Background="Transparent" BorderThickness="0" Padding="0"
                              VerticalScrollBarVisibility="Disabled"
                              HorizontalScrollBarVisibility="Disabled" />
+                    <!-- 【2026-11-11 第20轮「句句对照」】逐句富文本版原文。
+                         和上面的 MainText 同一个位置、二选一显示：
+                           开关关 or 句数不等 → MainText 显示、MainRich 隐藏（和以前完全一致）
+                           开关开 and 句数相等 → MainRich 显示、MainText 隐藏
+                         ⚠️ RichTextBox 会吃掉滚轮，必须在 PreviewMouseWheel 里
+                            e.Handled=false 让外层 TextScroll 收到（探针实测踩过）。 -->
+                    <RichTextBox x:Name="MainRich"
+                                 Foreground="#FF38BDF8"
+                                 FontSize="13" FontWeight="Bold"
+                                 MaxWidth="420"
+                                 Visibility="Collapsed"
+                                 IsReadOnly="True"
+                                 IsDocumentEnabled="False"
+                                 IsTabStop="False"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 Padding="0"
+                                 CaretBrush="Transparent"
+                                 VerticalScrollBarVisibility="Disabled"
+                                 HorizontalScrollBarVisibility="Disabled"
+                                 PreviewMouseWheel="OnRichPreviewMouseWheel" />
+                  </Grid>
                 </ScrollViewer>
 
                 <!--
@@ -157,12 +180,30 @@
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
                               Visibility="Collapsed">
+                  <Grid>
                     <TextBox x:Name="TranslationText" Foreground="#FFE2E8F0"
                              FontSize="13" TextWrapping="Wrap" MaxWidth="420"
                              IsReadOnly="True"
                              Background="Transparent" BorderThickness="0" Padding="0"
                              VerticalScrollBarVisibility="Disabled"
                              HorizontalScrollBarVisibility="Disabled" />
+                    <!-- 【2026-11-11 第20轮「句句对照」】逐句富文本版译文。二选一规则同上。 -->
+                    <RichTextBox x:Name="TransRich"
+                                 Foreground="#FFE2E8F0"
+                                 FontSize="13"
+                                 MaxWidth="420"
+                                 Visibility="Collapsed"
+                                 IsReadOnly="True"
+                                 IsDocumentEnabled="False"
+                                 IsTabStop="False"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 Padding="0"
+                                 CaretBrush="Transparent"
+                                 VerticalScrollBarVisibility="Disabled"
+                                 HorizontalScrollBarVisibility="Disabled"
+                                 PreviewMouseWheel="OnRichPreviewMouseWheel" />
+                  </Grid>
                 </ScrollViewer>
 
                 <!--

@@ -68,8 +68,9 @@
             <RowDefinition Height="Auto" />   <!-- 第2行 翻译语言 -->
             <RowDefinition Height="Auto" />   <!-- 第3行 游戏字识别 -->
             <RowDefinition Height="Auto" />   <!-- 第4行 使用说明 -->
-            <RowDefinition Height="Auto" />   <!-- 第5行 识别记录标题 + 详情 -->
-            <RowDefinition Height="*" />      <!-- 第6行 记录区，吃掉剩余空间 -->
+            <RowDefinition Height="Auto" />   <!-- 第5行 句句对照开关 -->
+            <RowDefinition Height="Auto" />   <!-- 第6行 识别记录标题 + 详情 -->
+            <RowDefinition Height="*" />      <!-- 第7行 记录区，吃掉剩余空间 -->
         </Grid.RowDefinitions>
 
         <!-- 第一行：翻译开关 + 圆圈问号（唯一还留着的图标） -->
@@ -136,9 +137,25 @@
                    TextWrapping="Wrap"
                    Margin="0,14,0,0" />
 
-        <!-- 第五行：识别记录标题 + 「详情」按钮（2026-11-11 用户反馈 2：要像标题+控件，
+        <!-- 第五行：句句对照开关（2026-11-11 第20轮 用户需求，默认关）
+             样式照第三行「游戏字识别（快）」那个 CheckBox -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,14,0,0">
+            <CheckBox x:Name="SentenceHighlightCheck"
+                      VerticalAlignment="Center"
+                      Content="句句对照"
+                      Checked="OnSentenceHighlightChecked"
+                      Unchecked="OnSentenceHighlightUnchecked">
+                <CheckBox.ToolTip>
+                    <ToolTip MaxWidth="320" ToolTipService.ShowDuration="60000">
+                        <TextBlock TextWrapping="Wrap">开：鼠标移到某一句，原文和右边译文一起高亮（这一版不能逐句翻译，是整段翻完再切句）&#x0a;关：和以前一样</TextBlock>
+                    </ToolTip>
+                </CheckBox.ToolTip>
+            </CheckBox>
+        </StackPanel>
+
+        <!-- 第六行：识别记录标题 + 「详情」按钮（2026-11-11 用户反馈 2：要像标题+控件，
              不能和下面那句灰色说明文字一样） -->
-        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,14,0,4">
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,14,0,4">
             <TextBlock Text="识别记录"
                        FontSize="13"
                        FontWeight="SemiBold"
@@ -173,7 +190,7 @@
              被遮住了（实测边框处从灰底直接跳到纯白，中间没有 #999999 像素）。
              Border 永远画在自己背景之上，最稳。BorderThickness=1 + #999999 比下拉框略深一点：
              记录区面积大，1px 太浅会「撑不住」。 -->
-        <Border Grid.Row="5"
+        <Border Grid.Row="6"
                 VerticalAlignment="Stretch"
                 BorderBrush="#999999"
                 BorderThickness="1"

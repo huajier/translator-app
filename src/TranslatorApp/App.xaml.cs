@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
@@ -188,6 +188,7 @@ public partial class App : System.Windows.Application
             _ = RunReplayAsync(args[1], args[2]);
             return;
         }
+
 
         if (!TryAcquireSingleInstance())
         {
@@ -677,6 +678,7 @@ public partial class App : System.Windows.Application
     /// 图库回放：跑完清单里所有图，然后关掉进程。
     /// 失败也要关——否则命令行会一直挂着，脚本那边等不到返回。
     /// </summary>
+
     private static async Task RunReplayAsync(string listPath, string resultPath)
     {
         try
@@ -777,6 +779,8 @@ public partial class App : System.Windows.Application
                 p => card.UpdateWith(result, p, translating: true));
             try
             {
+                // 【2026-11-12 第22轮】翻译调用已恢复成原签名（标记法整体作废）。
+                //   句子切分 + Gale-Church 对齐在下面翻译完成后单独做，不进翻译链路。
                 translation = await Core.Translate.LongTextTranslator
                     .TranslateAsync(result.Text, budget, progress, CancellationToken.None)
                     .ConfigureAwait(true);
@@ -787,6 +791,54 @@ public partial class App : System.Windows.Application
                 // 翻译整个崩了也必须走到下面那次 UpdateWith，原文才能显出来。
                 AppLogger.Warn($"翻译出错（不影响原文显示）：{ex.GetType().Name} {ex.Message}");
             }
+        }
+
+        // ==========================================================
+        // 【2026-11-12 第22轮「句子级对照」】
+        //   翻译完成后在这里切句 + 对齐，再交给卡片。
+        //   为什么放在 UpdateWith **之前**：卡片要在画字的时候就知道
+        //   每句属于哪个对齐组，否则会先按整段画一次再重画，闪一下。
+        //
+        //   开关关着 → 一句都不算，走原 TextBox 路径，行为与以前一致。
+        // ==========================================================
+        try
+        {
+            if (Core.Capture.AppSettings.SentenceHighlight)
+            {
+                string srcText = result.Text ?? string.Empty;
+                string dstText = translation?.Success == true ? (translation.Text ?? string.Empty) : string.Empty;
+
+                if (srcText.Length > 0 && dstText.Length > 0)
+                {
+                    List<string> srcSents = Core.Translate.SentenceAligner.SplitForeign(srcText);
+                    List<string> dstSents = Core.Translate.SentenceAligner.SplitChinese(dstText);
+                    List<(List<int> Source, List<int> Target)> pairs =
+                        Core.Translate.SentenceAligner.Align(srcSents, dstSents);
+
+                    if (pairs.Count > 0)
+                    {
+                        card.SetAlignedSentences(srcSents, dstSents, pairs);
+                    }
+                    else
+                    {
+                        card.SetAlignedSentences(null, null, null);
+                    }
+                }
+                else
+                {
+                    card.SetAlignedSentences(null, null, null);
+                }
+            }
+            else
+            {
+                card.SetAlignedSentences(null, null, null);
+            }
+        }
+        catch (Exception ex)
+        {
+            // 对齐失败绝不能影响原文/译文显示
+            AppLogger.Warn($"句子对齐失败（降级为整段显示）：{ex.GetType().Name} {ex.Message}");
+            card.SetAlignedSentences(null, null, null);
         }
 
         try

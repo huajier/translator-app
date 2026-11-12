@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -171,6 +171,8 @@ public partial class MainWindow : Window
 
             // 2026-11-09：RapidOCR 开关也搬到主界面，这里把当前值搬上去
             RapidOcrCheck.IsChecked = AppSettings.RapidOcrPrimary;
+            // 2026-11-11 第20轮：句句对照开关也搬上来
+            SentenceHighlightCheck.IsChecked = AppSettings.SentenceHighlight;
 
             string cur = AppSettings.TranslateTargetLang;
             var hit = LangBox.Items.OfType<ComboBoxItem>()
@@ -278,6 +280,26 @@ public partial class MainWindow : Window
                             System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
     }
+
+    // ------------------------------------------------------------------ 句句对照
+
+    /// <summary>
+    /// 【2026-11-11 第20轮】主界面「句句对照」勾选框。
+    /// 开：卡片里的原文/译文逐句渲染，悬停某句两边同时高亮。
+    /// 关：卡片行为和以前完全一致（普通 TextBox、可拖选、无高亮）。
+    /// </summary>
+    private void OnSentenceHighlightChecked(object sender, RoutedEventArgs e) => ApplySentenceHighlight(true);
+
+    private void OnSentenceHighlightUnchecked(object sender, RoutedEventArgs e) => ApplySentenceHighlight(false);
+
+    private void ApplySentenceHighlight(bool on)
+    {
+        if (_loading) return;
+
+        AppSettings.SetSentenceHighlight(on);
+        AppLogger.Info($"主窗口：句句对照被点成「{(on ? "开" : "关")}」");
+    }
+
 
     // ------------------------------------------------------------------ 目标语言
 

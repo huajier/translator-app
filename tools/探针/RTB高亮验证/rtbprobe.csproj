@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    验证探针：RichTextBox 能不能同时做到「逐句悬停高亮」+「拖选复制」，
+    并且在这张深色卡片上外观可接受、滚轮不打架。
+
+    只用 WPF，不引任何第三方包；不引用 src\ 下的产品代码（独立复现卡片外观）。
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>rtbprobe</AssemblyName>
+    <RootNamespace>rtbprobe</RootNamespace>
+  </PropertyGroup>
+
+</Project>
