@@ -17,7 +17,7 @@ namespace CardProbe;
 /// </summary>
 public static class Probe2
 {
-    private const string DllDir = @"D:\111Desktop\deepseek\翻译软件\release\v0.4.13.gc4";
+    private const string DllDir = @"D:\111Desktop\deepseek\翻译软件\release\v0.4.13.gc5";
 
     public static void Run()
     {

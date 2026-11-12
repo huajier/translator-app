@@ -49,14 +49,23 @@ public partial class DebugToastWindow : Window
     // ==========================================================
     // 【2026-11-11 第20轮「句句对照」】逐句高亮状态。
     //
-    //   同一句序号 i 的原文 Run 和译文 Run 都记在 _runsByParagraph[i] 里，
+    //   同一句序号 i 的原文 Run 和译文 Run 都记在 _runsByGroupSource[i] 里，
     //   悬停任意一侧的 Run 就把这一组全部刷上高亮底色 —— 这就是「双向」。
     //
     //   【为什么用 Dictionary 而不是 Run.Tag】Run 是 ContentElement 不是
     //   FrameworkElement，拿 Tag 做事要先找个容器，Dictionary 直白也好断点。
     //   【高亮色 #38 开头】探针给的 #55 偏亮，压到 #38（alpha 0x38 = 56/255）。
     // ==========================================================
-    private readonly Dictionary<int, List<System.Windows.Documents.Run>> _runsByParagraph = new();
+    // 【2026-11-12 第26轮】拆成两个字典：原文侧 / 译文侧。
+    //   为什么不再合并：高亮时要「让另一侧滚到对应句」，必须知道某个 Run 属于哪一侧。
+    //   渲染时就分开存，比滚动时反查可视树干净得多（反查要判 Parent/Document，容易错）。
+    private readonly Dictionary<int, List<System.Windows.Documents.Run>> _runsByGroupSource = new();
+    private readonly Dictionary<int, List<System.Windows.Documents.Run>> _runsByGroupTarget = new();
+
+    // 【2026-11-12 第27轮「别抽抽」】去重不靠字段记忆，靠「目标偏移和自己现在的
+    //   偏移差 < 4px 就不滚」—— 见 ScrollSideToGroup 末尾。理由：Highlight 开头
+    //   会调 ClearHighlight 清底色，任何存在 Highlight 里的「上次滚到哪」标记
+    //   都会被自己清掉，去重永远失效；直接比真实偏移不存状态，也没有清理漏掉的坑。
 
     /// <summary>
     /// 【2026-11-12 第22轮】最近一次翻译的对齐结果，由 App 交进来。
@@ -1081,7 +1090,7 @@ public partial class DebugToastWindow : Window
     }
 
     /// <summary>
-    /// 把一组句子灌进 RichTextBox，每句一个 Run，并登记到 _runsByParagraph。
+    /// 把一组句子灌进 RichTextBox，每句一个 Run，并登记到 _runsByGroupSource。
     ///
     /// 【句间那个空格 Run 不登记】它不属于任何一句，悬停它不该有高亮。
     /// 【全部写完整限定名】这个项目开了 WinForms 隐式 using，
@@ -1109,10 +1118,10 @@ public partial class DebugToastWindow : Window
 
             para.Inlines.Add(run);
 
-            if (!_runsByParagraph.TryGetValue(idx, out List<System.Windows.Documents.Run>? list))
+            if (!_runsByGroupSource.TryGetValue(idx, out List<System.Windows.Documents.Run>? list))
             {
                 list = new List<System.Windows.Documents.Run>();
-                _runsByParagraph[idx] = list;
+                _runsByGroupSource[idx] = list;
             }
             list.Add(run);
 
@@ -1190,10 +1199,13 @@ public partial class DebugToastWindow : Window
 
                 para.Inlines.Add(run);
 
-                if (!_runsByParagraph.TryGetValue(g, out List<System.Windows.Documents.Run>? list))
+                Dictionary<int, List<System.Windows.Documents.Run>> dict =
+                    isSource ? _runsByGroupSource : _runsByGroupTarget;
+
+                if (!dict.TryGetValue(g, out List<System.Windows.Documents.Run>? list))
                 {
                     list = new List<System.Windows.Documents.Run>();
-                    _runsByParagraph[g] = list;
+                    dict[g] = list;
                 }
                 list.Add(run);
 
@@ -1232,6 +1244,9 @@ public partial class DebugToastWindow : Window
         if (box.Tag is string s && s == "hover-wired") return;   // 已挂过，别重复挂
         box.Tag = "hover-wired";
 
+        // 【2026-11-12 第27轮】记住这一侧是不是原文 —— 滚动时只滚「另一侧」。
+        bool fromSource = ReferenceEquals(box, MainRich);
+
         box.MouseMove += (_, e) =>
         {
             try
@@ -1244,7 +1259,7 @@ public partial class DebugToastWindow : Window
                 System.Windows.Documents.Run? hit = FindRunAt(box, pos);
                 if (hit is null || hit.Tag is not int g) { ClearHighlight(); return; }
 
-                Highlight(g);
+                Highlight(g, fromSource);
             }
             catch
             {
@@ -1281,18 +1296,105 @@ public partial class DebugToastWindow : Window
     }
 
 
-    /// <summary>高亮第 idx 句（原文那句 + 译文那句一起）。</summary>
-    private void Highlight(int idx)
+    /// <summary>
+    /// 高亮第 idx 组（原文侧 + 译文侧一起点亮）。
+    /// fromSource 指明鼠标在哪一侧：true=原文侧、false=译文侧、null=程序主动调（不滚）。
+    /// </summary>
+    private void Highlight(int idx, bool? fromSource = null)
     {
         ClearHighlight();
-        if (!_runsByParagraph.TryGetValue(idx, out List<System.Windows.Documents.Run>? runs)) return;
-        foreach (System.Windows.Documents.Run r in runs) r.Background = _highlightBrush;
+
+        bool lit = false;
+        if (_runsByGroupSource.TryGetValue(idx, out List<System.Windows.Documents.Run>? srcRuns))
+        {
+            foreach (System.Windows.Documents.Run r in srcRuns) r.Background = _highlightBrush;
+            lit = true;
+        }
+        if (_runsByGroupTarget.TryGetValue(idx, out List<System.Windows.Documents.Run>? dstRuns))
+        {
+            foreach (System.Windows.Documents.Run r in dstRuns) r.Background = _highlightBrush;
+            lit = true;
+        }
+        if (!lit) return;
+
+        // ==========================================================
+        // 【2026-11-12 第26轮 用户需求：高亮后另一侧自动切到对应位置】
+        //
+        //   用户原话：「选中原文高亮后如果译文在比较下面的位置（要滚轮往下滚一段）
+        //   就看不见了，我想让文本高亮后另一个框能切到对应高亮的地方。」
+        //
+        // 【2026-11-12 第27轮 改成只滚另一侧】
+        //   第26轮两侧都滚，用户实测：「变成两个框一起滚了，很怪」
+        //   「滚得快一点文字还会抽抽」—— 鼠标所在那侧本来就看得见，不该动。
+        // ==========================================================
+        if (fromSource == true)
+        {
+            ScrollSideToGroup(_runsByGroupTarget, TransScroll, idx);
+        }
+        else if (fromSource == false)
+        {
+            ScrollSideToGroup(_runsByGroupSource, TextScroll, idx);
+        }
+        // null：程序主动调用（探针/测试），两侧都不滚
+    }
+
+    /// <summary>
+    /// 【2026-11-12 第26轮】把某一侧滚到「组 g 的那句」可见处。
+    ///
+    /// 【为什么目标点在上 1/3】贴顶时上一句看不见，上下文就断了；
+    ///   放在 viewport 上 1/3 处，前后都能看到一点。
+    /// 【为什么用 ScrollToVerticalOffset 而不是 ScrollIntoView】后者是 ListBox/ItemsControl
+    ///   的方法，ScrollViewer 没有；RichTextBox 自己的 ScrollToVerticalOffset 是滚**它内部**
+    ///   的滚动区，而这里滚动条在外层 ScrollViewer 上。
+    /// 【为什么 rect.Top 直接当偏移】RichTextBox 的
+    ///   VerticalScrollBarVisibility=Disabled，内容高度就是文档高度、不会被它自己滚动，
+    ///   所以 GetCharacterRect 拿到的 Top 就是「相对内容顶」的 y，正好等于要滚的偏移。
+    /// 【2026-11-12 第27轮 去抖】目标偏移和当前偏移差不到 4px 就不滚 —— 鼠标快速
+    ///   划过时同一句会连调几十次 Highlight，每次都 ScrollToVerticalOffset 就会抽抽。
+    /// </summary>
+    private void ScrollSideToGroup(
+        Dictionary<int, List<System.Windows.Documents.Run>> side,
+        System.Windows.Controls.ScrollViewer scroll,
+        int g)
+    {
+        try
+        {
+            if (!side.TryGetValue(g, out List<System.Windows.Documents.Run>? runs)) return;
+            if (runs.Count == 0) return;
+            if (scroll.Visibility != Visibility.Visible) return;   // 译文区没开就不滚
+
+            System.Windows.Documents.Run run = runs[0];
+            System.Windows.Rect rect = run.ContentStart.GetCharacterRect(
+                System.Windows.Documents.LogicalDirection.Forward);
+            if (rect.IsEmpty || double.IsNaN(rect.Top)) return;
+
+            double target = Math.Max(0, rect.Top - scroll.ViewportHeight / 3);
+
+            // 去抖：已经基本在目标位置就别再动（< 4px 肉眼看不出来，但会抖）
+            if (Math.Abs(scroll.VerticalOffset - target) < 4.0) return;
+
+            // 【这里绝不写日志】悬停跟着鼠标走，MouseMove 每秒几十次；
+            //   AppLogger 是「加锁 + 追加文件」，写在 UI 线程上就是给滚动加抖动。
+            scroll.ScrollToVerticalOffset(target);
+        }
+        catch (Exception ex)
+        {
+            // 滚动失败绝不能影响高亮本身
+            Core.Logging.AppLogger.Warn($"滚动同步失败（不影响高亮）：{ex.GetType().Name} {ex.Message}");
+        }
     }
 
     /// <summary>清掉所有高亮底色。</summary>
     private void ClearHighlight()
     {
-        foreach (List<System.Windows.Documents.Run> runs in _runsByParagraph.Values)
+        ClearSide(_runsByGroupSource);
+        ClearSide(_runsByGroupTarget);
+    }
+
+    /// <summary>清掉某一侧所有 Run 的底色。</summary>
+    private static void ClearSide(Dictionary<int, List<System.Windows.Documents.Run>> side)
+    {
+        foreach (List<System.Windows.Documents.Run> runs in side.Values)
         {
             foreach (System.Windows.Documents.Run r in runs)
             {
@@ -1319,7 +1421,8 @@ public partial class DebugToastWindow : Window
         if (_alignedSource is null || _alignedTarget is null || _alignedPairs is null) return false;
         if (_alignedSource.Count == 0 || _alignedTarget.Count == 0 || _alignedPairs.Count == 0) return false;
 
-        _runsByParagraph.Clear();   // 字典是「组号 -> Run 列表」，语义已改成组
+        _runsByGroupSource.Clear();
+        _runsByGroupTarget.Clear();
 
         // 【2026-11-12 第25轮】挂一次鼠标命中测试（幂等：只挂一回）
         EnsureHoverWiring(MainRich);
@@ -1356,7 +1459,8 @@ public partial class DebugToastWindow : Window
     /// <summary>退回普通 TextBox 模式（开关关着 / 句数不等 / 逐段翻译中）。</summary>
     private void UsePlainTextMode()
     {
-        _runsByParagraph.Clear();
+        _runsByGroupSource.Clear();
+        _runsByGroupTarget.Clear();
         if (MainRich is null || TransRich is null) return;   // 构造期还没 InitializeComponent
         MainRich.Visibility = Visibility.Collapsed;
         TransRich.Visibility = Visibility.Collapsed;
