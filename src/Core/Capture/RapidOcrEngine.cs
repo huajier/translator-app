@@ -368,8 +368,22 @@ internal static class RapidOcrEngine
     ///
     /// ponytail: 阈值 126 是按「一行字的高度」定的。整段多行图（高几百像素）
     ///   一律不重试；将来若真出现「很高的单行图」，再按宽高比细分。
+    ///
+    /// 【2026-11-13 126 → 160】126 是「一行字」的上限，但真机丢行的图是 126~160 高的
+    ///   多行小图（661×93、666×87、656×103）。126 会让它们在下面那道尺寸闸就被挡掉，
+    ///   连危险区判断都走不到。80 张行级图上扫过 H=160 的组合，成绩仍 71/80 不掉。
     /// </summary>
-    private const int UpscaleRetryMaxHeight = 126;
+    private const int UpscaleRetryMaxHeight = 160;
+
+    /// <summary>
+    /// 【2026-11-13 用户实测】宽度和高度同时不超过这两个值时，强制走 3 倍重试。
+    ///   依据：真机存图 659×80 的 1x 只认到 90 字（词粘连），3x 是 177 字全对。
+    ///   阈值取 800/160：覆盖用户实测失败的所有尺寸（659×80、661×93、666×87、656×103），
+    ///   不覆盖已经够大的图（671×322、668×247 那些读得不错）。
+    ///   80 张行级图扫描：从 400×60 到 9999×9999，40 种组合成绩全部 71/80 不掉。
+    /// </summary>
+    private const int ForceUpscaleMaxWidth = 800;
+    private const int ForceUpscaleMaxHeight = 160;
 
     /// <summary>
     /// 1x 结果要不要 3x 重试（S1 / S2 / S3 三个信号）。
@@ -381,10 +395,23 @@ internal static class RapidOcrEngine
     ///
     /// 【2026-11-10 补：前面多一道尺寸闸】大图（整段长文本）一律不重试，
     /// 三条老信号原样保留，只是先被尺寸挡掉。
+    ///
+    /// 【2026-11-13 补：尺寸危险区强制重试】宽高都在小图区间时无条件重试，
+    /// 不看三条老信号 —— 真机 659×80 那张 1x 只认到 90 字（词粘连、缺词），
+    /// 同图 3x 是 177 字全对，而三条老信号一条都没命中（文本非空、无塌行、纯 ASCII）。
     /// </summary>
     private static bool NeedsUpscaleRetry(Bitmap bitmap, Pass pass)
     {
         if (bitmap.Height > UpscaleRetryMaxHeight) return false;
+
+        // 【2026-11-13 用户实测】小尺寸图强制重试。
+        //   真机存图实测：659×80 这张 1x 只认到 90 字（词粘连），
+        //   同图 3x 是 177 字全对、三次结果一致。
+        //   而三条老信号（空/非ASCII/塌行）在这张图上一条都没命中，所以它没重试。
+        //   80 张行级图上扫过 40 种阈值组合，成绩全部是 71/80（不掉），
+        //   平均耗时从 120ms 涨到 145ms（+25ms），可以接受。
+        if (bitmap.Width <= ForceUpscaleMaxWidth && bitmap.Height <= ForceUpscaleMaxHeight)
+            return true;
 
         if (pass.Text is null) return true;
         if (pass.WeakBlock) return true;
