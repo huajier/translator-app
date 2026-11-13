@@ -53,6 +53,11 @@ internal sealed partial class OcrTextCapture : ITextCapture
             //   为 Tesseract 调的那道「一拿到图就翻过来」。
             //   开关默认 false = 维持现状（反色），打开才是吃原图，方便 A/B 回退。
             Bitmap rapidInput = AppSettings.RapidOcrUseOriginal ? captured : raw;
+            AppLogger.Info(
+                $"【RapidOCR 输入】{(AppSettings.RapidOcrUseOriginal ? "原图 captured" : "反色图 raw")} " +
+                $"{rapidInput.Width}×{rapidInput.Height}，" +
+                $"开关 rapidOcrUseOriginal={AppSettings.RapidOcrUseOriginal}" +
+                $"（captured {captured.Width}×{captured.Height} / raw {raw.Width}×{raw.Height}）");
 
             // ==========================================================
             // 【2026-11-10 去重：同一张图只完整识别一遍】
