@@ -431,11 +431,20 @@ internal static class RapidOcrEngine
     /// <summary>
     /// 3x 结果比 1x 好吗：非空 且 非 ASCII 字符数不增加（非 ASCII 变多说明认得更糟）。
     /// 注意 S3 触发的两块（行-76 / 行-83）1x 与 3x 都是纯 ASCII，这条守卫不会把它们挡回去。
+    ///
+    /// 【2026-11-13 用户实测补：行数变多一律不采用】
+    ///   强制 3x（宽&lt;=800 且 高&lt;=160）上线后，80 张行级图里 12 张结果变了：
+    ///   变坏的 5 张**全部**是「行数变多」——行-03 1→3、行-04 1→3、行-23 1→2、
+    ///   行-29 3→7、行-38 1→3；而变好的几张（行-09/43/52）行数全是 1→1。
+    ///   本质：放大后 DBNet 把一行拆成几行，**不是读得更细，是检测碎掉了**。
+    ///   行数用 TextNormalizer.CountLines（与界面「N 行」同一个尺子）。
     /// </summary>
     private static bool IsBetterUpscaledResult(Pass before, Pass after)
     {
         if (after.Text is null) return false;
-        return CountNonAscii(after.Text) <= CountNonAscii(before.Text);
+        if (CountNonAscii(after.Text) > CountNonAscii(before.Text)) return false;
+        if (TextNormalizer.CountLines(after.Text) > TextNormalizer.CountLines(before.Text)) return false;
+        return true;
     }
 
     /// <summary>数非 ASCII 字符（&gt; 127），用来判断一次重试有没有把图认得更糟。</summary>
