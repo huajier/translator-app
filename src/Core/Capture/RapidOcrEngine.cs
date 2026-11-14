@@ -288,7 +288,18 @@ internal static class RapidOcrEngine
         {
             // 【2026-11-14 回退】ReturnWordBox 词框重建这条路已证伪（行级 84.1→81.2、实战 40→37），
             //   开关与探明打印一并撤掉，回到 f887b6a 的行为（默认选项）。
-            result = engine!.Detect(skBitmap, RapidOcrOptions.Default);
+            //
+            // 【2026-11-14 方案1：拆掉两道「按分数删整行」的过滤器】
+            //   RapidOcrOptions.Default 里 TextScore=0.5、BoxScoreThresh=0.5，识别后会把
+            //   整行/整框平均分低于 0.5 的结果**直接丢掉**——「字模糊但内容正确」就变成「完全消失」，
+            //   长段落上是纯亏。两处改动的依据：
+            //   · TextScore 0.5 → 0.0：PP-OCRv5 官方 PaddleX OCR.yaml 里 score_thresh 就是 0.0；
+            //   · BoxScoreThresh 0.5 → 0.3：PaddleOCR 官方 FAQ「整行漏检就把 det_db_box_thresh 调小，
+            //     可调小至 0.3」。
+            //   ⚠️ 字段名是反的：官方 det_db_box_thresh = 这里的 BoxScoreThresh，
+            //      **不是 BoxThresh**（BoxThresh 是二值化阈值，调低会让相邻行糊成一片）。
+            var ocrOptions = RapidOcrOptions.Default with { TextScore = 0.0f, BoxScoreThresh = 0.3f };
+            result = engine!.Detect(skBitmap, ocrOptions);
         }
 
         var blocks = result?.TextBlocks;
