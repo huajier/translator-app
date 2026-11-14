@@ -26,7 +26,7 @@ public static class Program
             string p = System.IO.Path.Combine(DllDir, n);
             return System.IO.File.Exists(p) ? AssemblyLoadContext.Default.LoadFromAssemblyPath(p) : null;
         };
-        try { Probe9.Run(); }
+        try { Probe10.Run(); }
         catch (Exception ex) { Console.WriteLine("ERR " + ex.Message); }
         finally { Application.Current?.Shutdown(); }
     }
