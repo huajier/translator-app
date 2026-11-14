@@ -1,0 +1,89 @@
+== 翻译质量评测 · 20 条 ==
+语料 = tools\素材\翻译评测语料.json（全部取自真机取词记录）
+
+授权页 → 200 / 397 ms
+E01  [按钮] (4 字 → 2 字, 1221 ms)
+      BACK
+   →  返回
+
+E02  [按钮] (12 字 → 4 字, 864 ms)
+      Confirm Back
+   →  确认返回
+
+E03  [字段] (14 字 → 4 字, 917 ms)
+      PRIMARY WEAPON
+   →  主要武器
+
+E04  [字段] (18 字 → 5 字, 917 ms)
+      Stratagem Priority
+   →  策略优先级
+
+E05  [标题] (18 字 → 4 字, 957 ms)
+      WALL BUILDING TOOL
+   →  筑墙工具
+
+E06  [物品名] (13 字 → 7 字, 795 ms)
+      RX-1 Rail Gun
+   →  RX-1轨道炮
+
+E07  [物品名] (18 字 → 5 字, 927 ms)
+      Cardio Accelerator
+   →  心脏加速器
+
+E08  [物品名] (18 字 → 3 字, 867 ms)
+      Displacement Field
+   →  位移场
+
+E09  [物品名] (16 字 → 11 字, 790 ms)
+      AR-20L 'Justice'
+   →  AR-20L '正义'
+
+E10  [物品名] (16 字 → 5 字, 1049 ms)
+      Standard Bicycle
+   →  标准自行车
+
+E11  [描述] (31 字 → 10 字, 912 ms)
+      Increases ranged and thrown ATK
+   →  增加远程和投掷攻击力
+
+E12  [描述] (52 字 → 11 字, 992 ms)
+      Improves movement speed while carrying small weights
+   →  携带轻量时提高移动速度
+
+E13  [描述] (102 字 → 31 字, 1711 ms)
+      Provides reduced visibility to enemies, bonus melee stealth attack damage, and additional vision whi
+   →  提供对敌人的可视性降低，额外的近战潜行攻击伤害，以及额外的视野
+
+E14  [说明] (49 字 → 16 字, 1409 ms)
+      Use the Block command without holding a shield to
+   →  在不持盾牌的情况下使用格挡命令以
+
+E15  [说明] (126 字 → 40 字, 2050 ms)
+      CLICK and DRAG with left mouse button to create new walls or rooms. Confirm any changes by clicking 
+   →  用左键点击并拖动以创建新的墙或房间。通过点击右下角的“ORDER”确认任何更改。
+
+E16  [说明] (77 字 → 19 字, 1112 ms)
+      The menu where old character files are presented under the "Continue" button.
+   →  旧角色文件显示在“继续”按钮下的菜单。
+
+E17  [段落] (208 字 → 73 字, 1468 ms)
+      Armor Class in Barony directly prevents damage from physical attacks. Every creature's base armor cl
+   →  在《Barony》中，护甲等级可以直接防止受到物理攻击的伤害。每个生物的基础护甲等级等于其体质分值。在护甲等级之后计算所受伤害的基础方法相对简单：
+
+E18  [数字] (27 字 → 11 字, 853 ms)
+      31 hours 11 mins remaining!
+   →  剩余31小时11分钟！
+
+R01  [报错] (87 字 → 50 字, 943 ms)
+      Ошибка 404 (страница не найдена): файл "config.txt" не найден — попробуйте /help?id=123
+   →  错误 404（页面未找到）：未找到文件 "config.txt" — 试试 /help?id=123
+
+R02  [说明] (55 字 → 27 字, 910 ms)
+      Файл занимает 2,5 МБ и загружается 30 секунд при 60 FPS
+   →  文件大小为2.5 MB，在60 FPS下需要30秒加载
+
+== 汇总 ==
+成功 20 / 20，失败 0
+耗时 P50 = 935 ms  min = 790  max = 2050
+
+下一步：人工按参考译文逐条判对错，写进 tools\素材\翻译评测结果.md
