@@ -250,6 +250,14 @@ internal static class RapidOcrEngine
                 AppLogger.Info(
                     $"小框 3 倍重试：{bitmap.Width}×{bitmap.Height} → {upscaled.Width}×{upscaled.Height}，" +
                     $"1x「{Preview(first.Text)}」→ 3x「{Preview(second.Text)}」");
+                // 【2026-11-14】3x 结果用词级框重建空格；失败（null）就保留原始文本。
+                //   只对 3x 做：1x 的文本一个字都不动（用户实测 1x 也会丢空格，但那不是这轮的范围）。
+                string? rebuilt = second.Words is null ? null : RebuildWithSpaces(second.Words, second.Text);
+                if (rebuilt is not null && rebuilt.Length > 0)
+                {
+                    AppLogger.Info($"【3x 空格重建】{Preview(second.Text)} → {Preview(rebuilt)}");
+                    second = second with { Text = rebuilt };
+                }
                 first = second;
             }
         }
@@ -260,7 +268,8 @@ internal static class RapidOcrEngine
     /// <summary>一次 Detect 的全部产出（1x 与 3x 各产生一个，用来比较与择优）。</summary>
     private readonly record struct Pass(
         string? Text, string Note, double AverageScore,
-        int WeakChars, int SingleCharBoxes, int BoxCount, bool WeakBlock);
+        int WeakChars, int SingleCharBoxes, int BoxCount, bool WeakBlock,
+        IReadOnlyList<WordBox>? Words);
 
     /// <summary>对一张位图跑一次完整识别，不涉及任何重试决策。原 TryRecognize 的实现原样搬到这里。</summary>
     private static Pass RecognizeOnePass(Bitmap bitmap) => RecognizeOnePass(bitmap, _ocr);
@@ -281,7 +290,7 @@ internal static class RapidOcrEngine
         ms.Position = 0;
 
         using var skBitmap = SKBitmap.Decode(ms);
-        if (skBitmap is null) return new Pass(null, "图片解码失败", 0, 0, 0, 0, false);
+        if (skBitmap is null) return new Pass(null, "图片解码失败", 0, 0, 0, 0, false, null);
 
         OcrResult? result;
         lock (RunGate)
@@ -298,15 +307,18 @@ internal static class RapidOcrEngine
         var blocks = result?.TextBlocks;
         if (blocks is null || blocks.Length == 0)
         {
-            return new Pass(null, "没检测到文字行", 0, 0, 0, 0, false);
+            return new Pass(null, "没检测到文字行", 0, 0, 0, 0, false, null);
         }
 
         var sb = new StringBuilder();
         var scores = new System.Collections.Generic.List<double>(blocks.Length);
+        // 【2026-11-14】词级框（ReturnWordBox 才有）。1x 也照样收，但只有 3x 会用它重建空格。
+        var allWords = new System.Collections.Generic.List<WordBox>();
         int weakChars = 0, singleCharBoxes = 0, boxCount = 0;
         bool weakBlock = false;
         foreach (var block in blocks)
         {
+            if (block.WordResults is { Length: > 0 } blockWords) allWords.AddRange(blockWords);
             // 统计口径与 tools/临时/S4 离线模拟脚本一致：先统计，再跳过空行。
             boxCount++;
             int blockWeak = 0;
@@ -351,11 +363,12 @@ internal static class RapidOcrEngine
 
         if (sb.Length == 0)
         {
-            return new Pass(null, "检测到行但没有文字", 0, weakChars, singleCharBoxes, boxCount, weakBlock);
+            return new Pass(null, "检测到行但没有文字", 0, weakChars, singleCharBoxes, boxCount, weakBlock, null);
         }
 
         return new Pass(sb.ToString(), string.Empty, scores.Count > 0 ? scores.Average() : 0,
-            weakChars, singleCharBoxes, boxCount, weakBlock);
+            weakChars, singleCharBoxes, boxCount, weakBlock,
+            allWords.Count > 0 ? allWords : null);
     }
 
     /// <summary>
@@ -555,6 +568,77 @@ internal static class RapidOcrEngine
         {
             AppLogger.Warn($"入参存图失败（不影响识别）：{ex.GetType().Name} {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 【2026-11-14】用词级框重建带空格的文本（**只给 3x 结果用**，1x 的文本一个字不动）。
+    ///
+    /// 规则（按实测框分布定的，别自己改）：
+    ///   · 先按 Y 中心分行（中心差不超过半行高算同一行），行内按左边界排序 = 阅读顺序；
+    ///   · 相邻两词：前一个的右边界 &lt;= 后一个的左边界 → 中间补**一个空格**；
+    ///     X 区间有重叠 → 不加空格直接拼；
+    ///   · 行与行之间用 \n。
+    ///
+    /// 【为什么不是「间隙大于阈值才加空格」】实测 0002.png：Increases 右边界 679、
+    ///   ranged 左边界 679 —— 间隙 0，但确实是两个词。用阈值会漏掉紧邻的词。
+    ///
+    /// 【已知限制】DBNet 并进同一个框的粘连词救不回来（「Machinetranslationcnverts」在词级
+    ///   数据里就是一个框），这里只能补「框与框之间」的空格。
+    ///
+    /// 【兜底】重建后若 字母数字数 &lt; 原文 95%、或行数比原文多、或为空 → 返回 null（调用方保留原文）。
+    /// </summary>
+    private static string? RebuildWithSpaces(IReadOnlyList<WordBox> words, string? original)
+    {
+        var items = new System.Collections.Generic.List<(string Text, int Left, int Right, double Yc, int H)>();
+        foreach (var w in words)
+        {
+            if (string.IsNullOrWhiteSpace(w.Text)) continue;
+            if (w.BoxPoints is not { Length: > 0 } pts) continue;
+            int left = int.MaxValue, right = int.MinValue, top = int.MaxValue, bottom = int.MinValue;
+            foreach (var p in pts)
+            {
+                if (p.X < left) left = p.X;
+                if (p.X > right) right = p.X;
+                if (p.Y < top) top = p.Y;
+                if (p.Y > bottom) bottom = p.Y;
+            }
+            items.Add((w.Text, left, right, (top + bottom) / 2.0, Math.Max(1, bottom - top)));
+        }
+        if (items.Count == 0) return null;
+
+        var rows = new System.Collections.Generic.List<System.Collections.Generic.List<(string Text, int Left, int Right, double Yc, int H)>>();
+        foreach (var it in items.OrderBy(i => i.Yc))
+        {
+            var last = rows.Count > 0 ? rows[^1] : null;
+            if (last is not null && Math.Abs(it.Yc - last[0].Yc) <= Math.Max(2, last[0].H / 2.0)) last.Add(it);
+            else rows.Add(new() { it });
+        }
+
+        var sb = new StringBuilder();
+        foreach (var row in rows)
+        {
+            bool firstInRow = true;
+            int prevRight = 0;
+            foreach (var it in row.OrderBy(i => i.Left))
+            {
+                if (!firstInRow && prevRight <= it.Left) sb.Append(' ');
+                sb.Append(it.Text);
+                prevRight = it.Right;
+                firstInRow = false;
+            }
+            if (!firstInRow) sb.Append('\n');
+        }
+        string rebuilt = sb.ToString().TrimEnd('\n');
+        if (rebuilt.Length == 0) return null;
+
+        if (original is not null)
+        {
+            if (TextNormalizer.CountLines(rebuilt) > TextNormalizer.CountLines(original)) return null;
+            int before = CountLettersDigits(original);
+            int after = CountLettersDigits(rebuilt);
+            if (before > 0 && after < before * 0.95) return null;
+        }
+        return rebuilt;
     }
 
     /// <summary>
