@@ -1,209 +1,209 @@
 == 翻译质量评测 · 50 条 × 1 轮 ==
 语料 = tools\素材\翻译评测语料.json（全部取自真机取词记录）
 
-授权页 → 200 / 395 ms
-E01  [按钮] (4 字 → 2 字, 905 ms)
+授权页 → 200 / 449 ms
+E01  [按钮] (4 字 → 2 字, 854 ms)
       BACK
    →  返回
 
-E02  [按钮] (12 字 → 4 字, 7937 ms)
+E02  [按钮] (12 字 → 4 字, 1412 ms)
       Confirm Back
    →  确认返回
 
-E03  [字段] (14 字 → 4 字, 7943 ms)
+E03  [字段] (14 字 → 3 字, 751 ms)
       PRIMARY WEAPON
-   →  主要武器
+   →  主武器
 
-E04  [字段] (18 字 → 5 字, 1034 ms)
+E04  [字段] (18 字 → 5 字, 983 ms)
       Stratagem Priority
    →  策略优先级
 
-E05  [标题] (18 字 → 4 字, 968 ms)
+E05  [标题] (18 字 → 4 字, 939 ms)
       WALL BUILDING TOOL
    →  筑墙工具
 
-E06  [物品名] (13 字 → 7 字, 1030 ms)
+E06  [物品名] (13 字 → 7 字, 1231 ms)
       RX-1 Rail Gun
    →  RX-1轨道炮
 
-E07  [物品名] (18 字 → 5 字, 1304 ms)
+E07  [物品名] (18 字 → 5 字, 983 ms)
       Cardio Accelerator
    →  心脏加速器
 
-E08  [物品名] (18 字 → 3 字, 1150 ms)
+E08  [物品名] (18 字 → 3 字, 867 ms)
       Displacement Field
    →  位移场
 
-E09  [物品名] (16 字 → 11 字, 1080 ms)
+E09  [物品名] (16 字 → 11 字, 939 ms)
       AR-20L 'Justice'
    →  AR-20L '正义'
 
-E10  [物品名] (16 字 → 5 字, 1559 ms)
+E10  [物品名] (16 字 → 5 字, 1106 ms)
       Standard Bicycle
    →  标准自行车
 
-E11  [描述] (31 字 → 10 字, 819 ms)
+E11  [描述] (31 字 → 10 字, 1172 ms)
       Increases ranged and thrown ATK
    →  增加远程和投掷攻击力
 
-E12  [描述] (52 字 → 11 字, 1121 ms)
+E12  [描述] (52 字 → 11 字, 2062 ms)
       Improves movement speed while carrying small weights
    →  携带轻量时提高移动速度
 
-E13  [描述] (102 字 → 31 字, 1221 ms)
+E13  [描述] (102 字 → 31 字, 1559 ms)
       Provides reduced visibility to enemies, bonus melee stealth attack damage, and additional vision whi
-   →  提供对敌人的可视性降低，额外的近战潜行攻击伤害，以及额外的视野
+   →  为敌人提供降低的可见性，额外的近战潜行攻击伤害，以及额外的视野
 
-E14  [说明] (49 字 → 16 字, 1166 ms)
+E14  [说明] (49 字 → 16 字, 966 ms)
       Use the Block command without holding a shield to
    →  在不持盾牌的情况下使用格挡命令以
 
-E15  [说明] (126 字 → 40 字, 1536 ms)
+E15  [说明] (126 字 → 40 字, 1315 ms)
       CLICK and DRAG with left mouse button to create new walls or rooms. Confirm any changes by clicking 
    →  用左键点击并拖动以创建新的墙或房间。通过点击右下角的“ORDER”确认任何更改。
 
-E16  [说明] (77 字 → 19 字, 896 ms)
+E16  [说明] (77 字 → 19 字, 1194 ms)
       The menu where old character files are presented under the "Continue" button.
    →  旧角色文件显示在“继续”按钮下的菜单。
 
-E17  [段落] (208 字 → 73 字, 1507 ms)
+E17  [段落] (208 字 → 73 字, 1534 ms)
       Armor Class in Barony directly prevents damage from physical attacks. Every creature's base armor cl
    →  在《Barony》中，护甲等级可以直接防止受到物理攻击的伤害。每个生物的基础护甲等级等于其体质分值。在护甲等级之后计算所受伤害的基础方法相对简单：
 
-E18  [数字] (27 字 → 11 字, 772 ms)
+E18  [数字] (27 字 → 11 字, 749 ms)
       31 hours 11 mins remaining!
    →  剩余31小时11分钟！
 
-R01  [报错] (87 字 → 51 字, 1033 ms)
+R01  [报错] (87 字 → 50 字, 913 ms)
       Ошибка 404 (страница не найдена): файл "config.txt" не найден — попробуйте /help?id=123
-   →  错误 404（页面未找到）：未找到文件 "config.txt" —— 试试 /help?id=123
+   →  错误 404（页面未找到）：未找到文件 "config.txt" — 试试 /help?id=123
 
-R02  [说明] (55 字 → 27 字, 928 ms)
+R02  [说明] (55 字 → 27 字, 1164 ms)
       Файл занимает 2,5 МБ и загружается 30 секунд при 60 FPS
    →  文件大小为2.5 MB，在60 FPS下需要30秒加载
 
-E19  [说明] (31 字 → 11 字, 851 ms)
+E19  [说明] (31 字 → 11 字, 819 ms)
       Sortie using the current setup.
    →  使用当前设置进行退出。
 
-E20  [字段] (32 字 → 15 字, 961 ms)
+E20  [字段] (32 字 → 15 字, 1332 ms)
       HP Attack Defense Movement Magic
    →  生命值 攻击 防御 移动 魔法
 
-E21  [字段] (40 字 → 9 字, 1069 ms)
+E21  [字段] (40 字 → 10 字, 988 ms)
       Weakness weak to Perforation weak to Ice
-   →  弱点：怕穿透，怕冰
+   →  弱点：穿刺 弱点：冰
 
-E22  [描述] (65 字 → 19 字, 1196 ms)
+E22  [描述] (65 字 → 19 字, 875 ms)
       All elemental damage is increased by 25% when wearing this amulet
    →  佩戴此护身符时，所有元素伤害提高25%
 
-E23  [句子] (58 字 → 20 字, 1124 ms)
+E23  [句子] (58 字 → 20 字, 1076 ms)
       Learning a language takes time but it is worth the effort.
    →  学习一门语言需要时间，但这是值得努力的。
 
-E24  [句子] (63 字 → 21 字, 1239 ms)
+E24  [句子] (63 字 → 21 字, 1140 ms)
       Machine translation converts text from one language to another.
    →  机器翻译将文本从一种语言转换为另一种语言。
 
-E25  [段落] (119 字 → 31 字, 929 ms)
+E25  [段落] (119 字 → 31 字, 1250 ms)
       Machine translation is a type of computational linguistics where sentences are translated from one l
    →  机器翻译是一种计算语言学，其中句子从一种语言翻译成另一种语言。
 
-E26  [句子] (73 字 → 20 字, 929 ms)
+E26  [句子] (73 字 → 20 字, 1434 ms)
       Optical character recognition converts images of text into editable text.
    →  光学字符识别将文本图像转换为可编辑文本。
 
-E27  [段落] (125 字 → 34 字, 937 ms)
+E27  [段落] (125 字 → 34 字, 1126 ms)
       Optical character recognition converts images of text into editable text. It is used to read scanned
    →  光学字符识别将文本图像转换为可编辑的文本。它用于自动读取扫描的文档。
 
-E28  [句子] (60 字 → 18 字, 1130 ms)
+E28  [句子] (60 字 → 18 字, 1236 ms)
       This is deliberately low contrast text on a grey background.
-   →  这是故意在灰色背景上的低对比度文字。
+   →  这是刻意在灰色背景上的低对比度文字。
 
-E29  [段落] (122 字 → 37 字, 1317 ms)
+E29  [段落] (122 字 → 37 字, 1341 ms)
       This is deliberately low contrast text on a grey background, which is one of the hardest cases for a
    →  这是在灰色背景上的刻意低对比度文本，这是对任何识别引擎来说最难的情况之一。
 
-E30  [段落] (97 字 → 35 字, 1248 ms)
+E30  [段落] (97 字 → 32 字, 1347 ms)
       Small printed text on a paper-like background is the case that trips up most recognition engines.
-   →  在类似纸张的背景上印有小字体的文本是最容易让大多数识别引擎出错的情况。
+   →  在类似纸张的背景上印有小字体的文本是让大多数识别引擎出错的情况。
 
-E31  [段落] (147 字 → 35 字, 1011 ms)
+E31  [段落] (147 字 → 35 字, 1286 ms)
       This paragraph is deliberately rendered in a small font size, because small text is where optical ch
    →  这一段故意用小字体显示，因为光学字符识别通常在小字体上最容易出现问题。
 
-E32  [说明] (88 字 → 27 字, 1020 ms)
+E32  [说明] (88 字 → 27 字, 1083 ms)
       Use parts to research new equipment. Researched equipment will appear for sale in shops.
-   →  使用零件研究新设备。已研究的设备将会出现在商店中出售。
+   →  使用零件研究新设备。研究过的设备将会出现在商店中出售。
 
-E33  [段落] (104 字 → 46 字, 1385 ms)
+E33  [段落] (104 字 → 46 字, 1363 ms)
       Your name may appear around GitHub where you contribute or are mentioned. You can remove it at any t
    →  当你在 GitHub 上有贡献或被提及时，你的名字可能会显示在相关位置。你可以随时将其移除。
 
-E34  [说明] (87 字 → 28 字, 1067 ms)
+E34  [说明] (87 字 → 28 字, 1211 ms)
       Delete account Once you delete your account, there is no going back. Please be certain.
    →  删除账户 一旦你删除了你的账户，将无法恢复。请三思而行。
 
-E35  [字段] (47 字 → 17 字, 1046 ms)
+E35  [字段] (47 字 → 17 字, 1038 ms)
       Public email Select a verified email to display
    →  公共邮箱 选择一个已验证的邮箱显示
 
-E36  [菜单] (61 字 → 18 字, 1114 ms)
+E36  [菜单] (61 字 → 18 字, 1077 ms)
       Public profile Account Appearance Accessibility Notifications
    →  公共资料 账户 外观 辅助功能 通知
 
-E37  [菜单] (65 字 → 24 字, 1319 ms)
+E37  [菜单] (65 字 → 24 字, 916 ms)
       SSH and GPG keys Credentials Organizations Enterprises Moderation
    →  SSH 和 GPG 密钥 凭证 组织 企业 审核
 
-E38  [菜单] (131 字 → 46 字, 1222 ms)
+E38  [菜单] (131 字 → 46 字, 1370 ms)
       Billing and licensing Emails Password and authentication Sessions SSH and GPG keys Credentials Organ
    →  账单和许可 电子邮件 密码和身份验证 会话 SSH 和 GPG 密钥 凭证 组织 企业 管理
 
-E39  [标题] (51 字 → 17 字, 1221 ms)
+E39  [标题] (51 字 → 17 字, 1448 ms)
       Barony Official Blog — Barony Official Game Website
    →  男爵官方博客 — 男爵官方游戏官网
 
-E40  [标题] (40 字 → 28 字, 1391 ms)
+E40  [标题] (40 字 → 28 字, 1182 ms)
       GitHub Copilot Write better code with AI
    →  GitHub Copilot 使用 AI 编写更好的代码
 
-E41  [句子] (43 字 → 16 字, 1201 ms)
+E41  [句子] (43 字 → 16 字, 1151 ms)
       The quick brown fox jumps over the lazy dog
    →  那只敏捷的棕色狐狸跳过了那只懒狗
 
-E42  [说明] (145 字 → 44 字, 1125 ms)
+E42  [说明] (145 字 → 44 字, 1366 ms)
       WALL BUILDING TOOL CLICK and DRAG with left mouse button to create new walls or rooms. Confirm any c
    →  墙体建造工具：点击并按住左键拖动以创建新墙或房间。通过点击右下角的“下单”确认任何更改。
 
-E43  [段落] (115 字 → 36 字, 1636 ms)
+E43  [段落] (115 字 → 36 字, 1275 ms)
       Below are a few example calculations showing how damage is reduced with various ACs and armor effect
    →  下面是一些示例计算，展示了在不同护甲等级和护甲效果值下伤害是如何降低的。
 
-E44  [段落] (72 字 → 25 字, 1088 ms)
+E44  [段落] (72 字 → 25 字, 1007 ms)
       Base game Myths and Outcasts Legends and Pariahs Deserters and Disciples
    →  基础游戏 神话与被放逐者 传说与贱民 叛逃者与信徒
 
-R03  [报错] (51 字 → 14 字, 1074 ms)
+R03  [报错] (51 字 → 14 字, 1060 ms)
       Ошибка сервера. Попробуйте обновить страницу позже.
    →  服务器错误。请稍后刷新页面。
 
-R04  [句子] (55 字 → 16 字, 1003 ms)
+R04  [句子] (55 字 → 16 字, 1520 ms)
       Съешь же ещё этих мягких Французских булок да выпей чаю
    →  再吃这些柔软的法式面包，再喝点茶
 
-R05  [标题] (60 字 → 18 字, 1081 ms)
+R05  [标题] (60 字 → 18 字, 1025 ms)
       ВЫШЕДШИЕ НОВИНКИ ОЖИДАЕМЫЕ РЕЛИЗЫ Наиболее популярные релизы
    →  最新发布 期待的版本 最受欢迎的版本
 
-R06  [说明] (52 字 → 26 字, 1067 ms)
+R06  [说明] (52 字 → 29 字, 883 ms)
       Обновите ПО до версии 2.0 и перезапустите config.txt
-   →  将软件更新到版本2.0并重新启动config.txt
+   →  将软件更新到版本 2.0 并重新启动 config.txt
 
 == 汇总 ==
 成功 50 / 50，失败 0
-耗时 P50 = 1101 ms  min = 772  max = 7943
+耗时 P50 = 1145 ms  min = 749  max = 2062
 
 下一步：人工按参考译文逐条判对错，写进 tools\素材\翻译评测结果.md
