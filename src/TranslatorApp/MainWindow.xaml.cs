@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -169,8 +169,8 @@ public partial class MainWindow : Window
         {
             TranslateCheck.IsChecked = AppSettings.TranslateEnabled;
 
-            // 2026-11-09：RapidOCR 开关也搬到主界面，这里把当前值搬上去
-            RapidOcrCheck.IsChecked = AppSettings.RapidOcrPrimary;
+            // 2026-11-14：引擎三档下拉框，把当前档位搬上去（顺序与枚举一致：自动/ RapidOCR / Tesseract）
+            EngineBox.SelectedIndex = (int)AppSettings.EngineMode;
             // 2026-11-11 第20轮：句句对照开关也搬上来
             SentenceHighlightCheck.IsChecked = AppSettings.SentenceHighlight;
 
@@ -228,27 +228,25 @@ public partial class MainWindow : Window
         if (on) App.EnsureTranslateNotice();
     }
 
-    // ------------------------------------------------------------------ RapidOCR 引擎
+    // ------------------------------------------------------------------ 引擎档位
 
     /// <summary>
-    /// 主界面「游戏字识别（快）」勾选框（2026-11-09）。
+    /// 主界面「引擎」下拉框（2026-11-14 用户要求，替换原来的「游戏字识别（快）」勾选框）。
     ///
-    /// 【为什么要放主界面】用户原话「开关不能放在主页面里面吗」——
-    ///   以前只能手改 settings.json，对零基础用户等于没有这个开关。
-    /// 【改了即时存盘】AppSettings.SetRapidOcrPrimary 内部 Save()，
-    ///   重启后维持用户的选择。
-    /// 【下一帧生效】这次取词已开始的不会被打断，从下一次框选起走新通道。
+    /// 【为什么换成三档】用户原话「我想做个开关让用户可以选择用什么引擎」。
+    ///   实测同一段 Armor Class：RapidOCR 1 秒但丢后半句；Tesseract 3.8 秒内容全在。
+    ///   所以给三档：自动 / RapidOCR（快）/ Tesseract（准）。
+    /// 【改了即时存盘】AppSettings.SetEngineMode 内部 Save()，重启后维持用户的选择。
+    /// 【下一次取词生效】这次取词已开始的不会被打断。
     /// </summary>
-    private void OnRapidOcrChecked(object sender, RoutedEventArgs e) => ApplyRapidOcrChecked(true);
-
-    private void OnRapidOcrUnchecked(object sender, RoutedEventArgs e) => ApplyRapidOcrChecked(false);
-
-    private void ApplyRapidOcrChecked(bool on)
+    private void OnEngineChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loading) return;
+        if (EngineBox.SelectedIndex < 0) return;
 
-        AppSettings.SetRapidOcrPrimary(on);
-        AppLogger.Info($"主窗口：游戏字识别（RapidOCR）被点成「{(on ? "开" : "关")}」");
+        var mode = (AppSettings.OcrEngineMode)EngineBox.SelectedIndex;
+        AppSettings.SetEngineMode(mode);       // 内部存盘
+        AppLogger.Info($"主窗口：引擎被选成「{(EngineBox.SelectedItem as ComboBoxItem)?.Content}」（{mode}）");
     }
 
     // ------------------------------------------------------------------ 识别记录

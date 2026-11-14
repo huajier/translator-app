@@ -42,7 +42,11 @@ internal sealed partial class OcrTextCapture : ITextCapture
         //   或者用户在 settings.json 里把 rapidOcrPrimary 关了 —— 三种情况都走下面老路。
         //   回退时**旧代码一行没少**，行为与 V0.3.4.3 完全一致。
         // ==========================================================
-        if (AppSettings.RapidOcrPrimary)
+        // 【2026-11-14 引擎三档】走哪条通道由 AppSettings.EngineMode 决定；
+        //   Auto 档按图高判（>160px 长段落走 RapidOCR，小图走 Tesseract）。只影响本次取词，不改配置。
+        bool useRapid = AppSettings.ShouldUseRapidOcr(raw.Height, out string engineReason);
+        AppLogger.Info($"【引擎选择】{engineReason} → 本次走 {(useRapid ? "RapidOCR" : "Tesseract")}");
+        if (useRapid)
         {
             // 【2026-10-27 集成损耗诊断：实验 B —— 反色图 vs 原图】
             //   实测（tools\日志\阶段3-S3-集成损耗诊断.md 第 1 节）：

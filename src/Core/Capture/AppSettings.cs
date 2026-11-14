@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -45,7 +45,9 @@ internal static class AppSettings
     public static bool WindowsOnly { get; private set; } = false;
 
     /// <summary>
-    /// 外文主通道是否用 RapidOCR（PP-OCRv5）。**默认 false（已按止损回退）**。
+    /// 外文主通道用哪个引擎。**【2026-11-14 起改成三档枚举 EngineMode】**
+    ///   下面是 2026-10-27 决定「默认关」时的历史依据，保留备查；
+    ///   现在默认档是 Auto（长段落 RapidOCR / 小图 Tesseract），不再是「关」。**
     ///
     /// 【2026-10-27 阶段三 S3：为什么最后是 false，而不是原计划的 true】
     ///   集成后按用户 m01422 第 4 条跑 121 行全量 A/B，结果触发了止损线：
@@ -59,10 +61,52 @@ internal static class AppSettings
     ///   过线了才改回 true。现在打开它等于让成绩从 50.7% 变成 58.0% 却把
     ///   Barony 这个最难的像素字体样本拖得更差。
     ///
-    /// 打开方式：settings.json 里写 `"rapidOcrPrimary": true`，不用重新发版。
-    /// 旧通道（Windows OCR / Tesseract 多路）一个字没删，关掉就是 V0.3.4.3 的老行为。
+    /// 打开方式：settings.json 里写 `"ocrEngineMode": "rapidocr"`（或 "tesseract" / "auto"）。
+    /// 旧通道（Windows OCR / Tesseract 多路）一个字没删，切到 tesseract 就是 V0.3.4.3 的老行为。
     /// </summary>
-    public static bool RapidOcrPrimary { get; private set; } = false;
+    public enum OcrEngineMode { Auto, RapidOcr, Tesseract }
+
+    /// <summary>当前引擎档位（默认 Auto）。</summary>
+    public static OcrEngineMode EngineMode { get; private set; } = OcrEngineMode.Auto;
+
+    /// <summary>
+    /// 自动模式的分界高度：图高 &gt; 这个值走 RapidOCR，否则走 Tesseract。
+    ///   为什么长段落反而给 RapidOCR：Tesseract 在长段落上要十几秒，用户嫌慢；
+    ///   小图 Tesseract 只多两三秒，换来「内容更全」（同一段 Armor Class，RapidOCR 丢了后半句）。
+    /// </summary>
+    private const int AutoRapidOcrMinHeight = 160;
+
+    /// <summary>
+    /// 外文主通道是否用 RapidOCR。**只读计算属性**（2026-11-14 起由 EngineMode 决定）。
+    /// Auto 档下这里返回 false —— 具体走哪条要看图高，用 <see cref="ShouldUseRapidOcr"/>。
+    /// 保留这个属性是因为日志、存档、旧代码还在读它。
+    /// </summary>
+    public static bool RapidOcrPrimary => EngineMode == OcrEngineMode.RapidOcr;
+
+    /// <summary>
+    /// 这一次取词该走哪个引擎（**只影响本次，不改配置**）。
+    /// 返回 true = 走 RapidOCR 主通道，false = 走老的 Tesseract 多路。
+    /// </summary>
+    public static bool ShouldUseRapidOcr(int imageHeight, out string reason)
+    {
+        switch (EngineMode)
+        {
+            case OcrEngineMode.RapidOcr:
+                reason = "用户选 RapidOCR";
+                return true;
+            case OcrEngineMode.Tesseract:
+                reason = "用户选 Tesseract";
+                return false;
+            default:
+                if (imageHeight > AutoRapidOcrMinHeight)
+                {
+                    reason = $"自动·长段落（图高 {imageHeight}px > {AutoRapidOcrMinHeight}）";
+                    return true;
+                }
+                reason = $"自动·小图（图高 {imageHeight}px ≤ {AutoRapidOcrMinHeight}）";
+                return false;
+        }
+    }
 
     /// <summary>
     /// RapidOCR 用哪套识别模型：`en`（英文专用，默认）/ `latin`（NuGet 包自带）。
@@ -256,11 +300,23 @@ internal static class AppSettings
                     any = true;
                 }
 
-                // 2026-10-27 阶段三 S3：新引擎主通道的退路开关
-                if (doc.RootElement.TryGetProperty("rapidOcrPrimary", out var r)
+                // 2026-11-14：引擎三档（主界面下拉框）。老配置只有 rapidOcrPrimary 时按它换算：
+                //   true → RapidOcr，false → Tesseract；两个键都没有 → 保持 Auto 默认。
+                if (doc.RootElement.TryGetProperty("ocrEngineMode", out var em)
+                    && em.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    EngineMode = (em.GetString() ?? "").Trim().ToLowerInvariant() switch
+                    {
+                        "rapidocr" => OcrEngineMode.RapidOcr,
+                        "tesseract" => OcrEngineMode.Tesseract,
+                        _ => OcrEngineMode.Auto,
+                    };
+                    any = true;
+                }
+                else if (doc.RootElement.TryGetProperty("rapidOcrPrimary", out var r)
                     && r.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
                 {
-                    RapidOcrPrimary = r.GetBoolean();
+                    EngineMode = r.GetBoolean() ? OcrEngineMode.RapidOcr : OcrEngineMode.Tesseract;
                     any = true;
                 }
 
@@ -362,7 +418,7 @@ internal static class AppSettings
 
                 AppLogger.Info(
                     $"已读取设置：只用 Windows 自带 = {(WindowsOnly ? "是" : "否")}，" +
-                    $"外文主通道用 RapidOCR = {(RapidOcrPrimary ? "是" : "否")}，" +
+                    $"引擎 = {EngineMode}，" +
                     $"句句对照 = {(SentenceHighlight ? "是" : "否")}，" +
                     $"翻译 = {(TranslateEnabled ? "开" : "关")}（译成 {TranslateTargetLang}，" +
                     $"地址 = {(TranslateEndpoint.Length == 0 ? "默认 Bing" : TranslateEndpoint)}，" +
@@ -424,6 +480,8 @@ internal static class AppSettings
                     new
                     {
                         windowsOnly,
+                        // 2026-11-14：引擎三档。少了这一行，下次保存就把用户选的档位抹回 auto。
+                        ocrEngineMode = EngineMode.ToString().ToLowerInvariant(),
                         rapidOcrPrimary = RapidOcrPrimary,
                         rapidOcrRec = RapidOcrRec,
                         rapidOcrDumpDir = RapidOcrDumpDir,
@@ -480,15 +538,22 @@ internal static class AppSettings
     ///   否则重启就又回到默认值。
     /// 【和 SetTranslateEnabled 同一套路】先改属性再按现状存，只有一条路。
     /// </summary>
-    public static void SetRapidOcrPrimary(bool on)
+    public static void SetEngineMode(OcrEngineMode mode)
     {
         lock (Gate)
         {
-            if (RapidOcrPrimary == on) return;
-            RapidOcrPrimary = on;
+            if (EngineMode == mode) return;
+            EngineMode = mode;
         }
         Save(WindowsOnly);
     }
+
+    /// <summary>
+    /// 老入口（2026-11-09 的勾选框用过）。现在等价于 SetEngineMode：
+    ///   true → RapidOcr，false → Tesseract。留着是为了不打断任何还在调它的地方。
+    /// </summary>
+    public static void SetRapidOcrPrimary(bool on) =>
+        SetEngineMode(on ? OcrEngineMode.RapidOcr : OcrEngineMode.Tesseract);
 
     /// <summary>
     /// 【2026-11-11 第20轮】开/关「句句对照」，并立刻存盘。
