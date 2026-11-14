@@ -1,4 +1,4 @@
-﻿# ============================================================================
+# ============================================================================
 #  环境检查.ps1 —— 一键体检这台开发机，判断「能不能开工做翻译软件」
 #
 #  这个脚本干嘛的：
@@ -274,7 +274,7 @@ if ($missing.Count -eq 0) {
 # 根目录多余文件检查（T0-4）
 # 清单来源：AI版\02-技术架构.md 第四节「翻译软件\ 根目录只允许出现」。
 # .gitignore 是决策 0-3 选本地 Git 时必须存在的版本控制文件，属于放行项。
-$allowedRoot = @('制作大纲.md', '用户版', 'AI版', 'src', 'docs', 'release', 'backup', 'assets', 'tools',
+$allowedRoot = @('AGENTS.md', 'src', 'docs', 'release', 'backup', 'assets', 'tools',
                  '.gitignore', '.gitattributes', '.editorconfig')
 $extras = Get-ChildItem $ProjectRoot | Where-Object { $allowedRoot -notcontains $_.Name } | Select-Object -ExpandProperty Name
 if ($extras) {
