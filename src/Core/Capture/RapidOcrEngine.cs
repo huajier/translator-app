@@ -286,8 +286,14 @@ internal static class RapidOcrEngine
         OcrResult? result;
         lock (RunGate)
         {
-            result = engine!.Detect(skBitmap, RapidOcrOptions.Default);
+            // 【2026-11-14 探明】打开词级框（官方 README：ReturnWordBox）。
+            //   目的：查「词间空格丢失」——DBNet 把几个词检成一个框时，识别模型吐成一串，
+            //   词间没有任何位置信息。开词级框是想看能不能按词间距把空格补回来。
+            //   本轮只探明结构，不参与任何取舍。
+            var options = RapidOcrOptions.Default with { ReturnWordBox = true };
+            result = engine!.Detect(skBitmap, options);
         }
+        DumpWordProbeOnce(result);
 
         var blocks = result?.TextBlocks;
         if (blocks is null || blocks.Length == 0)
@@ -548,6 +554,62 @@ internal static class RapidOcrEngine
         catch (Exception ex)
         {
             AppLogger.Warn($"入参存图失败（不影响识别）：{ex.GetType().Name} {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 【2026-11-14 探明用，一次性】把 ReturnWordBox 给出的词级结构打进日志。
+    ///   只打进程里第一次识别：确认「词级数据在哪一层、什么类型、框怎么表示」。
+    ///   重建空格的规则定下来之后，这段要删掉或改成正式日志。
+    /// ponytail: 一次性探针，不是长期日志；规则定稿时删。
+    /// </summary>
+    private static bool _wordProbeLogged;
+
+    private static void DumpWordProbeOnce(OcrResult? result)
+    {
+        if (_wordProbeLogged) return;
+        _wordProbeLogged = true;
+        if (result is null) { AppLogger.Info("【词级探明】Detect 返回 null"); return; }
+
+        AppLogger.Info("【词级探明】OcrResult: " + DescribeProps(result));
+
+        var blocks = result.TextBlocks;
+        if (blocks is null || blocks.Length == 0) { AppLogger.Info("【词级探明】没有 TextBlock"); return; }
+        AppLogger.Info($"【词级探明】TextBlocks 数量={blocks.Length}");
+
+        var b0 = blocks[0];
+        AppLogger.Info("【词级探明】TextBlock: " + DescribeProps(b0));
+
+        foreach (string name in new[] { "Text", "WordResults", "Words", "WordCols", "WordTypes", "CharScores" })
+        {
+            var p = b0.GetType().GetProperty(name);
+            if (p is null) { AppLogger.Info($"【词级探明】{name} 不存在"); continue; }
+            AppLogger.Info($"【词级探明】{name} ({p.PropertyType.Name}) = {PreviewValue(p.GetValue(b0))}");
+        }
+    }
+
+    private static string DescribeProps(object o) =>
+        string.Join(", ", o.GetType().GetProperties().Select(p => $"{p.Name}:{p.PropertyType.Name}"));
+
+    /// <summary>把属性值压成一行：集合打前 10 个元素（连同元素自己的属性名）。</summary>
+    private static string PreviewValue(object? v)
+    {
+        switch (v)
+        {
+            case null:
+                return "null";
+            case string s:
+                return s.Length > 120 ? s[..120] + "…" : s;
+            case System.Collections.IEnumerable e:
+                var items = new System.Collections.Generic.List<string>();
+                foreach (object? one in e)
+                {
+                    items.Add(one is null ? "null" : $"[{one.GetType().Name}] {DescribeProps(one)} = {one}");
+                    if (items.Count >= 10) break;
+                }
+                return $"{items.Count} 项：" + string.Join(" ;; ", items);
+            default:
+                return v.GetType().Name + " = " + v;
         }
     }
 
