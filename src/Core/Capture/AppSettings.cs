@@ -66,8 +66,9 @@ internal static class AppSettings
     /// </summary>
     public enum OcrEngineMode { Auto, RapidOcr, Tesseract }
 
-    /// <summary>当前引擎档位（默认 Auto）。</summary>
-    public static OcrEngineMode EngineMode { get; private set; } = OcrEngineMode.Auto;
+    /// <summary>当前引擎档位。**默认 RapidOcr**（2026-11-14 用户拍板：Auto 会让小图默认走 Tesseract，
+    /// 而实测 Tesseract「不是很准」——Constitution→4、in→iy，所以默认直接给 RapidOCR）。</summary>
+    public static OcrEngineMode EngineMode { get; private set; } = OcrEngineMode.RapidOcr;
 
     /// <summary>
     /// 自动模式的分界高度：图高 &gt; 这个值走 RapidOCR，否则走 Tesseract。
@@ -137,7 +138,8 @@ internal static class AppSettings
     public static string RapidOcrDumpDir { get; private set; } = "";
 
     /// <summary>
-    /// 诊断用：新通道吃「反色前的原图」还是「反色后的图」。**默认 false = 现状（反色）**。
+    /// 诊断用：新通道吃「反色前的原图」还是「反色后的图」。**默认 true = 吃原图**（2026-11-14 用户拍板：
+    ///   吃原图 78.3% vs 吃反色 66.7%，差 11.6pp；用户实测同一张 659×80 从 90 字 → 177 字全对）。
     ///
     /// 【2026-10-27 集成损耗诊断：实验 B】
     ///   旧代码为了 Tesseract 在 `OcrTextCapture.cs:134` 一拿到图就把深底整张反色，
@@ -147,7 +149,7 @@ internal static class AppSettings
     ///   打开方式：settings.json 写 `"rapidOcrUseOriginal": true`。
     ///   旧通道（Windows / Tesseract）**照旧吃反色图，一个字节没改**。
     /// </summary>
-    public static bool RapidOcrUseOriginal { get; private set; } = false;
+    public static bool RapidOcrUseOriginal { get; private set; } = true;
 
     /// <summary>
     /// 新通道要不要保留**行尾标点**（`.` `'` `:` 等）。**默认 false = 现状（照旧削）**。

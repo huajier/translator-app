@@ -55,7 +55,7 @@ internal sealed partial class OcrTextCapture : ITextCapture
             //   裸跑（吃原图）L_行 78.3%，管线（62/78 吃反色）66.7% —— 差就差在这。
             //   RapidOCR 自带 DBNet + 归一化，本身就能读浅字深底，**不需要**旧通道
             //   为 Tesseract 调的那道「一拿到图就翻过来」。
-            //   开关默认 false = 维持现状（反色），打开才是吃原图，方便 A/B 回退。
+            //   开关默认 true = 吃原图（2026-11-14 用户拍板）；写 false 可退回吃反色图，方便 A/B 回退。
             Bitmap rapidInput = AppSettings.RapidOcrUseOriginal ? captured : raw;
             AppLogger.Info(
                 $"【RapidOCR 输入】{(AppSettings.RapidOcrUseOriginal ? "原图 captured" : "反色图 raw")} " +
