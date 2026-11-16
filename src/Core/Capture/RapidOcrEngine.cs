@@ -341,6 +341,15 @@ internal static class RapidOcrEngine
             if (CountLettersDigits(block.Text) <= 1) singleCharBoxes++;
 
             if (string.IsNullOrWhiteSpace(block.Text)) continue;
+
+            // 【2026-11-14 方案1-补】跳过「单字框」。
+            //   上一轮把 TextScore 降到 0.0 后，实战-13.02-18 冒出一行「7」（真值只有
+            //   WISHLIST NOW / ON STEAM），属于检测器在噪声上的假框。
+            //   这里早就在统计 singleCharBoxes（CountLettersDigits <= 1），但只用来看，没用来挡。现在补上。
+            //   【为什么安全】只有「整段只有 1 个块」时才放行单字（用户框一个 Back / ON / PER
+            //   这种真 UI 按钮时 blocks.Length == 1）；多块里混进来的单字一律丢掉。
+            if (blocks.Length > 1 && CountLettersDigits(block.Text) <= 1) continue;
+
             // 【2026-10-29 用户实机反馈「换行显示：无」】
             //   原来这里拼的是 U+23CE（⏎）——那是**取词记录/回放结果文件**里
             //   为了「一段一行」用的换行替身，不是给人看的文本。
