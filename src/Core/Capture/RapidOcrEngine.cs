@@ -466,6 +466,19 @@ internal static class RapidOcrEngine
         if (after.Text is null) return false;
         if (CountNonAscii(after.Text) > CountNonAscii(before.Text)) return false;
         if (TextNormalizer.CountLines(after.Text) > TextNormalizer.CountLines(before.Text)) return false;
+
+        // 【2026-11-16】对称守卫：原来只防「3x 变多」，没防「3x 变少」。
+        //   材料2-E2-3 就是这么坏的：3x 只认出「another.」一行，行数没增加，
+        //   于是被当成更好的结果采纳，整句丢失。
+        //   既然「变多」要拒绝，「变少」同样要拒绝 —— 两边对称才算守卫。
+        //   用 CountMeaningfulChars（去掉空白与标点后的字数），
+        //   比 CountLines 稳：3x 把一行拆成两行时行数会涨，但字数不变。
+        if (TextNormalizer.CountMeaningfulChars(after.Text)
+            < TextNormalizer.CountMeaningfulChars(before.Text))
+        {
+            return false;
+        }
+
         return true;
     }
 
