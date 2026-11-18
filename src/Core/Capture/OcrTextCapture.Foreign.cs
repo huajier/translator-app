@@ -199,7 +199,22 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     //   阈值见 Tuning.CyrillicConfidenceMargin（0.05，离线扫出来的）。
                     double confMargin = cyrScore - rapidScore;
 
-                    if (cyrCyrRatio >= MinCyrillicRatioForRussian
+                    // 【2026-11-18】原来条件① 只看 cyrCyrRatio >= 0.50，是「俄文专用」的判断。
+                    //   实测发现 cyr 模型靠词典里的 52 个拉丁字符也能正确读出英文，
+                    //   但那种情况下西里尔比例是 0%，被条件① 当成「不是俄文」丢掉。
+                    //   材料2-E2-3 就是这么坏的：en 只认到「another.」7 字，
+                    //   cyr 读出了 102 字的完整整句，被丢掉。
+                    //
+                    //   改法：加一条并行分支「cyr 输出主要是拉丁字母」。
+                    //   不直接删条件① —— 留一个「这段文字是什么」的兜底判断。
+                    //
+                    //   为什么安全：条件③（enChars < cyrChars*0.8）没动。
+                    //   上一轮验过的 3 条「cyr 更差」的图全部过不了条件③，不会被放进来。
+                    double cyrLatinRatio = LanguageDetector.CountLatinRatio(cyrText);
+                    bool cyrLooksRussian = cyrCyrRatio >= MinCyrillicRatioForRussian;
+                    bool cyrLooksEnglish = cyrLatinRatio >= 0.50 && cyrCyrRatio < 0.10;
+
+                    if ((cyrLooksRussian || cyrLooksEnglish)
                         && cyrOutOfDict < 0.02
                         && (confMargin >= CyrillicConfidenceMargin   // ← 新增这一条
                             || enMixed >= 0.15
@@ -210,14 +225,14 @@ internal sealed partial class OcrTextCapture : ITextCapture
                         chosenNote = $"RapidOCR 西里尔模型（西里尔 {cyrCyrRatio:P0}，平均分 {cyrScore:F2}）";
                         choseCyr = true;
                         AppLogger.Info(
-                            $"【RapidOCR 双模型】改用西里尔结果：西里尔 {cyrCyrRatio:P0}、" +
+                            $"【RapidOCR 双模型】改用西里尔结果：西里尔 {cyrCyrRatio:P0}、拉丁 {cyrLatinRatio:P0}、" +
                             $"字典外 {cyrOutOfDict:P2}；en 混排 {enMixed:F2}、en {enChars} 字 vs cyr {cyrChars} 字" +
                             $"、分差 {confMargin:F3}");
                     }
                     else
                     {
                         AppLogger.Info(
-                            $"【RapidOCR 双模型】保留 en 结果（西里尔 {cyrCyrRatio:P0}、" +
+                            $"【RapidOCR 双模型】保留 en 结果（西里尔 {cyrCyrRatio:P0}、拉丁 {cyrLatinRatio:P0}、" +
                             $"字典外 {cyrOutOfDict:P2}；en 混排 {enMixed:F2}、en {enChars} 字 vs cyr {cyrChars} 字" +
                             $"、分差 {confMargin:F3}）");
                     }
