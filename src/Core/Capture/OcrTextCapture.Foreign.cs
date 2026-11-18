@@ -214,11 +214,21 @@ internal sealed partial class OcrTextCapture : ITextCapture
                     bool cyrLooksRussian = cyrCyrRatio >= MinCyrillicRatioForRussian;
                     bool cyrLooksEnglish = cyrLatinRatio >= 0.50 && cyrCyrRatio < 0.10;
 
-                    if ((cyrLooksRussian || cyrLooksEnglish)
-                        && cyrOutOfDict < 0.02
-                        && (confMargin >= CyrillicConfidenceMargin   // ← 新增这一条
-                            || enMixed >= 0.15
-                            || enChars < cyrChars * 0.8))
+                    // 【2026-11-18】收紧新分支：cyrLooksEnglish 只能靠「字数明显变多」进门。
+                    //   上一轮放开了三条路径，结果短图被误伤：
+                    //     行-68「3d 8h」→「48 P」：靠 enMixed 1.00 进门，可数字+字母本来就混排
+                    //     行-07「DEX. 0」→「DEXO」：靠 confMargin 进门，可 4 个字的置信度差没意义
+                    //   enChars < cyrChars*0.8 这条在短图上同样安全（4 < 3*0.8 不成立），
+                    //   而该救的 5 张全部靠它成立。
+                    //   俄文分支（cyrLooksRussian）三条路径原样保留，不动。
+                    bool cyrWinsByLength = enChars < cyrChars * 0.8;
+                    bool russianReason = confMargin >= CyrillicConfidenceMargin
+                                         || enMixed >= 0.15
+                                         || cyrWinsByLength;
+
+                    if (cyrOutOfDict < 0.02
+                        && ((cyrLooksRussian && russianReason)
+                            || (cyrLooksEnglish && cyrWinsByLength)))
                     {
                         chosenText = cyrText;
                         chosenChannel = "RapidOCR-cyrillic";
