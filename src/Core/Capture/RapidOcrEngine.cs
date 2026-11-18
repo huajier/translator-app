@@ -500,86 +500,143 @@ internal static class RapidOcrEngine
     }
 
     /// <summary>
-    /// 【2026-11-18 P2】把长图按高度切成带重叠的块，每块单独喂检测器。
+    /// 【2026-11-18 P2 重做】按「行间空白带」把长图切块，而不是按固定高度。
     ///
-    /// 【为什么需要】
-    ///   RapidOcrOptions.Default 的 ImgResize=1024 会把大图压到长边 1024，
-    ///   实测 914×210 → 检测输入 960×256，字高只剩 0.83x。
-    ///   DB 检测器在 8~9px 字高上容易整行漏掉，这就是「丢段」的来源。
-    ///   切成矮块后每块的检测分辨率变高，字就认得更准。
+    /// 【为什么必须按空白带 —— 实测数据】
+    ///   645×337 的图，三种切法：
+    ///     不切：      第2行是垃圾 "e epen what wonynen wontm well."、第6-8行错乱
+    ///     固定200px： 第2行救回、但第6行被切成垃圾、还丢了1整行（净 -3）
+    ///     空白带切：  14 行全部正确，零垃圾
+    ///   根因：固定高度切点会落在一行字中间，那半行在两块里各被认残一次。
     ///
-    /// <summary>
-    /// 【2026-11-18 调参】块高从 400 改成 200。
+    /// 【怎么找空白带】
+    ///   深底浅字（本函数的适用前提）：有字的行比背景亮。逐行取最亮像素值，
+    ///   连续若干行都很暗 = 行间空白，从那里切绝不会劈开一行。
+    ///   亮度阈值 60 是 645×337 实测的 —— 有字行 &gt;100，空白行 &lt;40，中间留足余量。
+    ///   空白带最短 3px：行距的最小可能值，再窄就不像行间距了。
     ///
-    /// 原来 400 的错：图高 312 时 312 &lt; 400，第一刀就把整图切完，还是 1 块，
-    /// 等于没切。上一轮 9 张真实长图一张都没触发切片，就是这么来的。
-    ///
-    /// 200 的依据（离线实测，645×337 那张图）：
-    ///   整图识别第 2 行是 "e epen  what  wonynen wontm well."（全垃圾）
-    ///   块高 250 → "ef depending on what ring s worn, only one ing can be worn..."
-    ///   块高 200 → "effects depending on what ring is worn, only one ring can be worn at a time as well."（完全正确）
-    ///   块高 150 → 同上也正确
-    /// 取 200：够救回丢行，又不至于切太碎导致上下文断裂。
+    /// 【找不到合适空白带就不切】
+    ///   宁可整图识别一次，也不切破行。调用方拿到单块就等于没切。
     /// </summary>
-    private const int SliceMaxHeight = 200;
-    private const int SliceOverlap = 40;
-
-    /// <summary>
-    /// 【2026-11-18 调参】切图下限从 300 改成 250。
-    ///   用户提供的 9 张真实长图，高度分别是 79/103/129/142/168/201/302/312/337。
-    ///   300 只能覆盖 3 张，250 能覆盖 4 张（302/312/337 + 201 不够）。
-    ///   ⚠️ 注意：图高刚好等于 SliceMaxHeight(200) 附近时切不出 2 块，
-    ///   这是正常的 —— 没攒够一块就不切。
-    /// </summary>
-    private const int SliceMinHeight = 250;
+    private const int SliceTargetHeight = 200;   // 目标块高（沿用上一轮验证过的值）
+    private const int SliceBlankMinHeight = 3;   // 空白带最短
+    private const int SliceBlankLumaMax = 60;    // 「很暗」的亮度上限
+    private const int SliceMinHeight = 250;      // 图高不到这个就不切
+    private const int SliceMinPieceHeight = 80;  // 切出来的块至少这么高，否则并到上一块
 
     /// <summary>切出来的块：图片本身 + 它在原图里的 y 偏移（拼接时要用）。</summary>
     private readonly record struct Slice(Bitmap Image, int OffsetY);
 
     /// <summary>
-    /// 把一张图按高度切成若干块。图不够高就返回单块（整图），调用方不需要判断。
-    /// 调用方负责 Dispose 返回的每一张 Bitmap。
+    /// 把一张长图按「行间空白带」切成若干块。图不够高 / 不是深底浅字 / 找不到空白带时
+    /// 返回单块（整图），调用方不需要判断。调用方负责 Dispose 返回的每一张 Bitmap。
     /// </summary>
     private static List<Slice> SliceVertically(Bitmap source)
     {
         var result = new List<Slice>();
 
-        // 图不够高：原样返回整图（复制一份，保证调用方 Dispose 语义统一）
+        // 图不够高：原样返回（复制一份，保证调用方 Dispose 语义统一）
         if (source.Height <= SliceMinHeight)
         {
             result.Add(new Slice(new Bitmap(source), 0));
             return result;
         }
 
-        int y = 0;
-        while (y < source.Height)
+        // 浅底深字：这套亮度逻辑不适用，不切。
+        //   直接复用 ImagePreprocessor 里现成的「深底浅字」判断（NeededInversion），别自己写。
+        if (!ImagePreprocessor.NeededInversion(source))
         {
-            int h = Math.Min(SliceMaxHeight, source.Height - y);
-            // 最后一块太矮就并进上一块，避免切出一条零碎的长条
-            if (h < SliceOverlap && result.Count > 0)
-            {
-                break;
-            }
-
-            var rect = new Rectangle(0, y, source.Width, h);
-            var piece = new Bitmap(source.Width, h, PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(piece))
-            {
-                g.DrawImage(source, new Rectangle(0, 0, source.Width, h), rect, GraphicsUnit.Pixel);
-            }
-            result.Add(new Slice(piece, y));
-
-            // 下一块起点 = 这块末尾 - 重叠
-            // 【2026-11-18 修】原来用 `y += h - SliceOverlap; if (y + SliceOverlap >= Height) break;`
-            //   判断的是「下一块起点 + 重叠」，等于把下一块的末尾又加了一次重叠，
-            //   图高刚过 SliceMaxHeight 时第一刀就退出（312 高的图只切 1 块）。
-            //   现在用「这块的末尾」判断：剩余不足一块就收工。
-            int nextY = y + h - SliceOverlap;
-            if (nextY <= y) break;                              // 防死循环
-            if (nextY + SliceOverlap >= source.Height) break;   // 剩余不够一块，收工
-            y = nextY;
+            AppLogger.Info($"【切片】{source.Width}×{source.Height} 是浅底深字，按空白带切的逻辑不适用，不切");
+            result.Add(new Slice(new Bitmap(source), 0));
+            return result;
         }
 
+        int W = source.Width, H = source.Height;
+
+        // 逐行亮度：取该行最亮的像素（有字的行会因为字而变亮）
+        var rowLuma = new int[H];
+        for (int y = 0; y < H; y++)
+        {
+            int maxL = 0;
+            for (int x = 0; x < W; x += 2)     // 隔列采样，够用且快
+            {
+                Color c = source.GetPixel(x, y);
+                int l = (int)(0.299 * c.R + 0.587 * c.G + 0.114 * c.B);
+                if (l > maxL) maxL = l;
+            }
+            rowLuma[y] = maxL;
+        }
+
+        // 找空白带（连续 >= SliceBlankMinHeight 行都 <= SliceBlankLumaMax）
+        var candidates = new List<int>();   // 空白带中心
+        int runStart = -1;
+        for (int y = 0; y < H; y++)
+        {
+            bool blank = rowLuma[y] <= SliceBlankLumaMax;
+            if (blank && runStart < 0) runStart = y;
+            if (!blank && runStart >= 0)
+            {
+                if (y - runStart >= SliceBlankMinHeight) candidates.Add((runStart + y) / 2);
+                runStart = -1;
+            }
+        }
+        if (runStart >= 0 && H - runStart >= SliceBlankMinHeight)
+            candidates.Add((runStart + H) / 2);
+
+        // 切点太少：切不出有意义的块，不切
+        if (candidates.Count == 0)
+        {
+            AppLogger.Info($"【切片】{W}×{H} 找不到行间空白带，不切（整图识别）");
+            result.Add(new Slice(new Bitmap(source), 0));
+            return result;
+        }
+
+        // 按目标块高挑切点：从 y=0 往后，每走过 SliceTargetHeight 就取最近的空白带
+        var cutPoints = new List<int>();
+        int prev = 0;
+        while (H - prev > SliceTargetHeight * 3 / 2)
+        {
+            int want = prev + SliceTargetHeight;
+            // 找 >= prev+SliceMinPieceHeight 且离 want 最近的切点
+            int best = -1, bestDist = int.MaxValue;
+            foreach (int c in candidates)
+            {
+                if (c < prev + SliceMinPieceHeight || c > H - SliceMinPieceHeight) continue;
+                int d = Math.Abs(c - want);
+                if (d < bestDist) { bestDist = d; best = c; }
+            }
+            if (best < 0) break;
+            if (cutPoints.Count > 0 && best <= cutPoints[^1]) break;
+            cutPoints.Add(best);
+            prev = best;
+        }
+
+        // 一个切点都没选出来：不切
+        if (cutPoints.Count == 0)
+        {
+            AppLogger.Info($"【切片】{W}×{H} 有 {candidates.Count} 条空白带，但都不够切，整图识别");
+            result.Add(new Slice(new Bitmap(source), 0));
+            return result;
+        }
+
+        // 按切点切片
+        int start = 0;
+        foreach (int c in cutPoints.Append(H))
+        {
+            int h = c - start;
+            if (h <= 0) { start = c; continue; }
+            var piece = new Bitmap(W, h, PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(piece))
+            {
+                g.DrawImage(source, new Rectangle(0, 0, W, h),
+                            new Rectangle(0, start, W, h), GraphicsUnit.Pixel);
+            }
+            result.Add(new Slice(piece, start));
+            start = c;
+        }
+
+        AppLogger.Info($"【切片】{W}×{H} 找到 {candidates.Count} 条空白带，"
+                     + $"切点 [{string.Join(",", cutPoints)}]，切成 {result.Count} 块");
         return result;
     }
 
@@ -638,8 +695,8 @@ internal static class RapidOcrEngine
             int boxes = parts.Sum(x => x.P.BoxCount);
             bool weakBlock = parts.Any(x => x.P.WeakBlock);
 
-            AppLogger.Info($"【切片识别】{bitmap.Width}×{bitmap.Height} 切成 {slices.Count} 块，"
-                         + $"拼成 {lines.Count} 行 / {text.Length} 字");
+            AppLogger.Info($"【切片识别】{bitmap.Width}×{bitmap.Height} 切成 {slices.Count} 块"
+                         + $"（空白带切法），拼成 {lines.Count} 行 / {text.Length} 字");
 
             return new Pass(text, string.Empty, avg, weak, single, boxes, weakBlock);
         }
