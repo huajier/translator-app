@@ -508,17 +508,30 @@ internal static class RapidOcrEngine
     ///   DB 检测器在 8~9px 字高上容易整行漏掉，这就是「丢段」的来源。
     ///   切成矮块后每块的检测分辨率变高，字就认得更准。
     ///
-    /// 【参数怎么定的 —— 都是起点值，要靠 A/B 校准】
-    ///   SliceMaxHeight = 400：块高上限。当前 UpscaleRetryMaxHeight=160，
-    ///     400 是给「块本身还不需要 3x」留的余量，超过就先切。
-    ///   SliceOverlap = 40：相邻块重叠。约 1.5 个行高（行高按 26px 估），
-    ///     目的是防止某一行正好被切在边界上。
-    ///   SliceMinHeight = 300：图高不超过这个就不切。小图切了反而多此一举，
-    ///     而且小图本来就吃 3x 重试。
+    /// <summary>
+    /// 【2026-11-18 调参】块高从 400 改成 200。
+    ///
+    /// 原来 400 的错：图高 312 时 312 &lt; 400，第一刀就把整图切完，还是 1 块，
+    /// 等于没切。上一轮 9 张真实长图一张都没触发切片，就是这么来的。
+    ///
+    /// 200 的依据（离线实测，645×337 那张图）：
+    ///   整图识别第 2 行是 "e epen  what  wonynen wontm well."（全垃圾）
+    ///   块高 250 → "ef depending on what ring s worn, only one ing can be worn..."
+    ///   块高 200 → "effects depending on what ring is worn, only one ring can be worn at a time as well."（完全正确）
+    ///   块高 150 → 同上也正确
+    /// 取 200：够救回丢行，又不至于切太碎导致上下文断裂。
     /// </summary>
-    private const int SliceMaxHeight = 400;
+    private const int SliceMaxHeight = 200;
     private const int SliceOverlap = 40;
-    private const int SliceMinHeight = 300;
+
+    /// <summary>
+    /// 【2026-11-18 调参】切图下限从 300 改成 250。
+    ///   用户提供的 9 张真实长图，高度分别是 79/103/129/142/168/201/302/312/337。
+    ///   300 只能覆盖 3 张，250 能覆盖 4 张（302/312/337 + 201 不够）。
+    ///   ⚠️ 注意：图高刚好等于 SliceMaxHeight(200) 附近时切不出 2 块，
+    ///   这是正常的 —— 没攒够一块就不切。
+    /// </summary>
+    private const int SliceMinHeight = 250;
 
     /// <summary>切出来的块：图片本身 + 它在原图里的 y 偏移（拼接时要用）。</summary>
     private readonly record struct Slice(Bitmap Image, int OffsetY);
@@ -557,10 +570,14 @@ internal static class RapidOcrEngine
             result.Add(new Slice(piece, y));
 
             // 下一块起点 = 这块末尾 - 重叠
-            y += h - SliceOverlap;
-            if (y < 0) y = 0;
-            // 防止死循环：如果这块已经是最后一块，退出
-            if (y + SliceOverlap >= source.Height) break;
+            // 【2026-11-18 修】原来用 `y += h - SliceOverlap; if (y + SliceOverlap >= Height) break;`
+            //   判断的是「下一块起点 + 重叠」，等于把下一块的末尾又加了一次重叠，
+            //   图高刚过 SliceMaxHeight 时第一刀就退出（312 高的图只切 1 块）。
+            //   现在用「这块的末尾」判断：剩余不足一块就收工。
+            int nextY = y + h - SliceOverlap;
+            if (nextY <= y) break;                              // 防死循环
+            if (nextY + SliceOverlap >= source.Height) break;   // 剩余不够一块，收工
+            y = nextY;
         }
 
         return result;
