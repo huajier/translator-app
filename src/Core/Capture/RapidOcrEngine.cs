@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -205,7 +206,11 @@ internal static class RapidOcrEngine
 
         try
         {
-            Pass first = RecognizeWithRetry(bitmap);
+            // 【2026-11-18 P2】长图先切片再识别。图不高时 SliceVertically 返回单块，
+            //   RecognizeSliced 内部会直接走 RecognizeWithRetry，行为与改动前完全一致。
+            Pass first = AppSettings.RapidOcrSliceLongImage
+                ? RecognizeSliced(bitmap)
+                : RecognizeWithRetry(bitmap);
 
             note = first.Note;
             averageScore = first.AverageScore;
@@ -495,6 +500,139 @@ internal static class RapidOcrEngine
     }
 
     /// <summary>
+    /// 【2026-11-18 P2】把长图按高度切成带重叠的块，每块单独喂检测器。
+    ///
+    /// 【为什么需要】
+    ///   RapidOcrOptions.Default 的 ImgResize=1024 会把大图压到长边 1024，
+    ///   实测 914×210 → 检测输入 960×256，字高只剩 0.83x。
+    ///   DB 检测器在 8~9px 字高上容易整行漏掉，这就是「丢段」的来源。
+    ///   切成矮块后每块的检测分辨率变高，字就认得更准。
+    ///
+    /// 【参数怎么定的 —— 都是起点值，要靠 A/B 校准】
+    ///   SliceMaxHeight = 400：块高上限。当前 UpscaleRetryMaxHeight=160，
+    ///     400 是给「块本身还不需要 3x」留的余量，超过就先切。
+    ///   SliceOverlap = 40：相邻块重叠。约 1.5 个行高（行高按 26px 估），
+    ///     目的是防止某一行正好被切在边界上。
+    ///   SliceMinHeight = 300：图高不超过这个就不切。小图切了反而多此一举，
+    ///     而且小图本来就吃 3x 重试。
+    /// </summary>
+    private const int SliceMaxHeight = 400;
+    private const int SliceOverlap = 40;
+    private const int SliceMinHeight = 300;
+
+    /// <summary>切出来的块：图片本身 + 它在原图里的 y 偏移（拼接时要用）。</summary>
+    private readonly record struct Slice(Bitmap Image, int OffsetY);
+
+    /// <summary>
+    /// 把一张图按高度切成若干块。图不够高就返回单块（整图），调用方不需要判断。
+    /// 调用方负责 Dispose 返回的每一张 Bitmap。
+    /// </summary>
+    private static List<Slice> SliceVertically(Bitmap source)
+    {
+        var result = new List<Slice>();
+
+        // 图不够高：原样返回整图（复制一份，保证调用方 Dispose 语义统一）
+        if (source.Height <= SliceMinHeight)
+        {
+            result.Add(new Slice(new Bitmap(source), 0));
+            return result;
+        }
+
+        int y = 0;
+        while (y < source.Height)
+        {
+            int h = Math.Min(SliceMaxHeight, source.Height - y);
+            // 最后一块太矮就并进上一块，避免切出一条零碎的长条
+            if (h < SliceOverlap && result.Count > 0)
+            {
+                break;
+            }
+
+            var rect = new Rectangle(0, y, source.Width, h);
+            var piece = new Bitmap(source.Width, h, PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(piece))
+            {
+                g.DrawImage(source, new Rectangle(0, 0, source.Width, h), rect, GraphicsUnit.Pixel);
+            }
+            result.Add(new Slice(piece, y));
+
+            // 下一块起点 = 这块末尾 - 重叠
+            y += h - SliceOverlap;
+            if (y < 0) y = 0;
+            // 防止死循环：如果这块已经是最后一块，退出
+            if (y + SliceOverlap >= source.Height) break;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 长图切片识别：切块 → 每块跑 RecognizeWithRetry（含 3x 逻辑）→ 按 y 拼接去重。
+    /// 返回的 Pass.Text 是拼好的整段，与整图识别的口径一致（行间用 \n）。
+    /// </summary>
+    private static Pass RecognizeSliced(Bitmap bitmap)
+    {
+        var slices = SliceVertically(bitmap);
+        try
+        {
+            // 只有一块 = 没切，直接走原路，行为与改动前完全一致
+            if (slices.Count == 1)
+            {
+                return RecognizeWithRetry(slices[0].Image);
+            }
+
+            var parts = new List<(int OffsetY, Pass P)>();
+            foreach (var s in slices)
+            {
+                parts.Add((s.OffsetY, RecognizeWithRetry(s.Image)));
+            }
+
+            // 拼：按 y 排序，相邻块的重叠区去重
+            parts.Sort((a, b) => a.OffsetY.CompareTo(b.OffsetY));
+            var sb = new StringBuilder();
+            var lines = new List<string>();
+            foreach (var (_, p) in parts)
+            {
+                if (string.IsNullOrWhiteSpace(p.Text)) continue;
+                foreach (var line in p.Text.Split('\n'))
+                {
+                    var t = line.Trim();
+                    if (t.Length == 0) continue;
+                    // 去重：和已拼的最后几行完全一样就丢掉（重叠区的同一行会被读两次）
+                    bool dup = false;
+                    for (int k = Math.Max(0, lines.Count - 4); k < lines.Count; k++)
+                    {
+                        if (string.Equals(lines[k], t, StringComparison.Ordinal)) { dup = true; break; }
+                    }
+                    if (!dup) lines.Add(t);
+                }
+            }
+            sb.Append(string.Join("\n", lines));
+
+            var text = sb.ToString();
+            if (text.Length == 0) return new Pass(null, "切片后没认出文字", 0, 0, 0, 0, false);
+
+            // 汇总统计（取各块平均分的加权平均，行数取拼完后的实际行数）
+            double avg = parts.Where(x => x.P.AverageScore > 0)
+                              .Select(x => x.P.AverageScore)
+                              .DefaultIfEmpty(0).Average();
+            int weak = parts.Sum(x => x.P.WeakChars);
+            int single = parts.Sum(x => x.P.SingleCharBoxes);
+            int boxes = parts.Sum(x => x.P.BoxCount);
+            bool weakBlock = parts.Any(x => x.P.WeakBlock);
+
+            AppLogger.Info($"【切片识别】{bitmap.Width}×{bitmap.Height} 切成 {slices.Count} 块，"
+                         + $"拼成 {lines.Count} 行 / {text.Length} 字");
+
+            return new Pass(text, string.Empty, avg, weak, single, boxes, weakBlock);
+        }
+        finally
+        {
+            foreach (var s in slices) s.Image.Dispose();
+        }
+    }
+
+    /// <summary>
     /// 放大 3 倍给重试用。放大方式与 ImagePreprocessor.UpscaleForForeign 同款
     /// （HighQualityBicubic + PixelOffsetMode.HighQuality），不新增依赖。
     /// 边太长时按 2000 像素上限把系数降下来——超过 MaxSideLen，检测会直接失败。
@@ -648,7 +786,9 @@ internal static class RapidOcrEngine
             // en 侧：走 RecognizeWithRetry（含小框 3 倍重试），和 TryRecognize 完全同一条路。
             // 【2026-11-10 修】上一轮这里是裸调 RecognizeOnePass，漏掉重试，
             //   行-68 从 3d 8h 退成 48 pε、行-76/83 整段崩 —— 就是这段的代价。
-            Pass en = RecognizeWithRetry(bitmap);
+            Pass en = AppSettings.RapidOcrSliceLongImage
+                ? RecognizeSliced(bitmap)
+                : RecognizeWithRetry(bitmap);
 
             // cyr 侧：仍然裸调，不加重试。
             //   它只服务俄文长文本，小框 3x 对那种场景没有意义，加了只会更慢。

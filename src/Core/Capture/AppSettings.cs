@@ -198,6 +198,14 @@ internal static class AppSettings
     public static bool RapidOcrSmallBoxUpscale { get; private set; } = true;
 
     /// <summary>
+    /// 【2026-11-18 P2】长图切片识别开关。**默认 false（A/B 要先量）。**
+    ///   true 时图高 &gt; 300 会切成 400 高的块分别识别再拼，
+    ///   目的是解决「框长段落丢段」——根因是 ImgResize=1024 把大图压小（914×210 → 检测输入 960×256）。
+    ///   读 settings.json 的 rapidOcrSliceLongImage。
+    /// </summary>
+    public static bool RapidOcrSliceLongImage { get; private set; } = false;
+
+    /// <summary>
     /// 【2026-11-11 第20轮 用户需求「句句对照」】**默认关。**
     ///
     /// 【做什么】开启后卡片里的原文/译文改成逐句富文本：
@@ -378,6 +386,14 @@ internal static class AppSettings
                     any = true;
                 }
 
+                // 2026-11-18 P2：长图切片识别开关（默认关，A/B 用）
+                if (doc.RootElement.TryGetProperty("rapidOcrSliceLongImage", out var sli)
+                    && sli.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
+                {
+                    RapidOcrSliceLongImage = sli.GetBoolean();
+                    any = true;
+                }
+
                 // 2026-11-02 阶段四 T1a：翻译总开关（默认关）+ 首次提示是否弹过
                 if (doc.RootElement.TryGetProperty("translateEnabled", out var te)
                     && te.ValueKind is System.Text.Json.JsonValueKind.True or System.Text.Json.JsonValueKind.False)
@@ -491,6 +507,8 @@ internal static class AppSettings
                         rapidOcrKeepTrailingPunct = RapidOcrKeepTrailingPunct,
                         blockFallbackHint = BlockFallbackHint,
                         rapidOcrSmallBoxUpscale = RapidOcrSmallBoxUpscale,
+                        // 2026-11-18 P2：长图切片识别（少了这一行，下次保存就把开关抹回默认关）
+                        rapidOcrSliceLongImage = RapidOcrSliceLongImage,
                         // 2026-11-11 第20轮：少了这一行，下次保存就把句句对照开关抹回默认关
                         sentenceHighlight = SentenceHighlight,
                         // 2026-11-02 阶段四 T1a：这两行少一行，下次保存就把开关状态抹掉，
