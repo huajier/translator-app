@@ -518,11 +518,13 @@ internal static class RapidOcrEngine
     /// 【找不到合适空白带就不切】
     ///   宁可整图识别一次，也不切破行。调用方拿到单块就等于没切。
     /// </summary>
-    private const int SliceTargetHeight = 200;   // 目标块高（沿用上一轮验证过的值）
+    /// <summary>
+    /// 【2026-11-19 改语义】每块「大概多高」，**不再是硬上限**。
+    ///   块数由 round(H / 这个值) 决定，再把高度均分 —— 266 高的图不会再切出 200+66 这种尾巴。
+    /// </summary>
+    private const int SliceTargetHeight = 200;
     private const int SliceBlankMinHeight = 3;   // 空白带最短
     private const int SliceBlankLumaMax = 60;    // 「很暗」的亮度上限
-    private const int SliceMinHeight = 250;      // 图高不到这个就不切
-    private const int SliceMinPieceHeight = 80;  // 切出来的块至少这么高，否则并到上一块
 
     /// <summary>切出来的块：图片本身 + 它在原图里的 y 偏移（拼接时要用）。</summary>
     private readonly record struct Slice(Bitmap Image, int OffsetY);
@@ -535,8 +537,12 @@ internal static class RapidOcrEngine
     {
         var result = new List<Slice>();
 
-        // 图不够高：原样返回（复制一份，保证调用方 Dispose 语义统一）
-        if (source.Height <= SliceMinHeight)
+        // 【2026-11-19 改】入口阈值从孤立的 250 换成「能否切出至少 2 块有意义的块」。
+        //   块至少要这么高才有意义，低于两倍就切不动。
+        //   257/266/269/302/312/337 全部会切；168/142/129 这些矮图现在也会切 —— 有意为之，
+        //   目标就是容忍框选抖动（多切一刀让检测分辨率上去）。实测变差再调回去。
+        const int SliceMinPieceH = 60;
+        if (source.Height < SliceMinPieceH * 2)
         {
             result.Add(new Slice(new Bitmap(source), 0));
             return result;
@@ -591,17 +597,32 @@ internal static class RapidOcrEngine
             return result;
         }
 
-        // 按目标块高挑切点：从 y=0 往后，每走过 SliceTargetHeight 就取最近的空白带
+        // 【2026-11-19 改】块高按图均分，不写死。
+        //
+        //   原来写死 SliceTargetHeight=200：266 高的图切出 200+66，第二块太矮没意义。
+        //   而且循环条件 H > 300 和入口的 250 打架，
+        //   用户实测的 266/269/257 三张图全部白跑一趟（日志「有 12 条空白带，但都不够切」）。
+        //
+        //   改成：先算这张图应该切几块，再把高度均分。
+        //     块数 = round(H / SliceTargetHeight)，至少 2 块（因为进了这个函数就是要切）
+        //     每块目标高 = H / 块数
+        //   这样 266 → round(266/200)=1 → 强制 2 块 → 每块 133
+        //        312 → round(312/200)=2 → 2 块 → 每块 156
+        //        700 → round(700/200)=4 → 4 块 → 每块 175
+        int pieceCount = Math.Max(2, (int)Math.Round((double)H / SliceTargetHeight));
+        int idealPieceH = H / pieceCount;
+
         var cutPoints = new List<int>();
         int prev = 0;
-        while (H - prev > SliceTargetHeight * 3 / 2)
+        for (int i = 1; i < pieceCount; i++)
         {
-            int want = prev + SliceTargetHeight;
-            // 找 >= prev+SliceMinPieceHeight 且离 want 最近的切点
+            int want = i * idealPieceH;
+            // 找离目标位置最近的空白带；只要求「离上一个切点和下一块」不至于太近
             int best = -1, bestDist = int.MaxValue;
             foreach (int c in candidates)
             {
-                if (c < prev + SliceMinPieceHeight || c > H - SliceMinPieceHeight) continue;
+                if (c <= prev + 20) continue;          // 离上一刀太近
+                if (c >= H - 20) continue;             // 太贴底
                 int d = Math.Abs(c - want);
                 if (d < bestDist) { bestDist = d; best = c; }
             }
