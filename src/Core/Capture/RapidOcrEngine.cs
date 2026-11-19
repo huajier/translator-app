@@ -206,8 +206,11 @@ internal static class RapidOcrEngine
 
         try
         {
-            // 【2026-11-18 P2】长图先切片再识别。图不高时 SliceVertically 返回单块，
-            //   RecognizeSliced 内部会直接走 RecognizeWithRetry，行为与改动前完全一致。
+            // 【2026-11-18 P2】长图切片识别。**已证伪，开关必须保持 false。**
+            //   五轮 A/B 全是负贡献（最好的也是「救 1 行、坏 3 处」，
+            //   最后一轮 L_整块 -1.9pp）。详情见 AppSettings.RapidOcrSliceLongImage 的注释。
+            //   留着这条分支是给「换更大的 det 模型」留退路，别拿它调参。
+            //   图不高时 SliceVertically 返回单块，行为与改动前完全一致。
             Pass first = AppSettings.RapidOcrSliceLongImage
                 ? RecognizeSliced(bitmap)
                 : RecognizeWithRetry(bitmap);
@@ -519,6 +522,15 @@ internal static class RapidOcrEngine
     ///   宁可整图识别一次，也不切破行。调用方拿到单块就等于没切。
     /// </summary>
     /// <summary>
+    /// 【2026-11-19 结论：这套切片已证伪，开关必须保持 false。详见 AppSettings.RapidOcrSliceLongImage 的注释】
+    ///
+    ///   五轮 A/B 全是负贡献：最好的情况是「救 1 行、坏 3 处」，
+    ///   最后一轮块高均分甚至把 L_整块 从 65.4% 打到 63.5%。
+    ///   根因不是切点位置 —— 是「每块变矮后边缘行更容易认残」，换哪种切法都一样。
+    ///
+    ///   代码留着是给「换更大的 det 模型」留的退路，不是给人调参用的。
+    ///   真要重做，先读 AppSettings 里那份「两个前提」，别又从调参数开始。
+    ///
     /// 【2026-11-19 改语义】每块「大概多高」，**不再是硬上限**。
     ///   块数由 round(H / 这个值) 决定，再把高度均分 —— 266 高的图不会再切出 200+66 这种尾巴。
     /// </summary>
