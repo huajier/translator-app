@@ -306,7 +306,29 @@ internal static class RapidOcrEngine
             //     可调小至 0.3」。
             //   ⚠️ 字段名是反的：官方 det_db_box_thresh = 这里的 BoxScoreThresh，
             //      **不是 BoxThresh**（BoxThresh 是二值化阈值，调低会让相邻行糊成一片）。
-            var ocrOptions = RapidOcrOptions.Default with { TextScore = 0.0f, BoxScoreThresh = 0.3f };
+            //
+            // 【2026-11-19】UnClipRatio 1.6 → 2.4：把 DB 检测框往外扩一点。
+            //
+            //   病根：用户框得很贴文字时，PP-OCRv5 mobile 会把整行读成碎片。
+            //   实测（用户 6 张真图，同一段文字手抖框 6 次，行数都是 11 行）：
+            //     原图识别 → 913~984 字，其中一行是 "a pla heotr r ucs.When elhe il  a whn es"
+            //     同一张图手工补 24px 白边 → 1014~1028 字，那行变成
+            //       "and placed in the hotbar for quick access. When held, the staff will fire its ma"
+            //   中位字数 +9.4%。
+            //
+            //   外部依据：RapidOCR #210 用户原话「文字在图像中占比过高时就会这样…
+            //     将边缘扩展一下减少占比就能正常识别了，不能精确裁剪识别」；
+            //     PaddleOCR FAQ 也说 unclip_ratio「默认1.6，可以尝试改成2.5或者更大」。
+            //
+            //   ⚠️ 这是全局参数，会影响所有图。本来就框得松的图可能被扩过头
+            //     （相邻行粘连）。所以必须跑 331 全量确认没有全局退步。
+            //   ⚠️ 如果 2.4 有效但 331 有退步，下一轮试 2.0 折中。
+            var ocrOptions = RapidOcrOptions.Default with
+            {
+                TextScore = 0.0f,
+                BoxScoreThresh = 0.3f,
+                UnClipRatio = 2.4f,
+            };
             result = engine!.Detect(skBitmap, ocrOptions);
         }
 
